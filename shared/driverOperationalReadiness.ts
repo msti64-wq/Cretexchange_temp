@@ -4,6 +4,7 @@ export const DRIVER_OPERATIONAL_READINESS_REASON_CODES = [
   "driver_profile_not_owned",
   "driver_profile_incomplete",
   "current_terms_required",
+  "terms_ledger_unavailable",
   "active_material_required",
   "active_material_invalid",
   "active_material_retired",
@@ -56,6 +57,7 @@ export interface DriverOperationalReadinessInput {
   user?: DriverOperationalReadinessUser | null;
   profile?: DriverOperationalReadinessProfile | null;
   termsAccepted?: boolean | null;
+  termsLedgerAvailable?: boolean | null;
   activeMaterial?: DriverOperationalReadinessMaterial | null;
 }
 
@@ -96,6 +98,7 @@ export function resolveDriverOperationalReadiness({
   user,
   profile,
   termsAccepted,
+  termsLedgerAvailable: termsLedgerAvailableInput,
   activeMaterial,
 }: DriverOperationalReadinessInput) {
   const reasons: DriverOperationalReadinessReason[] = [];
@@ -104,6 +107,7 @@ export function resolveDriverOperationalReadiness({
   const profileOwned = Boolean(profile && user?.id && profile.userId === user.id);
   const profileReadiness = resolveDriverProfileReadiness({ user, profile });
   const acceptedCurrentTerms = termsAccepted === true;
+  const termsLedgerAvailable = termsLedgerAvailableInput !== false;
   const activeMaterialSlug = profile?.activeMaterialSlug?.trim() || null;
   const materialMatchesSelection = Boolean(activeMaterialSlug && activeMaterial?.slug === activeMaterialSlug);
   const activeMaterialState = !activeMaterialSlug
@@ -129,8 +133,9 @@ export function resolveDriverOperationalReadiness({
     });
   }
 
-  if (roleAllowed && profileExists && profileOwned && !acceptedCurrentTerms) {
-    reasons.push({ code: "current_terms_required" });
+  if (roleAllowed && profileExists && profileOwned) {
+    if (!termsLedgerAvailable) reasons.push({ code: "terms_ledger_unavailable" });
+    else if (!acceptedCurrentTerms) reasons.push({ code: "current_terms_required" });
   }
 
   if (roleAllowed && profileExists && profileOwned) {
@@ -147,6 +152,7 @@ export function resolveDriverOperationalReadiness({
     profileComplete: profileReadiness.complete,
     missingProfileFields: profileReadiness.missingProfileFields,
     termsAccepted: acceptedCurrentTerms,
+    termsLedgerAvailable,
     activeMaterialState,
     reasons,
   };

@@ -14,6 +14,7 @@
     "admin-repository:sync": "node --import tsx scripts/synchronize-administration-repository.ts",
     "db:migrate:controlled": "node --import tsx scripts/controlled-staging-migrations.ts",
     "db:migrate:production:controlled": "node --import tsx scripts/controlled-production-migrations.ts",
+    "db:migrate:terms-ledger:controlled": "node --import tsx scripts/controlled-terms-ledger-migration.ts",
     "repair:washout-ledger": "node --import tsx scripts/repair-washout-ledger.ts",
     "verify:washout-billing-counts": "node --import tsx scripts/verify-washout-billing-counts.ts",
     "verify:driver-stripe-connect": "node --import tsx scripts/verify-driver-stripe-connect.ts",

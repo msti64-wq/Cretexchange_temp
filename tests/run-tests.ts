@@ -238,14 +238,14 @@ test("legal acceptance tracking records language version and timestamp", async (
   await withPatchedStorage(
     {
       getTermsAcceptancesForUser: async () => acceptances,
-      createTermsAcceptance: async (acceptance: Record<string, unknown>) => {
-        const row = {
+      createTermsAcceptanceBundleAtomically: async (_versions: Array<Record<string, unknown>>, items: Array<Record<string, unknown>>) => {
+        const rows = items.map((acceptance) => ({
           id: `acceptance_${acceptances.length + 1}`,
           createdAt: new Date(),
           ...acceptance,
-        };
-        acceptances.push(row);
-        return row;
+        }));
+        acceptances.push(...rows);
+        return rows;
       },
       getDriver: async () => makeDriver(),
       updateDriver: async (_driverId: string, update: Record<string, unknown>) => {
@@ -278,6 +278,50 @@ test("legal acceptance tracking records language version and timestamp", async (
       assert.ok(driverUpdatedWith?.termsAgreedAt instanceof Date);
     },
   );
+});
+
+test("terms ledger failure never falls back to a legacy flag or projects a failed acceptance", async () => {
+  let driverUpdated = false;
+  await withPatchedStorage(
+    {
+      getTermsAcceptancesForUser: async () => { throw new Error("ledger unavailable"); },
+      getDriver: async () => ({ ...makeDriver(), hasAgreedToTerms: true, termsAgreedAt: new Date() }),
+      createTermsAcceptanceBundleAtomically: async () => { throw new Error("ledger write failed"); },
+      updateDriver: async () => { driverUpdated = true; return makeDriver(); },
+    },
+    async () => {
+      await assert.rejects(
+        () => getTermsStateForUser(makeUser({ role: "driver" }), undefined, "en"),
+        (error: any) => error?.code === "TERMS_LEDGER_UNAVAILABLE",
+      );
+      await assert.rejects(
+        () => recordCurrentTermsAcceptance(makeUser({ role: "driver" }), { headers: {} }, undefined, "en"),
+        (error: any) => error?.code === "TERMS_LEDGER_UNAVAILABLE",
+      );
+    },
+  );
+  assert.equal(driverUpdated, false);
+});
+
+test("a complete current English bundle satisfies readiness while preserving its accepted language", async () => {
+  const english = getRequiredLegalDocumentsForRole("driver", "en").map(({ document }) => ({
+    id: document.storageKey,
+    userId: "user_1",
+    role: "driver",
+    termsType: document.id,
+    language: document.language,
+    storageKey: document.storageKey,
+    version: document.version,
+    contentHash: document.contentHash,
+    acceptedAt: new Date(),
+    createdAt: new Date(),
+  }));
+  await withPatchedStorage({ getTermsAcceptancesForUser: async () => english }, async () => {
+    assert.equal((await getTermsStateForUser(makeUser({ role: "driver" }), undefined, "en")).requiresAcceptance, false);
+    const spanishDisplay = await getTermsStateForUser(makeUser({ role: "driver" }), undefined, "es");
+    assert.equal(spanishDisplay.requiresAcceptance, false);
+    assert.equal(spanishDisplay.acceptedBundleLanguage, "en");
+  });
 });
 
 test("legal document version changes require re-acceptance", async () => {

@@ -46,17 +46,18 @@ import {
 } from "@shared/photoFingerprint";
 import { evaluatePhotoFreshness } from "@shared/photoFreshness";
 import { summarizeDatabaseError } from "./dbErrors";
+import { pool } from "./db";
+import { getTermsLedgerHealth } from "./termsLedgerCatalog";
 import {
-  ensureCurrentTermsVersions,
   getTermsStateForUser,
-  parseTermsTypes,
   recordCurrentTermsAcceptance,
   requireCurrentTerms,
+  TermsLedgerUnavailableError,
   type UserTermsState,
 } from "./terms";
 import { driverOperationalReadinessMiddleware, driverRoleMiddleware } from "./driverOperationalReadiness";
 import { requireDriverLocationEligibility, requireDriverLocationEligibilityWithMaterial } from "./driverLocationEligibility";
-import { normalizeLegalLanguage } from "@shared/legalDocuments";
+import { isLegalLanguage, normalizeLegalLanguage } from "@shared/legalDocuments";
 import {
   resolveOwnerBillingPolicy,
   getActiveBillingPolicyLabels,
@@ -314,7 +315,7 @@ function buildTermsStatusResponse(state: UserTermsState) {
     agreedAt,
     requiresAcceptance: state.requiresAcceptance,
     role: state.role,
-    acceptedLanguage: acceptedDocuments[0]?.acceptedLanguage || null,
+    acceptedLanguage: state.acceptedBundleLanguage,
     acceptedVersions: acceptedDocuments.map((doc) => ({
       termsType: doc.termsType,
       language: doc.acceptedLanguage,
@@ -326,6 +327,15 @@ function buildTermsStatusResponse(state: UserTermsState) {
     requiredDocuments: state.requiredDocuments,
     missingDocuments: state.missingDocuments,
   };
+}
+
+function sendTermsLedgerUnavailable(res: any, error: unknown): boolean {
+  if (!(error instanceof TermsLedgerUnavailableError)) return false;
+  res.status(503).json({
+    message: "Terms verification is temporarily unavailable",
+    code: "TERMS_LEDGER_UNAVAILABLE",
+  });
+  return true;
 }
 
 type QueuedPendingWashoutPayment = PendingWashoutPayment & {
@@ -2337,12 +2347,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Health check endpoint for monitoring
-  app.get('/api/system/health', (req, res) => {
-    res.json({
-      status: 'healthy',
+  app.get('/api/system/health', async (req, res) => {
+    const termsLedger = await getTermsLedgerHealth(pool);
+    const healthy = termsLedger === "available";
+    res.status(healthy ? 200 : 503).json({
+      status: healthy ? 'healthy' : 'degraded',
       timestamp: new Date().toISOString(),
       environment: resolveRuntimeEnvironment(),
-      database: 'connected',
+      database: healthy ? 'connected' : 'unavailable',
+      termsLedger,
       stripe: !!process.env.STRIPE_SECRET_KEY ? 'configured' : 'disabled',
       financialExecution: isFinancialExecutionEnabled() ? 'enabled' : 'disabled',
     });
@@ -6918,15 +6931,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Owner not found" });
       }
 
-      try {
-        await ensureCurrentTermsVersions();
-      } catch (versionError) {
-        console.warn("[TERMS_VERSION_INIT_WARNING]", {
-          role: "owner",
-          userId,
-          error: versionError,
-        });
-      }
       const state = await getTermsStateForUser(
         { id: userId, role: "owner" },
         undefined,
@@ -6936,6 +6940,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(buildTermsStatusResponse(state));
     } catch (error) {
       console.error("Error checking terms status:", error);
+      if (sendTermsLedgerUnavailable(res, error)) return;
       res.status(500).json({ message: "Failed to check terms status" });
     }
   });
@@ -6944,7 +6949,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/owners/agree-to-terms', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const language = normalizeLegalLanguage(req.body?.language);
+      if (!isLegalLanguage(req.body?.language)) {
+        return res.status(400).json({ message: "A supported legal-document language is required", code: "LEGAL_LANGUAGE_REQUIRED" });
+      }
+      const language = req.body.language;
       const owner = await storage.getOwner(userId);
       const user = await storage.getUser(userId);
       console.log("[TERMS_AGREEMENT_ATTEMPT]", {
@@ -6961,19 +6969,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Owner access required" });
       }
 
-      try {
-        await ensureCurrentTermsVersions();
-      } catch (versionError) {
-        console.warn("[TERMS_VERSION_INIT_WARNING]", {
-          role: "owner",
-          userId,
-          error: versionError,
-        });
-      }
       const state = await recordCurrentTermsAcceptance(
         { id: user.id, role: "owner" },
         req,
-        parseTermsTypes(req.body?.termsTypes),
+        undefined,
         language,
       );
       const response = buildTermsStatusResponse(state);
@@ -7033,6 +7032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req?.user?.id,
         error,
       });
+      if (sendTermsLedgerUnavailable(res, error)) return;
       res.status(500).json({ message: "Failed to record terms agreement" });
     }
   });
@@ -7049,15 +7049,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver not found" });
       }
 
-      try {
-        await ensureCurrentTermsVersions();
-      } catch (versionError) {
-        console.warn("[TERMS_VERSION_INIT_WARNING]", {
-          role: "driver",
-          userId,
-          error: versionError,
-        });
-      }
       const state = await getTermsStateForUser(
         { id: userId, role: "driver" },
         undefined,
@@ -7067,6 +7058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(buildTermsStatusResponse(state));
     } catch (error) {
       console.error("Error checking driver terms status:", error);
+      if (sendTermsLedgerUnavailable(res, error)) return;
       res.status(500).json({ message: "Failed to check terms status" });
     }
   });
@@ -7075,7 +7067,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/drivers/agree-to-terms', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const language = normalizeLegalLanguage(req.body?.language);
+      if (!isLegalLanguage(req.body?.language)) {
+        return res.status(400).json({ message: "A supported legal-document language is required", code: "LEGAL_LANGUAGE_REQUIRED" });
+      }
+      const language = req.body.language;
       const user = await storage.getUser(userId);
       console.log("[TERMS_AGREEMENT_ATTEMPT]", {
         role: "driver",
@@ -7094,35 +7089,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Driver profile not found" });
       }
 
-      try {
-        await ensureCurrentTermsVersions();
-      } catch (versionError) {
-        console.warn("[TERMS_VERSION_INIT_WARNING]", {
-          role: "driver",
-          userId,
-          error: versionError,
-        });
-      }
-      const existingState = await getTermsStateForUser(
-        { id: user.id, role: "driver" },
-        undefined,
-        language,
-      );
-
-      // Check for idempotency
-      if (!existingState.requiresAcceptance) {
-        const response = buildTermsStatusResponse(existingState);
-        return res.json({ 
-          success: true, 
-          message: "Terms already accepted",
-          ...response,
-        });
-      }
-
       const state = await recordCurrentTermsAcceptance(
         { id: user.id, role: "driver" },
         req,
-        parseTermsTypes(req.body?.termsTypes),
+        undefined,
         language,
       );
       const response = buildTermsStatusResponse(state);
@@ -7186,6 +7156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req?.user?.id,
         error,
       });
+      if (sendTermsLedgerUnavailable(res, error)) return;
       res.status(500).json({ message: "Failed to record terms agreement" });
     }
   });

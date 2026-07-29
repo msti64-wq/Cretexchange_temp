@@ -430,6 +430,11 @@ export interface IStorage {
   upsertTermsVersion(version: InsertTermsVersion): Promise<TermsVersion>;
   getTermsAcceptancesForUser(userId: string): Promise<TermsAcceptance[]>;
   createTermsAcceptance(acceptance: InsertTermsAcceptance): Promise<TermsAcceptance>;
+  createTermsAcceptancesAtomically(acceptances: InsertTermsAcceptance[]): Promise<TermsAcceptance[]>;
+  createTermsAcceptanceBundleAtomically(
+    versions: InsertTermsVersion[],
+    acceptances: InsertTermsAcceptance[],
+  ): Promise<TermsAcceptance[]>;
 
   // Message operations
   createMessage(message: InsertMessage): Promise<Message>;
@@ -4036,6 +4041,108 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return termsAcceptance;
+  }
+
+  async createTermsAcceptancesAtomically(acceptances: InsertTermsAcceptance[]): Promise<TermsAcceptance[]> {
+    return db.transaction(async (tx) => {
+      const created: TermsAcceptance[] = [];
+      for (const acceptance of acceptances) {
+        const [termsAcceptance] = await tx
+          .insert(termsAcceptances)
+          .values(acceptance)
+          .onConflictDoUpdate({
+            target: [
+              termsAcceptances.userId,
+              termsAcceptances.termsType,
+              termsAcceptances.language,
+              termsAcceptances.version,
+              termsAcceptances.contentHash,
+            ],
+            set: {
+              role: acceptance.role,
+              storageKey: acceptance.storageKey,
+              acceptedAt: acceptance.acceptedAt,
+              ipAddress: acceptance.ipAddress,
+              userAgent: acceptance.userAgent,
+            },
+          })
+          .returning();
+        created.push(termsAcceptance);
+      }
+      return created;
+    });
+  }
+
+  async createTermsAcceptanceBundleAtomically(
+    versions: InsertTermsVersion[],
+    acceptances: InsertTermsAcceptance[],
+  ): Promise<TermsAcceptance[]> {
+    return db.transaction(async (tx) => {
+      for (const version of versions) {
+        const verifyVersion = (existing: TermsVersion | undefined) => {
+          if (!existing ||
+            existing.termsType !== version.termsType ||
+            existing.language !== version.language ||
+            existing.title !== version.title ||
+            existing.contentHash !== version.contentHash ||
+            existing.requiresReacceptance !== version.requiresReacceptance ||
+            existing.isCurrent !== version.isCurrent ||
+            new Date(existing.effectiveAt).getTime() !== new Date(version.effectiveAt).getTime()) {
+            throw new Error("TERMS_VERSION_REGISTRY_MISMATCH");
+          }
+        };
+
+        const [existing] = await tx
+          .select()
+          .from(termsVersions)
+          .where(and(eq(termsVersions.storageKey, version.storageKey), eq(termsVersions.version, version.version)));
+        if (existing) {
+          verifyVersion(existing);
+          continue;
+        }
+
+        const [inserted] = await tx
+          .insert(termsVersions)
+          .values(version)
+          .onConflictDoNothing()
+          .returning();
+        if (inserted) continue;
+
+        const [concurrent] = await tx
+          .select()
+          .from(termsVersions)
+          .where(and(eq(termsVersions.storageKey, version.storageKey), eq(termsVersions.version, version.version)));
+        verifyVersion(concurrent);
+      }
+
+      const recorded: TermsAcceptance[] = [];
+      for (const acceptance of acceptances) {
+        const [inserted] = await tx
+          .insert(termsAcceptances)
+          .values(acceptance)
+          .onConflictDoNothing()
+          .returning();
+        if (inserted) {
+          recorded.push(inserted);
+          continue;
+        }
+
+        const [existing] = await tx
+          .select()
+          .from(termsAcceptances)
+          .where(and(
+            eq(termsAcceptances.userId, acceptance.userId),
+            eq(termsAcceptances.termsType, acceptance.termsType),
+            eq(termsAcceptances.language, acceptance.language),
+            eq(termsAcceptances.version, acceptance.version),
+            eq(termsAcceptances.contentHash, acceptance.contentHash),
+          ));
+        if (!existing) throw new Error("TERMS_ACCEPTANCE_CONFLICT_UNRESOLVED");
+        recorded.push(existing);
+      }
+
+      return recorded;
+    });
   }
 
   // Message operations

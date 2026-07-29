@@ -307,7 +307,8 @@ test("first-activity views provide activity-bound confirmation and GPS retry rec
   assert.match(dashboardSource.slice(optionalFinancialStatusStart), /optionalDebitCardLoading/);
   assert.match(driverProfileSource, /resolveDriverAccountReadiness/);
   assert.match(driverProfileSource, /driverAccountReadiness\.ready/);
-  assert.match(driverProfileSource, /termsStatus\?\.hasAgreed \|\| user\?\.roleData\?\.hasAgreedToTerms/);
+  assert.match(driverProfileSource, /termsAccepted: Boolean\(termsStatus\?\.hasAgreed\)/);
+  assert.doesNotMatch(driverProfileSource, /termsStatus\?\.hasAgreed \|\| user\?\.roleData\?\.hasAgreedToTerms/);
   assert.doesNotMatch(driverProfileSource, /const isProfileComplete|const hasEssentialInfo/);
 });
 

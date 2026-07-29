@@ -143,6 +143,22 @@ test("client account readiness and server readiness share the canonical profile 
   assert.equal(server.ready, true);
 });
 
+test("Driver and Owner bundle evaluation accepts one complete language only", async () => {
+  const { evaluateCurrentTermsAcceptanceBundle } = await import("../server/terms");
+  const toAcceptances = (role: "driver" | "owner", language: "en" | "es") => getRequiredTermsForRole(role, language).map((document) => ({
+    id: `${role}-${document.storageKey}`,
+    userId: `${role}-user`, role, termsType: document.termsType, language: document.language,
+    storageKey: document.storageKey, version: document.version, contentHash: document.contentHash,
+    acceptedAt: new Date(), createdAt: new Date(), ipAddress: null, userAgent: null,
+  }));
+  assert.equal(evaluateCurrentTermsAcceptanceBundle("driver", toAcceptances("driver", "en") as any)?.language, "en");
+  assert.equal(evaluateCurrentTermsAcceptanceBundle("owner", toAcceptances("owner", "es") as any)?.language, "es");
+  assert.equal(evaluateCurrentTermsAcceptanceBundle("driver", [
+    ...toAcceptances("driver", "en").slice(0, 2),
+    ...toAcceptances("driver", "es").slice(2),
+  ] as any), null);
+});
+
 test("server guard fails closed and returns a minimal actionable denial contract", async () => {
   const { requireDriverOperationalReadiness, requireDriverRole } = await import("../server/driverOperationalReadiness");
   const anonymous = response();
@@ -210,7 +226,7 @@ test("server guard fails closed and returns a minimal actionable denial contract
   });
 });
 
-test("a complete current Spanish Driver terms ledger satisfies operational readiness", async () => {
+test("Driver readiness accepts a complete supported-language bundle regardless of interface header and rejects mixed evidence", async () => {
   const { requireDriverOperationalReadiness } = await import("../server/driverOperationalReadiness");
   await patchStorage({
     getUser: async () => readyUser,
@@ -218,17 +234,76 @@ test("a complete current Spanish Driver terms ledger satisfies operational readi
     getMaterialBySlug: async () => readyMaterial,
     getTermsAcceptancesForUser: async () => currentDriverAcceptances(readyUser.id, "es"),
   }, async () => {
+    const english = response();
+    await (await import("../server/driverOperationalReadiness")).driverOperationalReadinessMiddleware(
+      { user: { id: readyUser.id }, headers: { "x-cretexchange-language": "en" } },
+      english,
+      () => { (english as any).advanced = true; },
+    );
+    assert.equal((english as any).advanced, true);
+
     const result = response();
     let advanced = false;
     await (await import("../server/driverOperationalReadiness")).driverOperationalReadinessMiddleware(
-      { user: { id: readyUser.id } },
+      { user: { id: readyUser.id }, headers: { "x-cretexchange-language": "es" } },
       result,
       () => { advanced = true; },
     );
     assert.equal(advanced, true);
     assert.equal(result.statusCode, 200);
-    assert.ok(await requireDriverOperationalReadiness({ user: { id: readyUser.id } }, response()));
+    assert.ok(await requireDriverOperationalReadiness({ user: { id: readyUser.id }, headers: { "x-cretexchange-language": "forged" } }, response()));
   });
+
+  await patchStorage({
+    getUser: async () => readyUser,
+    getDriver: async () => readyProfile,
+    getMaterialBySlug: async () => readyMaterial,
+    getTermsAcceptancesForUser: async () => [
+      ...currentDriverAcceptances(readyUser.id, "en").slice(0, 2),
+      ...currentDriverAcceptances(readyUser.id, "es").slice(2),
+    ],
+  }, async () => {
+    const denied = response();
+    assert.equal(await requireDriverOperationalReadiness({ user: { id: readyUser.id }, headers: { "x-cretexchange-language": "es" } }, denied), null);
+    assert.equal(denied.statusCode, 409);
+  });
+});
+
+test("Driver readiness denies safely when the terms ledger is unavailable", async () => {
+  const { requireDriverOperationalReadiness } = await import("../server/driverOperationalReadiness");
+  await patchStorage({
+    getUser: async () => readyUser,
+    getDriver: async () => readyProfile,
+    getMaterialBySlug: async () => readyMaterial,
+    getTermsAcceptancesForUser: async () => { throw new Error("ledger unavailable"); },
+  }, async () => {
+    const denied = response();
+    assert.equal(await requireDriverOperationalReadiness({ user: { id: readyUser.id } }, denied), null);
+    assert.equal(denied.statusCode, 503);
+    assert.equal((denied.body as any).code, "TERMS_LEDGER_UNAVAILABLE");
+    assert.deepEqual((denied.body as any).readiness.reasons, [{ code: "terms_ledger_unavailable" }]);
+  });
+});
+
+test("system health exposes only sanitized structural-ledger failures", async () => {
+  const unavailable = registry();
+  const { pool } = await import("../server/db");
+  const { resetTermsLedgerHealthCacheForTests } = await import("../server/termsLedgerCatalog");
+  const originalQuery = pool.query;
+  (pool as any).query = async () => { throw new Error("missing relation"); };
+  resetTermsLedgerHealthCacheForTests();
+  try {
+    const { registerRoutes } = await import("../server/routes");
+    await registerRoutes(unavailable.app as never);
+    const health = response();
+    await unavailable.gets.get("/api/system/health")!({}, health);
+    assert.equal(health.statusCode, 503);
+    assert.deepEqual((health.body as any).termsLedger, "unavailable");
+    assert.doesNotMatch(JSON.stringify(health.body), /terms_acceptances|missing relation/i);
+  } finally {
+    (pool as any).query = originalQuery;
+    resetTermsLedgerHealthCacheForTests();
+  }
 });
 
 test("current and legacy activity submissions cannot bypass the readiness guard", async () => {
@@ -280,14 +355,14 @@ test("ready Driver remains able to use the existing operational location route",
     getUser: async () => readyUser,
     getDriver: async () => readyProfile,
     getMaterialBySlug: async () => readyMaterial,
-    getTermsAcceptancesForUser: async () => currentDriverAcceptances(),
+    getTermsAcceptancesForUser: async () => currentDriverAcceptances(readyUser.id, "es"),
     updateDriverLocation: async (driverId: string) => { updatedDriverId = driverId; },
   }, async () => {
     const { registerRoutes } = await import("../server/routes");
     await registerRoutes(app as never);
     const result = response();
     let allowed = false;
-    const request = { user: { id: readyUser.id }, body: { latitude: 30, longitude: -97 } };
+    const request = { user: { id: readyUser.id }, headers: { "x-cretexchange-language": "en" }, body: { latitude: 30, longitude: -97 } };
     await postGuards.get("/api/drivers/location")!(request, result, () => { allowed = true; });
     assert.equal(allowed, true);
     await posts.get("/api/drivers/location")!(request, result);

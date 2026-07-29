@@ -31,6 +31,22 @@ export interface LegalDocumentVersion {
   acceptanceText: string;
 }
 
+export const LEGAL_CONTENT_HASH_SCHEMA_VERSION = 1 as const;
+
+export interface LegalDocumentHashPayload {
+  schemaVersion: typeof LEGAL_CONTENT_HASH_SCHEMA_VERSION;
+  id: LegalDocumentId;
+  language: LegalLanguage;
+  storageKey: LegalDocumentStorageKey;
+  version: string;
+  effectiveAt: string;
+  title: string;
+  subtitle: string;
+  intro: string;
+  sections: Array<{ heading: string; body: string[]; bullets: string[] }>;
+  acceptanceText: string;
+}
+
 export interface ResolvedLegalDocument {
   document: LegalDocumentVersion;
   requestedLanguage: LegalLanguage;
@@ -39,6 +55,17 @@ export interface ResolvedLegalDocument {
 }
 
 const LEGAL_VERSION_DATE = "2026-06-12";
+
+const PUBLISHED_CONTENT_HASHES: Record<LegalDocumentStorageKey, string> = {
+  "terms.en": "sha256:572c4b9e051edcfa228eea9859e00e3e39af86b33ab3770ea84bfee98e486244",
+  "terms.es": "sha256:453d7388f7a4da90141d2195724c7fe7294f2bfb9370370566ed35a1cf58651e",
+  "privacy.en": "sha256:97dafca42a58409c431ccf05147cba49fd8e32c4c90887f57acc991d8099e36c",
+  "privacy.es": "sha256:78faa2626d4f6e81c57f830ac678312ebda108c4c9430d0e53e1cd49f0c65c80",
+  "driver_agreement.en": "sha256:52cd9652a0152b86bcba8a41c4eb650965a8ada6bdba9d04857cafaa3f9f98e3",
+  "driver_agreement.es": "sha256:6a024a4948de9f3bde1813bcc346b375a79d4d86d7c11e2b36e70b70049485eb",
+  "owner_agreement.en": "sha256:166807a9034b0ad3e38ef7f0122831e2aa1e03f0d46b20dc267abf0595b25d82",
+  "owner_agreement.es": "sha256:2552d29a91b85efa40a8e34b3764f21f11d8a8397122f8d19190d5d675afefb5",
+};
 
 function makeDocument(
   id: LegalDocumentId,
@@ -52,7 +79,7 @@ function makeDocument(
     storageKey,
     version: `${storageKey}.${LEGAL_VERSION_DATE}`,
     effectiveAt: `${LEGAL_VERSION_DATE}T00:00:00.000Z`,
-    contentHash: `sha256:${storageKey}.${LEGAL_VERSION_DATE}`,
+    contentHash: PUBLISHED_CONTENT_HASHES[storageKey],
     ...document,
   };
 }
@@ -349,6 +376,30 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentStorageKey, LegalDocumentVersi
     acceptanceText: "He leído, entendido y acepto el Acuerdo del propietario vigente.",
   }),
 };
+
+export function legalDocumentHashPayload(document: LegalDocumentVersion): LegalDocumentHashPayload {
+  return {
+    schemaVersion: LEGAL_CONTENT_HASH_SCHEMA_VERSION,
+    id: document.id,
+    language: document.language,
+    storageKey: document.storageKey,
+    version: document.version,
+    effectiveAt: document.effectiveAt,
+    title: document.title,
+    subtitle: document.subtitle,
+    intro: document.intro,
+    sections: document.sections.map((section) => ({
+      heading: section.heading,
+      body: section.body,
+      bullets: section.bullets || [],
+    })),
+    acceptanceText: document.acceptanceText,
+  };
+}
+
+export function serializeLegalDocumentForContentHash(document: LegalDocumentVersion): string {
+  return JSON.stringify(legalDocumentHashPayload(document));
+}
 
 export function isLegalLanguage(value: unknown): value is LegalLanguage {
   return typeof value === "string" && LEGAL_LANGUAGES.includes(value as LegalLanguage);

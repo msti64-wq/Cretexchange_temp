@@ -45,7 +45,13 @@ export function resolveDriverOperationalErrorPresentation(error: unknown): Drive
   if (code === "DRIVER_ROLE_REQUIRED") {
     return { kind: "access_denied", titleKey: "driver.error.accessTitle", descriptionKey: "driver.error.accessDescription", action: "none" };
   }
+  if (code === "TERMS_LEDGER_UNAVAILABLE") {
+    return { kind: "unavailable", titleKey: "driver.error.termsUnavailableTitle", descriptionKey: "driver.error.termsUnavailableDescription", action: "retry" };
+  }
   if (code === "DRIVER_OPERATIONAL_READINESS_REQUIRED") {
+    if (readinessReasonCodes.includes("terms_ledger_unavailable")) {
+      return { kind: "unavailable", titleKey: "driver.error.termsUnavailableTitle", descriptionKey: "driver.error.termsUnavailableDescription", action: "retry" };
+    }
     if (readinessReasonCodes.some((reason) => PROFILE_REASONS.has(reason))) {
       return { kind: "readiness", titleKey: "driver.error.profileTitle", descriptionKey: "driver.error.profileDescription", action: "profile" };
     }

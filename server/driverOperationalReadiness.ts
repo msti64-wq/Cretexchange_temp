@@ -19,11 +19,17 @@ export async function resolveStoredDriverOperationalReadiness(userId: string): P
     return resolveDriverOperationalReadiness({ user: user || undefined });
   }
 
-  const [profile, englishTermsState, spanishTermsState] = await Promise.all([
+  let termsAccepted = false;
+  let termsLedgerAvailable = true;
+  const [profile, termsState] = await Promise.all([
     storage.getDriver(userId),
-    getTermsStateForUser({ id: user.id, role: "driver" }),
-    getTermsStateForUser({ id: user.id, role: "driver" }, undefined, "es"),
+    getTermsStateForUser({ id: user.id, role: "driver" }).catch((error) => {
+      if ((error as { code?: string }).code === "TERMS_LEDGER_UNAVAILABLE") return null;
+      throw error;
+    }),
   ]);
+  if (termsState === null) termsLedgerAvailable = false;
+  else termsAccepted = !termsState.requiresAcceptance;
   const activeMaterial = profile?.activeMaterialSlug
     ? await storage.getMaterialBySlug(profile.activeMaterialSlug)
     : null;
@@ -31,9 +37,8 @@ export async function resolveStoredDriverOperationalReadiness(userId: string): P
   return resolveDriverOperationalReadiness({
     user,
     profile,
-    // The ledger records the legal-document language. Operational eligibility
-    // requires a complete current Driver ledger, not a specific UI locale.
-    termsAccepted: !englishTermsState.requiresAcceptance || !spanishTermsState.requiresAcceptance,
+    termsAccepted,
+    termsLedgerAvailable,
     activeMaterial,
   });
 }
@@ -71,7 +76,11 @@ export async function requireDriverOperationalReadiness(req: any, res: any) {
 
   const readiness = await resolveStoredDriverOperationalReadiness(user.id);
   if (!readiness.ready) {
-    res.status(409).json(buildDriverOperationalReadinessDenial(readiness));
+    const ledgerUnavailable = readiness.reasons.some((reason) => reason.code === "terms_ledger_unavailable");
+    res.status(ledgerUnavailable ? 503 : 409).json({
+      ...buildDriverOperationalReadinessDenial(readiness),
+      ...(ledgerUnavailable ? { code: "TERMS_LEDGER_UNAVAILABLE", message: "Terms verification is temporarily unavailable" } : {}),
+    });
     return null;
   }
 

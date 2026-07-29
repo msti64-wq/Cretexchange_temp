@@ -1,7 +1,6 @@
 import type { RequestHandler } from "express";
 import { storage } from "./storage";
 import {
-  CURRENT_REQUIRED_TERMS,
   TERMS_TYPES,
   type CurrentTermsDocument,
   type TermsRole,
@@ -9,7 +8,7 @@ import {
   getRequiredTermsForRole,
   isTermsType,
 } from "@shared/terms";
-import { normalizeLegalLanguage, type LegalLanguage } from "@shared/legalDocuments";
+import { LEGAL_LANGUAGES, normalizeLegalLanguage, type LegalLanguage } from "@shared/legalDocuments";
 import type { TermsAcceptance } from "@shared/schema";
 
 type User = any;
@@ -29,6 +28,13 @@ export interface UserTermsState {
   role: TermsRole | null;
   requiredDocuments: TermsDocumentState[];
   missingDocuments: TermsDocumentState[];
+  ledgerAvailable: true;
+  acceptedBundleLanguage: LegalLanguage | null;
+}
+
+export class TermsLedgerUnavailableError extends Error {
+  readonly code = "TERMS_LEDGER_UNAVAILABLE";
+  constructor() { super("Terms acceptance verification is temporarily unavailable."); }
 }
 
 function getRequestIp(req: any): string {
@@ -58,49 +64,27 @@ function findCurrentAcceptance(
   ));
 }
 
-async function getLegacyAcceptance(
-  user: Pick<User, "id" | "role">,
-  termsType: TermsType,
-): Promise<{ acceptedAt: Date | string | null } | null> {
-  if (user.role === "driver" && (
-    termsType === TERMS_TYPES.TERMS ||
-    termsType === TERMS_TYPES.PRIVACY ||
-    termsType === TERMS_TYPES.DRIVER_AGREEMENT
-  )) {
-    const driver = await storage.getDriver(user.id);
-    if (driver?.hasAgreedToTerms) {
-      return { acceptedAt: driver.termsAgreedAt || null };
-    }
-  }
-
-  if (user.role === "owner" && (
-    termsType === TERMS_TYPES.TERMS ||
-    termsType === TERMS_TYPES.PRIVACY ||
-    termsType === TERMS_TYPES.OWNER_AGREEMENT
-  )) {
-    const owner = await storage.getOwner(user.id);
-    if (owner?.hasAgreedToTerms) {
-      return { acceptedAt: owner.termsAgreedAt || null };
-    }
-  }
-
-  return null;
+export interface CurrentTermsAcceptanceBundle {
+  language: LegalLanguage;
+  documents: Array<{ document: CurrentTermsDocument; acceptance: TermsAcceptance }>;
 }
 
-export async function ensureCurrentTermsVersions(): Promise<void> {
-  await Promise.all(
-    CURRENT_REQUIRED_TERMS.map((doc) => storage.upsertTermsVersion({
-      termsType: doc.termsType,
-      language: doc.language,
-      storageKey: doc.storageKey,
-      version: doc.version,
-      title: doc.title,
-      contentHash: doc.contentHash,
-      effectiveAt: new Date(doc.effectiveAt),
-      requiresReacceptance: doc.requiresReacceptance,
-      isCurrent: true,
-    })),
-  );
+export function evaluateCurrentTermsAcceptanceBundle(
+  role: TermsRole | null,
+  acceptances: TermsAcceptance[],
+): CurrentTermsAcceptanceBundle | null {
+  for (const language of LEGAL_LANGUAGES) {
+    const documents = getRequiredTermsForRole(role, language);
+    if (documents.length === 0) continue;
+    const matching = documents.map((document) => ({ document, acceptance: findCurrentAcceptance(acceptances, document) }));
+    if (matching.every((entry) => Boolean(entry.acceptance))) {
+      return {
+        language,
+        documents: matching as Array<{ document: CurrentTermsDocument; acceptance: TermsAcceptance }>,
+      };
+    }
+  }
+  return null;
 }
 
 export async function getTermsStateForUser(
@@ -121,17 +105,44 @@ export async function getTermsStateForUser(
       role,
       requiredDocuments: [],
       missingDocuments: [],
+      ledgerAvailable: true,
+      acceptedBundleLanguage: null,
     };
   }
 
   let acceptances: TermsAcceptance[] = [];
-  let ledgerAvailable = true;
   try {
     acceptances = await storage.getTermsAcceptancesForUser(user.id);
-  } catch (error) {
-    ledgerAvailable = false;
-    console.error("Terms acceptance ledger unavailable; falling back to legacy flags:", error);
+  } catch {
+    console.warn("[TERMS_LEDGER_UNAVAILABLE]", { code: "TERMS_LEDGER_UNAVAILABLE" });
+    throw new TermsLedgerUnavailableError();
   }
+  const acceptedBundle = evaluateCurrentTermsAcceptanceBundle(role, acceptances);
+  if (acceptedBundle) {
+    const requiredDocuments = limited.map((displayDocument) => {
+      const accepted = acceptedBundle.documents.find((entry) => entry.document.termsType === displayDocument.termsType)?.acceptance;
+      if (!accepted) throw new TermsLedgerUnavailableError();
+      return {
+        ...displayDocument,
+        accepted: true,
+        acceptedAt: accepted.acceptedAt,
+        acceptedVersion: accepted.version,
+        acceptedContentHash: accepted.contentHash,
+        acceptedLanguage: accepted.language,
+        acceptedStorageKey: accepted.storageKey,
+        legacyAcceptance: false,
+      };
+    });
+    return {
+      requiresAcceptance: false,
+      role,
+      requiredDocuments,
+      missingDocuments: [],
+      ledgerAvailable: true,
+      acceptedBundleLanguage: acceptedBundle.language,
+    };
+  }
+
   const requiredDocuments: TermsDocumentState[] = [];
 
   for (const doc of limited) {
@@ -151,16 +162,15 @@ export async function getTermsStateForUser(
       continue;
     }
 
-    const legacyAcceptance = ledgerAvailable ? null : await getLegacyAcceptance(user, doc.termsType);
     requiredDocuments.push({
       ...doc,
-      accepted: Boolean(legacyAcceptance),
-      acceptedAt: legacyAcceptance?.acceptedAt || null,
-      acceptedVersion: legacyAcceptance ? doc.version : null,
-      acceptedContentHash: legacyAcceptance ? doc.contentHash : null,
-      acceptedLanguage: legacyAcceptance ? doc.language : null,
-      acceptedStorageKey: legacyAcceptance ? doc.storageKey : null,
-      legacyAcceptance: Boolean(legacyAcceptance),
+      accepted: false,
+      acceptedAt: null,
+      acceptedVersion: null,
+      acceptedContentHash: null,
+      acceptedLanguage: null,
+      acceptedStorageKey: null,
+      legacyAcceptance: false,
     });
   }
 
@@ -171,6 +181,8 @@ export async function getTermsStateForUser(
     role,
     requiredDocuments,
     missingDocuments,
+    ledgerAvailable: true,
+    acceptedBundleLanguage: null,
   };
 }
 
@@ -180,12 +192,13 @@ export async function recordCurrentTermsAcceptance(
   termsTypes?: TermsType[],
   languageInput: unknown = "en",
 ): Promise<UserTermsState> {
+  // Legacy clients may submit document identifiers, but current acceptance is
+  // always recorded as one complete role-and-language bundle.
+  void termsTypes;
   const role = user.role as TermsRole | null;
   const language = normalizeLegalLanguage(languageInput);
   const required = getRequiredTermsForRole(role, language);
-  const targetDocs = termsTypes?.length
-    ? required.filter((doc) => termsTypes.includes(doc.termsType))
-    : required;
+  const targetDocs = required;
 
   if (!role || targetDocs.length === 0) {
     return getTermsStateForUser(user, undefined, language);
@@ -201,6 +214,36 @@ export async function recordCurrentTermsAcceptance(
     language,
   });
 
+  try {
+    await storage.createTermsAcceptanceBundleAtomically(
+      targetDocs.map((doc) => ({
+        termsType: doc.termsType,
+        language: doc.language,
+        storageKey: doc.storageKey,
+        version: doc.version,
+        title: doc.title,
+        contentHash: doc.contentHash,
+        effectiveAt: new Date(doc.effectiveAt),
+        requiresReacceptance: doc.requiresReacceptance,
+        isCurrent: true,
+      })),
+      targetDocs.map((doc) => ({
+        userId: user.id,
+        role,
+        termsType: doc.termsType,
+        language: doc.language,
+        storageKey: doc.storageKey,
+        version: doc.version,
+        contentHash: doc.contentHash,
+        acceptedAt,
+        ipAddress,
+        userAgent,
+      })),
+    );
+  } catch {
+    throw new TermsLedgerUnavailableError();
+  }
+
   for (const doc of targetDocs) {
     console.log("[TERMS_ACCEPTANCE_WRITE_DOC]", {
       userId: user.id,
@@ -208,18 +251,6 @@ export async function recordCurrentTermsAcceptance(
       termsType: doc.termsType,
       storageKey: doc.storageKey,
       version: doc.version,
-    });
-    await storage.createTermsAcceptance({
-      userId: user.id,
-      role,
-      termsType: doc.termsType,
-      language: doc.language,
-      storageKey: doc.storageKey,
-      version: doc.version,
-      contentHash: doc.contentHash,
-      acceptedAt,
-      ipAddress,
-      userAgent,
     });
     console.log("[TERMS_ACCEPTANCE_WRITTEN_DOC]", {
       userId: user.id,
@@ -231,28 +262,22 @@ export async function recordCurrentTermsAcceptance(
   if (role === "driver" && targetDocs.some((doc) => doc.termsType === TERMS_TYPES.DRIVER_AGREEMENT)) {
     const driver = await storage.getDriver(user.id);
     if (driver) {
-      await storage.updateDriver(driver.id, {
-        hasAgreedToTerms: true,
-        termsAgreedAt: acceptedAt,
-      });
-      console.log("[TERMS_ACCEPTANCE_DRIVER_UPDATED]", {
-        userId: user.id,
-        driverId: driver.id,
-      });
+      try {
+        await storage.updateDriver(driver.id, { hasAgreedToTerms: true, termsAgreedAt: acceptedAt });
+      } catch {
+        console.warn("[TERMS_LEGACY_PROJECTION_WARNING]", { role, userId: user.id, code: "LEGACY_PROJECTION_FAILED" });
+      }
     }
   }
 
   if (role === "owner" && targetDocs.some((doc) => doc.termsType === TERMS_TYPES.OWNER_AGREEMENT)) {
     const owner = await storage.getOwner(user.id);
     if (owner) {
-      await storage.updateOwner(owner.id, {
-        hasAgreedToTerms: true,
-        termsAgreedAt: acceptedAt,
-      });
-      console.log("[TERMS_ACCEPTANCE_OWNER_UPDATED]", {
-        userId: user.id,
-        ownerId: owner.id,
-      });
+      try {
+        await storage.updateOwner(owner.id, { hasAgreedToTerms: true, termsAgreedAt: acceptedAt });
+      } catch {
+        console.warn("[TERMS_LEGACY_PROJECTION_WARNING]", { role, userId: user.id, code: "LEGACY_PROJECTION_FAILED" });
+      }
     }
   }
 
@@ -278,8 +303,16 @@ export function requireCurrentTerms(termsTypes?: TermsType[]): RequestHandler {
       req.termsState = state;
       next();
     } catch (error) {
-      console.error("Terms acceptance check failed:", error);
-      res.status(500).json({ message: "Failed to verify terms acceptance" });
+      const ledgerUnavailable = error instanceof TermsLedgerUnavailableError;
+      if (ledgerUnavailable) {
+        console.warn("[TERMS_LEDGER_UNAVAILABLE]", { code: "TERMS_LEDGER_UNAVAILABLE" });
+      } else {
+        console.error("[TERMS_ACCEPTANCE_CHECK_FAILED]");
+      }
+      res.status(ledgerUnavailable ? 503 : 500).json({
+        message: ledgerUnavailable ? "Terms verification is temporarily unavailable" : "Failed to verify terms acceptance",
+        ...(ledgerUnavailable ? { code: "TERMS_LEDGER_UNAVAILABLE" } : {}),
+      });
     }
   };
 }

@@ -46,6 +46,10 @@ test("stable Driver readiness, location, and material codes map to safe recovery
     assert.equal(resolveDriverOperationalErrorPresentation(error({ code: "DRIVER_OPERATIONAL_READINESS_REQUIRED", readiness: { reasons: [{ code: reason }] } })).action, "profile");
   }
   assert.equal(resolveDriverOperationalErrorPresentation(error({ code: "DRIVER_OPERATIONAL_READINESS_REQUIRED", readiness: { reasons: [{ code: "current_terms_required" }] } })).action, "terms");
+  const unavailable = resolveDriverOperationalErrorPresentation(error({ code: "DRIVER_OPERATIONAL_READINESS_REQUIRED", readiness: { reasons: [{ code: "terms_ledger_unavailable" }] } }, 409));
+  assert.equal(unavailable.action, "retry");
+  assert.equal(unavailable.titleKey, "driver.error.termsUnavailableTitle");
+  assert.equal(resolveDriverOperationalErrorPresentation(error({ code: "TERMS_LEDGER_UNAVAILABLE" }, 503)).action, "retry");
   for (const reason of ["active_material_required", "active_material_invalid", "active_material_retired"]) {
     assert.equal(resolveDriverOperationalErrorPresentation(error({ code: "DRIVER_OPERATIONAL_READINESS_REQUIRED", readiness: { reasons: [{ code: reason }] } })).action, "material");
   }

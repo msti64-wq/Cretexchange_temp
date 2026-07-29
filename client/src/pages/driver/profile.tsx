@@ -39,7 +39,7 @@ export default function DriverProfile() {
   });
   const driverAccountReadiness = resolveDriverAccountReadiness({
     user,
-    termsAccepted: Boolean(termsStatus?.hasAgreed || user?.roleData?.hasAgreedToTerms),
+    termsAccepted: Boolean(termsStatus?.hasAgreed),
   });
 
   const {

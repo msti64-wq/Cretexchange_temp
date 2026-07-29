@@ -25,6 +25,10 @@ function asSafeReason(value: unknown) {
   return typeof value === "string" && /^[a-z][a-z0-9_]{1,96}$/.test(value) ? value : undefined;
 }
 
+function currentClientLanguage(): "en" | "es" {
+  return typeof localStorage !== "undefined" && localStorage.getItem("cretexchange.language") === "es" ? "es" : "en";
+}
+
 export function getSafeApiErrorDetails(status: number, text: string): SafeApiErrorDetails {
   const details: SafeApiErrorDetails = { status };
 
@@ -143,6 +147,7 @@ export async function apiRequest(
   const headers: any = {
     ...options.headers,
     "Content-Type": "application/json",
+    "X-CreteXchange-Language": currentClientLanguage(),
   };
   
   if (token) {
@@ -169,7 +174,7 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const token = localStorage.getItem('authToken');
-    const headers: any = {};
+    const headers: any = { "X-CreteXchange-Language": currentClientLanguage() };
     
     if (token) {
       headers.Authorization = `Bearer ${token}`;
