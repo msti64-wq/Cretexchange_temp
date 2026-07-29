@@ -1,3 +1,6 @@
 {
-  "$schema": "https://railway.com/railway.schema.json"
+  "$schema": "https://railway.com/railway.schema.json",
+  "deploy": {
+    "preDeployCommand": "sh -ec 'test \"$RAILWAY_ENVIRONMENT_NAME\" = \"staging\"; test -n \"$RAILWAY_GIT_COMMIT_SHA\"; MIGRATION_TARGET=\"$RAILWAY_ENVIRONMENT_NAME\" npm run db:migrate:controlled -- apply --from 0038 --to 0038 --target \"$RAILWAY_ENVIRONMENT_NAME\" --confirm-\"$RAILWAY_ENVIRONMENT_NAME\"; MIGRATION_TARGET=\"$RAILWAY_ENVIRONMENT_NAME\" npm run db:migrate:terms-ledger:controlled -- apply --target \"$RAILWAY_ENVIRONMENT_NAME\" --confirm-\"$RAILWAY_ENVIRONMENT_NAME\" --deployed-sha \"$RAILWAY_GIT_COMMIT_SHA\"'"
+  }
 }
