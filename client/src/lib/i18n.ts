@@ -410,6 +410,7 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
     "nav.features": "Features",
     "nav.messages": "Messages",
     "nav.profile": "Profile",
+    "nav.rewards": "Rewards",
     "nav.wallet": "Wallet",
 
     "header.updateReady": "A new version of CreteXchange is ready.",
@@ -1998,6 +1999,7 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
     "nav.features": "Funciones",
     "nav.messages": "Mensajes",
     "nav.profile": "Perfil",
+    "nav.rewards": "Recompensas",
     "nav.wallet": "Billetera",
 
     "header.updateReady": "Una nueva versión de CreteXchange está lista.",

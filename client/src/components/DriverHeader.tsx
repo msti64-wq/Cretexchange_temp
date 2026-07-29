@@ -101,6 +101,7 @@ export function DriverHeader() {
                 onClick={logout}
                 dataTestId="button-logout"
                 tone="glass"
+                label={t("common.logout")}
                 className="h-9 shrink-0 border border-slate-700 bg-slate-900/80 text-slate-100 hover:bg-slate-800 hover:text-slate-100 sm:h-10"
               />
             </div>

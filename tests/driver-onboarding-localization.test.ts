@@ -11,6 +11,7 @@ const batch4Keys = [
   "driver.checkIn.selectMaterialTitle", "driver.checkIn.locationUnavailableTitle", "driver.checkIn.locationNotFoundTitle", "driver.checkIn.browseLocations",
   "driver.washout.title", "driver.washout.configuredIncentive", "driver.washout.configuredIncentiveQualification", "driver.washout.takePhotos", "driver.washout.successTitle", "driver.washout.uploadIncompleteDescription",
   "driver.dashboard.configuredIncentiveQualification", "driver.locations.configuredIncentiveQualification",
+  "nav.rewards", "common.logout",
 ] as const;
 
 test("Batch 4 Driver onboarding keys have English and Spanish parity with working interpolation", () => {
@@ -44,4 +45,8 @@ test("targeted Driver presentation uses translated recovery and configured-incen
   assert.match(materialSelector, /driver-material-catalog-unavailable/);
   assert.match(materialSelector, /driver-material-intent-unavailable/);
   assert.match(termsDialog, /legal\.driverOperationalReadinessDescription/);
+  const driverHeader = readFileSync(new URL("../client/src/components/DriverHeader.tsx", import.meta.url), "utf8");
+  const mobileNav = readFileSync(new URL("../client/src/components/MobileNav.tsx", import.meta.url), "utf8");
+  assert.match(driverHeader, /label=\{t\("common\.logout"\)\}/);
+  assert.match(mobileNav, /label: t\("nav\.rewards"\)/);
 });
