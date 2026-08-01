@@ -29,6 +29,7 @@ test("authenticated Driver shell keeps Spanish metadata, loading, and logout cop
   ]);
   assert.match(app, /<LanguageDocumentMetadata \/>/);
   assert.match(app, /t\("common\.loadingView"\)/);
+  assert.match(app, /<Route path="\/dashboard" component=\{DriverDashboard\} \/>/);
   assert.match(header, /label=\{t\("common\.logout"\)\}/);
   assert.match(dashboard, /formatLocalizedDate\(/);
   assert.match(dashboard, /language === "es" \? es : undefined/);

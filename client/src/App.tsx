@@ -123,6 +123,7 @@ function Router() {
       <Suspense fallback={<RouteFallback />}>
         <Switch>
           <Route path="/" component={DriverDashboard} />
+          <Route path="/dashboard" component={DriverDashboard} />
           <Route path="/locations" component={DriverLocations} />
           <Route path="/activity" component={DriverActivity} />
           <Route path="/wallet" component={DriverWallet} />
