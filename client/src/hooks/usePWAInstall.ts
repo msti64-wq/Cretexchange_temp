@@ -16,6 +16,12 @@ interface PWAInstallState {
 }
 
 const INSTALL_PROMPT_SESSION_KEY = "pwaInstallPromptHandled";
+const CLIENT_APP_COMMIT_SHA = import.meta.env.VITE_APP_COMMIT_SHA || "development";
+
+export function isNewDeploymentAvailable(clientCommitSha: string, activeCommitSha: string | null | undefined) {
+  if (!activeCommitSha || clientCommitSha === "development") return false;
+  return clientCommitSha !== activeCommitSha;
+}
 
 let globalDeferredPrompt: BeforeInstallPromptEvent | null = null;
 const listeners = new Set<() => void>();
@@ -73,15 +79,44 @@ export function usePWAInstall(): PWAInstallState {
     listeners.add(refresh);
 
     if ("serviceWorker" in navigator) {
+      let cancelled = false;
       const handler = (event: MessageEvent) => {
         if (event.data?.type === "UPDATE_AVAILABLE") {
           setUpdateAvailable(true);
         }
       };
+      const checkForDeploymentUpdate = async () => {
+        try {
+          const [registration, response] = await Promise.all([
+            navigator.serviceWorker.getRegistration(),
+            fetch("/api/version", { cache: "no-store", credentials: "same-origin" }),
+          ]);
+          await registration?.update();
+          if (!response.ok) return;
+          const version = await response.json() as { commitSha?: string | null };
+          if (!cancelled && isNewDeploymentAvailable(CLIENT_APP_COMMIT_SHA, version.commitSha)) {
+            setUpdateAvailable(true);
+          }
+        } catch {
+          // Update checks are best-effort and must never block the Driver workflow.
+        }
+      };
+      const handleFocus = () => void checkForDeploymentUpdate();
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === "visible") void checkForDeploymentUpdate();
+      };
+
       navigator.serviceWorker.addEventListener("message", handler);
+      window.addEventListener("focus", handleFocus);
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      void checkForDeploymentUpdate();
+
       return () => {
+        cancelled = true;
         listeners.delete(refresh);
         navigator.serviceWorker.removeEventListener("message", handler);
+        window.removeEventListener("focus", handleFocus);
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
       };
     }
 

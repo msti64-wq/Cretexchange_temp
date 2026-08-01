@@ -20,6 +20,25 @@ test("approved catalog labels localize without changing stored material identity
   assert.match(selector, /save\.mutate\(material\.slug\)/);
 });
 
+test("authenticated Driver shell keeps Spanish metadata, loading, and logout copy aligned", async () => {
+  const [app, header, dashboard, profile] = await Promise.all([
+    source("client/src/App.tsx"),
+    source("client/src/components/DriverHeader.tsx"),
+    source("client/src/pages/driver/dashboard.tsx"),
+    source("client/src/pages/driver/profile.tsx"),
+  ]);
+  assert.match(app, /<LanguageDocumentMetadata \/>/);
+  assert.match(app, /t\("common\.loadingView"\)/);
+  assert.match(header, /label=\{t\("common\.logout"\)\}/);
+  assert.match(dashboard, /formatLocalizedDate\(/);
+  assert.match(dashboard, /language === "es" \? es : undefined/);
+  assert.match(dashboard, /localizeDriverNotification\(notification, language, t\)/);
+  assert.match(profile, /formatLocalizedDate\(termsStatus\.agreedAt, language\)/);
+  assert.equal(es("common.logout"), "Cerrar sesión");
+  assert.equal(es("common.loadingView"), "Cargando vista");
+  assert.equal(es("driver.payout.onboardingComplete"), "Configuración inicial completa:");
+});
+
 test("mobile install prompt is localized while install behavior is preserved", async () => {
   const prompt = await source("client/src/components/InstallPrompt.tsx");
   assert.match(prompt, /useLanguage\(\)/);
@@ -89,4 +108,21 @@ test("Driver remediation translation namespaces have English and Spanish key par
     assert.deepEqual(spanish, english, `${prefix} key mismatch`);
     assert.ok(english.length > 0, `${prefix} must not be empty`);
   }
+});
+
+test("PWA publication checks compare the built client SHA with the active deployment", async () => {
+  const [hook, serviceWorker, vite, routes] = await Promise.all([
+    source("client/src/hooks/usePWAInstall.ts"),
+    source("client/public/sw.js"),
+    source("vite.config.ts"),
+    source("server/routes.ts"),
+  ]);
+  assert.match(serviceWorker, /CACHE_VERSION = 'cx-v6'/);
+  assert.match(vite, /RAILWAY_GIT_COMMIT_SHA/);
+  assert.match(vite, /VITE_APP_COMMIT_SHA/);
+  assert.match(hook, /fetch\("\/api\/version", \{ cache: "no-store"/);
+  assert.match(hook, /registration\?\.update\(\)/);
+  assert.match(hook, /isNewDeploymentAvailable\(CLIENT_APP_COMMIT_SHA, version\.commitSha\)/);
+  assert.match(routes, /commitSha: activeDeploymentCommit\(\)/);
+  assert.match(routes, /Cache-Control', 'no-store'/);
 });

@@ -7,6 +7,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminDarkWorkspace } from "@/components/AdminDarkWorkspace";
 import { OwnerWorkspace } from "@/components/OwnerWorkspace";
+import { LanguageDocumentMetadata } from "@/components/LanguageDocumentMetadata";
+import { useLanguage } from "@/lib/i18n";
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Landing = lazy(() => import("@/pages/landing"));
 const Login = lazy(() => import("@/pages/auth/login"));
@@ -231,6 +233,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <LanguageDocumentMetadata />
         <Toaster />
         <Router />
       </TooltipProvider>
@@ -239,13 +242,15 @@ function App() {
 }
 
 function RouteFallback() {
+  const { t } = useLanguage();
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/95 px-5 py-4 shadow-sm">
         <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">Loading view</p>
-          <p className="text-xs text-muted-foreground">Preparing dashboard modules</p>
+          <p className="text-sm font-medium text-foreground">{t("common.loadingView")}</p>
+          <p className="text-xs text-muted-foreground">{t("common.preparingModules")}</p>
         </div>
       </div>
     </div>

@@ -57,7 +57,7 @@ test("browser favicon and installed application icon use their distinct approved
   }
   assert.match(index, /apple-touch-icon" sizes="180x180" href="\/icons\/icon-180x180\.png"/);
   assert.ok(manifest.icons.some((icon) => icon.src === "/brand/cretexchange-app-icon-1024.png" && icon.purpose === "maskable"));
-  assert.match(serviceWorker, /CACHE_VERSION = 'cx-v5'/);
+  assert.match(serviceWorker, /CACHE_VERSION = 'cx-v6'/);
 
   for (const path of [
     "client/public/favicon.ico",

@@ -1,6 +1,6 @@
 // CreteXchange Service Worker — versioned caching for icon auto-updates
 // Bump this version any time icons or key assets change
-const CACHE_VERSION = 'cx-v5';
+const CACHE_VERSION = 'cx-v6';
 const ICON_CACHE = `${CACHE_VERSION}-icons`;
 
 const ICON_URLS = [

@@ -15,7 +15,7 @@ import { formatAddress } from "@shared/addressUtils";
 import { getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
 import { calculateDistance, getCurrentLocation } from "@/lib/gps";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
-import { localeForLanguage, useLanguage } from "@/lib/i18n";
+import { formatLocalizedDate, localeForLanguage, useLanguage } from "@/lib/i18n";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { apiRequest } from "@/lib/queryClient";
 import { getDriverPayoutStatus } from "@/lib/driverPayoutSettings";
@@ -24,6 +24,8 @@ import { DriverLifecycleSummary } from "@/components/driver/DriverLifecycleSumma
 import { DriverMaterialIntentSelector, driverMaterialIntentKey, type DriverMaterialIntent } from "@/components/driver/DriverMaterialIntentSelector";
 import { DriverIntelligenceSummary } from "@/components/driver/DriverIntelligenceSummary";
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
+import { localizeDriverNotification } from "@/lib/driverNotificationLocalization";
 import { resolveDriverOperationalReadiness } from "@shared/driverOperationalReadiness";
 import { resolveDriverDashboardGpsState, resolveDriverDashboardReadinessPresentation } from "@/lib/driverDashboardReadiness";
 
@@ -534,7 +536,10 @@ export default function DriverDashboard() {
   const stripeStatusUnavailable = stripePresentationStatus === "status_unavailable";
   const unreadNotifications = unreadNotificationsData?.notifications || [];
   const unreadNotificationCount = unreadNotificationsData?.count ?? unreadNotifications.length;
-  const topUnreadNotifications = unreadNotifications.slice(0, 3);
+  const topUnreadNotifications = unreadNotifications.slice(0, 3).map((notification) => ({
+    ...notification,
+    ...localizeDriverNotification(notification, language, t),
+  }));
   const currentDrawingText = currentDrawingLabel;
   const optionalFinancialLoading = !deferredDashboardWidgetsEnabled || stripeAccountStatusLoading;
   const optionalDebitCardLoading = !deferredDashboardWidgetsEnabled || debitCardStatusLoading;
@@ -673,7 +678,7 @@ export default function DriverDashboard() {
                       <span className="truncate">{latestLocationName}</span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {new Date(latestActivity.washout_activities?.checkInTime || latestActivity.checkInTime).toLocaleDateString('en-US', {
+                      {formatLocalizedDate(latestActivity.washout_activities?.checkInTime || latestActivity.checkInTime, language, {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric'
@@ -882,7 +887,7 @@ export default function DriverDashboard() {
                             <p className="truncate text-sm font-semibold text-foreground">{notification.title}</p>
                             <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{notification.message}</p>
                             <p className="mt-1 text-[11px] text-muted-foreground">
-                              {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                              {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: language === "es" ? es : undefined })}
                             </p>
                           </div>
                         </div>

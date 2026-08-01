@@ -4,6 +4,14 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
 export default defineConfig({
+  define: {
+    "import.meta.env.VITE_APP_COMMIT_SHA": JSON.stringify(
+      process.env.RAILWAY_GIT_COMMIT_SHA
+      || process.env.RAILWAY_DEPLOYMENT_COMMIT_SHA
+      || process.env.GIT_COMMIT_SHA
+      || "development",
+    ),
+  },
   plugins: [
     react(),
     runtimeErrorOverlay(),

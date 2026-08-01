@@ -1984,8 +1984,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Version check endpoint - helps verify which code version is deployed
   app.get('/api/version', (req, res) => {
+    res.set('Cache-Control', 'no-store');
     res.json({
       version: '2.1.0-wallet-transactions',
+      commitSha: activeDeploymentCommit(),
       buildTime: '2025-12-03T20:00:00Z',
       features: {
         ownerWalletTransactions: true,

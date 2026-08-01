@@ -17,7 +17,7 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { hasHandledInstallPromptThisSession, markInstallPromptHandledThisSession } from "@/hooks/usePWAInstall";
-import { useLanguage } from "@/lib/i18n";
+import { formatLocalizedDate, useLanguage } from "@/lib/i18n";
 import { DSCard, DSStatusChip } from "@/components/design-system";
 import { resolveDriverAccountReadiness } from "@/lib/pilotOnboarding";
 
@@ -534,7 +534,7 @@ export default function DriverProfile() {
                     </DSStatusChip>
                     {termsStatus?.hasAgreed && termsStatus?.agreedAt && (
                       <span className="text-xs text-foreground/65">
-                        {t("driver.profile.agreedOn", { date: new Date(termsStatus.agreedAt).toLocaleDateString() })}
+                        {t("driver.profile.agreedOn", { date: formatLocalizedDate(termsStatus.agreedAt, language) })}
                       </span>
                     )}
                   </div>
