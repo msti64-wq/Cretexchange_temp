@@ -1,11 +1,11 @@
 # CTX-OPS-001 - Production Release Checklist
 
 - **Document ID:** CTX-OPS-001
-- **Version:** 1.0
+- **Version:** 1.1
 - **Status:** Approved
 - **Owner:** V8 Laboratories
 - **Product:** CreteXchange
-- **Effective Date:** July 2026
+- **Effective Date:** August 2026
 
 ## Purpose
 
@@ -104,7 +104,10 @@ Complete every applicable item during the release. Record evidence by link, sani
 ## Driver Smoke Tests
 
 - [ ] Public application and Driver login surfaces load.
-- [ ] Released Driver workflow is reachable and behaves as expected.
+- [ ] `npm run test:driver-golden-path` passes for every release changing client, API, readiness, localization, analytics, routing, storage, or deployment code.
+- [ ] The authenticated Driver golden path passes: readiness, eligible facility display, GPS recovery and proximity, Check-In enablement, private photo upload, pending submission confirmation, and Driver activity history.
+- [ ] An authorized Facility Owner can see the resulting pending activity without receiving private Driver data beyond the existing operational projection.
+- [ ] When direct object-storage upload is configured, `npm run verify:photo-upload-cors -- <production-origin>` passes against the target environment before promotion.
 - [ ] No destructive test data or unauthorized financial action is created.
 
 ## Owner Smoke Tests
@@ -158,4 +161,4 @@ Complete every applicable item during the release. Record evidence by link, sani
 
 ## Completion Rule
 
-Do not mark a release complete until pending authorized migrations are applied, schema verification succeeds, the application is healthy, and smoke tests pass.
+Do not mark a release complete until pending authorized migrations are applied, schema verification succeeds, the application is healthy, and smoke tests pass. A release is not ready if Driver login, readiness, eligible facility display, GPS recovery, Check-In enablement, Check-In, private photo upload, washout submission, or activity confirmation fails.

@@ -271,7 +271,8 @@ test("first-activity views provide activity-bound confirmation and GPS retry rec
   assert.match(formSource, /pilot\.upload\.progressUploaded/);
   assert.match(formSource, /failedPhotoFiles/);
   assert.match(formSource, /uploadRecovery\.state === "partial_failure"/);
-  assert.match(formSource, /failedPhotoFiles\.length > 0 \|\| !uploadRecovery\.canSubmit/);
+  assert.match(formSource, /resolveDriverCheckInButtonState/);
+  assert.match(formSource, /disabled=\{!checkInButton\.enabled\}/);
   assert.match(formSource, /uploadPhotos\(filesToRetry, browserLocation, \{ isRetry: true \}\)/);
   assert.match(formSource, /uploadInFlightRef/);
   assert.doesNotMatch(formSource, /may need manual review/);

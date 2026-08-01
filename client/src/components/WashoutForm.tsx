@@ -12,7 +12,7 @@ import { formatAddress } from "@shared/addressUtils";
 import { getCurrentLocation } from "@/lib/gps";
 import { computePhotoFingerprint } from "@/lib/photoFingerprint";
 import { useLanguage } from "@/lib/i18n";
-import { resolveGpsPreflightStatus, resolvePhotoUploadRecoveryState, type GpsPreflightStatus } from "@/lib/pilotOnboarding";
+import { resolveDriverCheckInButtonState, resolveGpsPreflightStatus, resolvePhotoUploadRecoveryState, type GpsPreflightStatus } from "@/lib/pilotOnboarding";
 import { presentDriverOperationalError } from "@/lib/driverOperationalErrorPresentation";
 import type { DriverOperationalErrorPresentation } from "@/lib/driverOperationalErrorPresentation";
 
@@ -327,6 +327,16 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
     );
   };
 
+  const checkInButton = resolveDriverCheckInButtonState({
+    gpsStatus,
+    hasGpsLocation: Boolean(gpsLocation),
+    successfulPhotoCount: uploadedPhotoCount,
+    failedPhotoCount: failedPhotoFiles.length,
+    isProcessingPhotos,
+    isSubmitting,
+    hasInvalidPhotoUrls: hasTempOrInvalidUrls(),
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmissionError(null);
@@ -576,7 +586,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
           <Button
             type="submit"
             className="w-full"
-            disabled={isSubmitting || photoUrls.length === 0 || failedPhotoFiles.length > 0 || !uploadRecovery.canSubmit || isProcessingPhotos || hasTempOrInvalidUrls()}
+            disabled={!checkInButton.enabled}
             data-testid="button-complete-checkin"
           >
             {isSubmitting ? t("driver.washout.processing") :

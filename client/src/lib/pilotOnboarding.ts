@@ -95,6 +95,37 @@ export function resolvePhotoUploadRecoveryState({
   };
 }
 
+export function resolveDriverCheckInButtonState({
+  gpsStatus,
+  hasGpsLocation,
+  successfulPhotoCount,
+  failedPhotoCount,
+  isProcessingPhotos,
+  isSubmitting,
+  hasInvalidPhotoUrls,
+}: {
+  gpsStatus: GpsPreflightStatus;
+  hasGpsLocation: boolean;
+  successfulPhotoCount: number;
+  failedPhotoCount: number;
+  isProcessingPhotos: boolean;
+  isSubmitting: boolean;
+  hasInvalidPhotoUrls: boolean;
+}) {
+  const upload = resolvePhotoUploadRecoveryState({
+    successfulCount: successfulPhotoCount,
+    failedCount: failedPhotoCount,
+    isProcessing: isProcessingPhotos,
+  });
+  const enabled = gpsStatus === "ready"
+    && hasGpsLocation
+    && upload.canSubmit
+    && !isSubmitting
+    && !hasInvalidPhotoUrls;
+
+  return { enabled, upload };
+}
+
 export interface DriverAccountReadinessInput {
   user?: {
     firstName?: string | null;
