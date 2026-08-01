@@ -26,7 +26,7 @@ import {
 import { apiRequest } from "@/lib/queryClient";
 
 type FacilityLocation = { id: string; name: string };
-type Journey = { entryCount: number; exitCount: number; conversionRate: number | null; abandonmentRate: number | null; averageDurationMs: number | null; medianDurationMs: number | null; stages: Array<{ key: string; name: string; reachedCount: number; conversionFromPrevious: number | null; abandonmentFromPrevious: number | null; optional: boolean }> };
+type Journey = { entryCount: number; exitCount: number; conversionRate: number | null; abandonmentRate: number | null; averageDurationMs: number | null; medianDurationMs: number | null; stages: Array<{ key: string; name: string; reachedCount: number | null; conversionFromPrevious: number | null; abandonmentFromPrevious: number | null; optional: boolean; dataStatus?: "available" | "insufficient_data" }> };
 type Intelligence = {
   overview: { submittedCount: number; verifiedCount: number; rejectedCount: number; administrativeReviewCount: number; activeDriverCount: number; repeatDriverCount: number; verificationRate: number | null; rejectionRate: number | null; repeatDriverPercentage: number | null };
   trends: { dailyActivity: Array<{ bucket: string; submittedCount: number; verifiedCount: number; rejectedCount: number }>; weeklyActivity: Array<{ bucket: string; submittedCount: number; verifiedCount: number; rejectedCount: number }>; monthlyActivity: Array<{ bucket: string; submittedCount: number; verifiedCount: number; rejectedCount: number }> };
@@ -61,6 +61,13 @@ function stageLabel(stage: Journey["stages"][number], t: Translate) {
   return translated === key ? stage.name : translated;
 }
 
+function stageValue(stage: Journey["stages"][number], t: Translate) {
+  if (stage.dataStatus === "insufficient_data" || stage.reachedCount === null) {
+    return t("owner.intelligence.insufficientData");
+  }
+  return `${stage.reachedCount} · ${percent(stage.conversionFromPrevious)}`;
+}
+
 function dayLabel(label: string, t: Translate) {
   const normalized = label.trim().toLowerCase();
   const key = `owner.intelligence.weekday.${normalized}`;
@@ -75,7 +82,7 @@ function MetricCard({ label, value, detail }: { label: string; value: string | n
 function JourneyCard({ title, description, journey, t }: { title: string; description: string; journey: Journey; t: Translate }) {
   return <Card><CardHeader><CardTitle className="text-base">{title}</CardTitle><CardDescription>{description}</CardDescription></CardHeader><CardContent className="space-y-4">
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><MetricCard label={t("owner.intelligence.conversion")} value={percent(journey.conversionRate)} /><MetricCard label={t("owner.intelligence.abandonment")} value={percent(journey.abandonmentRate)} /><MetricCard label={t("owner.intelligence.averageDuration")} value={duration(journey.averageDurationMs, t)} /><MetricCard label={t("owner.intelligence.medianDuration")} value={duration(journey.medianDurationMs, t)} /></div>
-    <div className="space-y-2" aria-label={t("owner.intelligence.journeyStagesAria", { journey: title })}>{journey.stages.map((stage) => <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm" key={stage.key}><span>{stageLabel(stage, t)}{stage.optional ? ` ${t("owner.intelligence.whenRequested")}` : ""}</span><span className="font-medium tabular-nums">{stage.reachedCount} · {percent(stage.conversionFromPrevious)}</span></div>)}</div>
+    <div className="space-y-2" aria-label={t("owner.intelligence.journeyStagesAria", { journey: title })}>{journey.stages.map((stage) => <div className="flex items-center justify-between rounded-md border px-3 py-2 text-sm" data-testid={`facility-journey-stage-${stage.key}`} key={stage.key}><span>{stageLabel(stage, t)}{stage.optional ? ` ${t("owner.intelligence.whenRequested")}` : ""}</span><span className="font-medium tabular-nums">{stageValue(stage, t)}</span></div>)}</div>
   </CardContent></Card>;
 }
 

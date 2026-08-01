@@ -31,7 +31,7 @@ test("Facility Intelligence has complete English and Spanish shared-catalog cove
     "repeatDrivers", "operationalTrends", "trendPeriodAria", "daily", "weekly", "monthly", "trendChartAria",
     "facilityHealth", "healthScoreAria", "indicatorsAria", "driverIntelligence", "facilityOperations",
     "dropoff", "driverJourney", "recoveryJourney", "conversion", "abandonment", "averageDuration",
-    "medianDuration", "journeyStagesAria", "volumeChartAria", "noTrendData", "noVolumeData",
+    "medianDuration", "journeyStagesAria", "volumeChartAria", "noTrendData", "noVolumeData", "insufficientData",
   ];
   for (const suffix of required) {
     const key = `owner.intelligence.${suffix}`;

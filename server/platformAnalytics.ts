@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
-import { drivers, platformAnalyticsEvents, users, washoutLocations } from "@shared/schema";
+import { drivers, platformAnalyticsEvents, users, washoutActivities, washoutLocations, washoutPhotos } from "@shared/schema";
+import { resolveDriverProfileReadiness } from "@shared/driverOperationalReadiness";
 
 /**
  * The platform vocabulary intentionally contains operational facts only. A
@@ -102,6 +103,7 @@ export type PlatformJourneyDefinition = { key: "driver" | "facility" | "washout"
 export const PLATFORM_JOURNEYS: readonly PlatformJourneyDefinition[] = [
   { key: "driver", name: "Driver Journey", entity: "driver", stages: [
     { key: "registration", name: "Registration", sourceEventTypes: ["driver.registered"] },
+    { key: "profile_completion", name: "Profile Completion", sourceEventTypes: ["driver.profile_completed"] },
     { key: "first_login", name: "First Login", sourceEventTypes: ["driver.first_logged_in"] },
     { key: "check_in", name: "Check-In", sourceEventTypes: ["activity.checked_in"] },
     { key: "photo_upload", name: "Photo Upload", sourceEventTypes: ["photo.uploaded"] },
@@ -263,6 +265,16 @@ export async function buildPlatformOperationalMetrics(executor: any, query: Pick
 }
 
 export type JourneyEvent = { eventType: PlatformAnalyticsEventType; occurredAt: Date; driverId?: string | null; locationId?: string | null; activityId?: string | null };
+export type JourneyDataStatus = "available" | "insufficient_data";
+export type JourneyStageReport = {
+  key: string;
+  name: string;
+  reachedCount: number | null;
+  conversionFromPrevious: number | null;
+  abandonmentFromPrevious: number | null;
+  optional: boolean;
+  dataStatus?: JourneyDataStatus;
+};
 export type JourneyReport = {
   journey: string;
   entryCount: number;
@@ -271,8 +283,163 @@ export type JourneyReport = {
   abandonmentRate: number | null;
   averageDurationMs: number | null;
   medianDurationMs: number | null;
-  stages: Array<{ key: string; name: string; reachedCount: number; conversionFromPrevious: number | null; abandonmentFromPrevious: number | null; optional: boolean }>;
+  stages: JourneyStageReport[];
 };
+
+export const FACILITY_DRIVER_JOURNEY_STAGE_RULES = [
+  {
+    key: "registration",
+    name: "Registration",
+    authoritativeSource: "drivers",
+    facilityAttribution: "Distinct Driver referenced by an activity.submitted event for the selected Facility.",
+    dateAttribution: "The qualifying submission occurred inside the selected reporting window; account creation may precede it.",
+    inclusionCriteria: "The attributable Driver still has its canonical Driver record.",
+    exclusionCriteria: "Unrelated Drivers and Drivers participating only at another Facility.",
+    insufficientHistoryBehavior: "insufficient_data when a qualifying event no longer resolves to a Driver record.",
+  },
+  {
+    key: "profile_completion",
+    name: "Profile Completion",
+    authoritativeSource: "users + drivers through resolveDriverProfileReadiness",
+    facilityAttribution: "Only Drivers in the selected Facility submission cohort.",
+    dateAttribution: "Current governed profile readiness for the selected-period cohort.",
+    inclusionCriteria: "All governed Driver profile fields are present.",
+    exclusionCriteria: "Financial, identity-document, GPS, and payout fields.",
+    insufficientHistoryBehavior: "insufficient_data when the Driver or User record cannot be read.",
+  },
+  {
+    key: "first_login",
+    name: "First Login",
+    authoritativeSource: "platform_analytics_events: driver.first_logged_in",
+    facilityAttribution: "All-time account fact for a Driver in the selected Facility submission cohort.",
+    dateAttribution: "Earliest recorded login may precede the selected reporting window.",
+    inclusionCriteria: "One canonical first-login event for an attributable Driver.",
+    exclusionCriteria: "Login events for unrelated Drivers.",
+    insufficientHistoryBehavior: "insufficient_data when an attributable legacy Driver has no canonical first-login event.",
+  },
+  {
+    key: "check_in",
+    name: "Check-In",
+    authoritativeSource: "washout_activities.check_in_time",
+    facilityAttribution: "Persisted activity referenced by a qualifying Facility submission event.",
+    dateAttribution: "The qualifying submission occurred inside the selected reporting window.",
+    inclusionCriteria: "At least one cohort activity for the Driver has a persisted check-in time.",
+    exclusionCriteria: "Activities outside the selected Facility cohort.",
+    insufficientHistoryBehavior: "insufficient_data when a qualifying submitted activity cannot be resolved.",
+  },
+  {
+    key: "photo_upload",
+    name: "Photo Upload",
+    authoritativeSource: "washout_photos with legacy washout_activities.photo_urls compatibility",
+    facilityAttribution: "Photo belongs to a persisted activity in the selected Facility submission cohort.",
+    dateAttribution: "The qualifying submission occurred inside the selected reporting window.",
+    inclusionCriteria: "At least one persisted photo is attached to a cohort activity.",
+    exclusionCriteria: "Storage paths, private image data, and photos from other Facilities.",
+    insufficientHistoryBehavior: "insufficient_data when submitted participation exists but no governed photo evidence is available.",
+  },
+  {
+    key: "verification",
+    name: "Verification",
+    authoritativeSource: "washout_activities.status + verified_at",
+    facilityAttribution: "Verified activity in the selected Facility submission cohort.",
+    dateAttribution: "The qualifying submission occurred inside the selected reporting window.",
+    inclusionCriteria: "Canonical activity status is verified with a persisted verification time.",
+    exclusionCriteria: "Pending, rejected, administrative-review-only, and other-Facility activities.",
+    insufficientHistoryBehavior: "insufficient_data when a qualifying submitted activity cannot be resolved; otherwise zero is authoritative.",
+  },
+  {
+    key: "repeat_activity",
+    name: "Repeat Activity",
+    authoritativeSource: "distinct platform_analytics_events activity.submitted records",
+    facilityAttribution: "Two or more distinct submitted activities by the same Driver at the selected Facility.",
+    dateAttribution: "Both qualifying submissions occur inside the selected reporting window.",
+    inclusionCriteria: "Distinct activity identifiers for one attributable Driver.",
+    exclusionCriteria: "Duplicate events and participation at another Facility.",
+    insufficientHistoryBehavior: "insufficient_data when qualifying submissions lack activity identifiers; otherwise zero is authoritative.",
+  },
+] as const;
+
+export type FacilityDriverJourneyEvidence = {
+  driverId: string;
+  registration: boolean | null;
+  profileCompletion: boolean | null;
+  firstLogin: boolean | null;
+  checkIn: boolean | null;
+  photoUpload: boolean | null;
+  verification: boolean | null;
+  repeatActivity: boolean | null;
+};
+
+export type FacilitySubmissionEvidence = {
+  driverId?: string | null;
+  activityId?: string | null;
+  locationId?: string | null;
+  occurredAt: Date;
+};
+
+export function selectFacilityDriverParticipation(
+  submissions: readonly FacilitySubmissionEvidence[],
+  locationId: string,
+  start: Date,
+  end: Date,
+) {
+  const byDriver = new Map<string, Set<string>>();
+  for (const submission of submissions) {
+    if (!submission.driverId || !submission.activityId || submission.locationId !== locationId) continue;
+    if (submission.occurredAt < start || submission.occurredAt > end) continue;
+    const activityIds = byDriver.get(submission.driverId) || new Set<string>();
+    activityIds.add(submission.activityId);
+    byDriver.set(submission.driverId, activityIds);
+  }
+  const submissionGroups = Array.from(byDriver.entries());
+  return {
+    driverIds: submissionGroups.map(([driverId]) => driverId),
+    activityIds: Array.from(new Set(submissionGroups.flatMap(([, ids]) => Array.from(ids)))),
+    submissionsByDriver: submissionGroups.map(([driverId, activityIds]) => ({ driverId, activityIds: Array.from(activityIds) })),
+  };
+}
+
+/**
+ * Builds a Facility Driver cohort without letting an unavailable historical
+ * account fact erase later, authoritative operational participation.
+ */
+export function calculateFacilityDriverJourney(evidence: readonly FacilityDriverJourneyEvidence[]): JourneyReport {
+  const uniqueEvidence = Array.from(new Map(evidence.map((row) => [row.driverId, row])).values());
+  const stageInputs = [
+    { key: "registration", name: "Registration", value: (row: FacilityDriverJourneyEvidence) => row.registration },
+    { key: "profile_completion", name: "Profile Completion", value: (row: FacilityDriverJourneyEvidence) => row.profileCompletion },
+    { key: "first_login", name: "First Login", value: (row: FacilityDriverJourneyEvidence) => row.firstLogin },
+    { key: "check_in", name: "Check-In", value: (row: FacilityDriverJourneyEvidence) => row.checkIn },
+    { key: "photo_upload", name: "Photo Upload", value: (row: FacilityDriverJourneyEvidence) => row.photoUpload },
+    { key: "verification", name: "Verification", value: (row: FacilityDriverJourneyEvidence) => row.verification },
+    { key: "repeat_activity", name: "Repeat Activity", value: (row: FacilityDriverJourneyEvidence) => row.repeatActivity },
+  ] as const;
+  let previousAvailableReach = uniqueEvidence.length;
+  const stages: JourneyStageReport[] = stageInputs.map((stage) => {
+    const values = uniqueEvidence.map(stage.value);
+    const dataStatus: JourneyDataStatus = values.some((value) => value === null) ? "insufficient_data" : "available";
+    if (dataStatus === "insufficient_data") {
+      return { key: stage.key, name: stage.name, reachedCount: null, conversionFromPrevious: null, abandonmentFromPrevious: null, optional: false, dataStatus };
+    }
+    const reachedCount = values.filter(Boolean).length;
+    const conversionFromPrevious = previousAvailableReach ? reachedCount / previousAvailableReach : null;
+    const abandonmentFromPrevious = conversionFromPrevious === null ? null : 1 - conversionFromPrevious;
+    previousAvailableReach = reachedCount;
+    return { key: stage.key, name: stage.name, reachedCount, conversionFromPrevious, abandonmentFromPrevious, optional: false, dataStatus };
+  });
+  const repeatStage = stages.at(-1)!;
+  const exitCount = repeatStage.reachedCount ?? 0;
+  return {
+    journey: "driver",
+    entryCount: uniqueEvidence.length,
+    exitCount,
+    conversionRate: uniqueEvidence.length && repeatStage.dataStatus === "available" ? exitCount / uniqueEvidence.length : null,
+    abandonmentRate: uniqueEvidence.length && repeatStage.dataStatus === "available" ? 1 - exitCount / uniqueEvidence.length : null,
+    averageDurationMs: null,
+    medianDurationMs: null,
+    stages,
+  };
+}
 
 function eventEntityId(event: JourneyEvent, entity: PlatformJourneyDefinition["entity"]): string | null {
   if (entity === "driver") return event.driverId ?? null;
@@ -350,42 +517,105 @@ export async function buildFacilityDropoffIntelligence(
   query: Pick<ReturnType<typeof parseFacilityIntelligenceQuery>, "start" | "end">,
 ) {
   const facilityWhere = facilityEventWindow(locationId, query.start, query.end);
-  const [washoutEvents, cohortRows] = await Promise.all([
+  const [washoutEvents, submittedEvents] = await Promise.all([
     executor.select({ eventType: platformAnalyticsEvents.eventType, occurredAt: platformAnalyticsEvents.occurredAt, driverId: platformAnalyticsEvents.driverId, locationId: platformAnalyticsEvents.locationId, activityId: platformAnalyticsEvents.activityId })
       .from(platformAnalyticsEvents)
       .where(facilityWhere)
       .orderBy(asc(platformAnalyticsEvents.occurredAt), asc(platformAnalyticsEvents.id))
       .limit(10_001),
-    executor.select({ driverId: platformAnalyticsEvents.driverId })
+    executor.select({
+      driverId: platformAnalyticsEvents.driverId,
+      activityId: platformAnalyticsEvents.activityId,
+      locationId: platformAnalyticsEvents.locationId,
+      occurredAt: platformAnalyticsEvents.occurredAt,
+    })
       .from(platformAnalyticsEvents)
       .where(and(facilityWhere, eq(platformAnalyticsEvents.eventType, "activity.submitted")))
-      .groupBy(platformAnalyticsEvents.driverId)
+      .orderBy(asc(platformAnalyticsEvents.occurredAt), asc(platformAnalyticsEvents.id))
       .limit(10_001),
   ]);
-  if (washoutEvents.length > 10_000 || cohortRows.length > 10_000) {
+  if (washoutEvents.length > 10_000 || submittedEvents.length > 10_000) {
     throw new PlatformAnalyticsQueryError("Facility journey result exceeds 10,000 records; use a narrower date range");
   }
-  const driverIds = cohortRows.map((row: any) => row.driverId).filter((driverId: unknown): driverId is string => Boolean(driverId));
-  let driverEvents: JourneyEvent[] = [];
+  const participation = selectFacilityDriverParticipation(submittedEvents as FacilitySubmissionEvidence[], locationId, query.start, query.end);
+  const { driverIds, activityIds } = participation;
+  let driverJourney = calculateFacilityDriverJourney([]);
   if (driverIds.length) {
-    const cohortEvents = await executor.select({ eventType: platformAnalyticsEvents.eventType, occurredAt: platformAnalyticsEvents.occurredAt, driverId: platformAnalyticsEvents.driverId, locationId: platformAnalyticsEvents.locationId, activityId: platformAnalyticsEvents.activityId })
-      .from(platformAnalyticsEvents)
-      .where(and(
-        inArray(platformAnalyticsEvents.driverId, driverIds),
-        gte(platformAnalyticsEvents.occurredAt, query.start),
-        lte(platformAnalyticsEvents.occurredAt, query.end),
-      ))
-      .orderBy(asc(platformAnalyticsEvents.occurredAt), asc(platformAnalyticsEvents.id))
-      .limit(10_001);
-    if (cohortEvents.length > 10_000) {
+    const [profileRows, firstLoginRows, activityRows, photoRows] = await Promise.all([
+      executor.select({
+        driverId: drivers.id,
+        driverUserId: drivers.userId,
+        employerName: drivers.employerName,
+        truckNumber: drivers.truckNumber,
+        userId: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        phone: users.phone,
+        street: users.street,
+        city: users.city,
+        state: users.state,
+        zip: users.zip,
+      }).from(drivers).innerJoin(users, eq(drivers.userId, users.id)).where(inArray(drivers.id, driverIds)),
+      executor.select({ driverId: platformAnalyticsEvents.driverId })
+        .from(platformAnalyticsEvents)
+        .where(and(inArray(platformAnalyticsEvents.driverId, driverIds), eq(platformAnalyticsEvents.eventType, "driver.first_logged_in")))
+        .groupBy(platformAnalyticsEvents.driverId)
+        .limit(10_001),
+      activityIds.length
+        ? executor.select({
+            id: washoutActivities.id,
+            driverId: washoutActivities.driverId,
+            locationId: washoutActivities.locationId,
+            status: washoutActivities.status,
+            checkInTime: washoutActivities.checkInTime,
+            verifiedAt: washoutActivities.verifiedAt,
+            photoUrls: washoutActivities.photoUrls,
+          }).from(washoutActivities).where(and(eq(washoutActivities.locationId, locationId), inArray(washoutActivities.id, activityIds)))
+        : Promise.resolve([]),
+      activityIds.length
+        ? executor.select({ activityId: washoutPhotos.activityId, driverId: washoutPhotos.driverId })
+          .from(washoutPhotos)
+          .where(and(eq(washoutPhotos.locationId, locationId), inArray(washoutPhotos.activityId, activityIds)))
+        : Promise.resolve([]),
+    ]);
+    if (firstLoginRows.length > 10_000 || profileRows.length > 10_000 || activityRows.length > 10_000 || photoRows.length > 10_000) {
       throw new PlatformAnalyticsQueryError("Driver cohort journey exceeds 10,000 records; use a narrower date range");
     }
-    const accountEventTypes = new Set<PlatformAnalyticsEventType>(["driver.registered", "driver.first_logged_in"]);
-    driverEvents = cohortEvents.filter((event: JourneyEvent) => accountEventTypes.has(event.eventType) || event.locationId === locationId) as JourneyEvent[];
+    const profilesByDriver = new Map<string, any>(profileRows.map((row: any) => [row.driverId, row]));
+    const firstLoginDrivers = new Set(firstLoginRows.map((row: any) => row.driverId).filter(Boolean));
+    const activitiesByDriver = new Map<string, any[]>();
+    for (const row of activityRows as any[]) {
+      const rows = activitiesByDriver.get(row.driverId) || [];
+      rows.push(row);
+      activitiesByDriver.set(row.driverId, rows);
+    }
+    const photoDrivers = new Set(photoRows.map((row: any) => row.driverId).filter(Boolean));
+    const submittedActivityIdsByDriver = new Map(participation.submissionsByDriver.map((row) => [row.driverId, new Set(row.activityIds)]));
+    driverJourney = calculateFacilityDriverJourney(driverIds.map((driverId) => {
+      const profile = profilesByDriver.get(driverId);
+      const activityIdsForDriver = submittedActivityIdsByDriver.get(driverId) || new Set<string>();
+      const cohortActivities = activitiesByDriver.get(driverId) || [];
+      const activityHistoryComplete = activityIdsForDriver.size > 0 && cohortActivities.length === activityIdsForDriver.size;
+      const profileCompletion = profile
+        ? resolveDriverProfileReadiness({ user: profile, profile: { ...profile, userId: profile.driverUserId } }).complete
+        : null;
+      const hasPhoto = photoDrivers.has(driverId) || cohortActivities.some((activity: any) => Array.isArray(activity.photoUrls) && activity.photoUrls.length > 0);
+      return {
+        driverId,
+        registration: profile ? true : null,
+        profileCompletion,
+        firstLogin: firstLoginDrivers.has(driverId) ? true : null,
+        checkIn: activityHistoryComplete ? cohortActivities.some((activity: any) => Boolean(activity.checkInTime)) : null,
+        photoUpload: activityHistoryComplete ? (hasPhoto ? true : null) : null,
+        verification: activityHistoryComplete ? cohortActivities.some((activity: any) => activity.status === "verified" && Boolean(activity.verifiedAt)) : null,
+        repeatActivity: activityIdsForDriver.size ? activityIdsForDriver.size >= 2 : null,
+      };
+    }));
   }
   return {
     window: { start: query.start.toISOString(), end: query.end.toISOString(), timezone: "UTC" },
-    driverJourney: calculateJourneyReport(PLATFORM_JOURNEYS_BY_KEY.driver, driverEvents),
+    driverJourney,
     washoutJourney: calculateJourneyReport(PLATFORM_JOURNEYS_BY_KEY.washout, washoutEvents as JourneyEvent[]),
   };
 }

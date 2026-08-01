@@ -62,7 +62,7 @@ test("journey calculations use recorded facts for conversion, drop-off, and dura
   assert.equal(report.abandonmentRate, 0.5);
   assert.equal(report.averageDurationMs, 360_000);
   assert.equal(report.medianDurationMs, 360_000);
-  assert.equal(report.stages[1].abandonmentFromPrevious, 0.5);
+  assert.equal(report.stages.find((stage) => stage.key === "first_login")?.abandonmentFromPrevious, 0.5);
   assert.equal(report.stages.at(-1)?.reachedCount, 1);
 });
 
