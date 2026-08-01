@@ -15,10 +15,10 @@ import { formatAddress } from "@shared/addressUtils";
 import { getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
 import { calculateDistance, getCurrentLocation } from "@/lib/gps";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
-import { useLanguage } from "@/lib/i18n";
+import { localeForLanguage, useLanguage } from "@/lib/i18n";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { apiRequest } from "@/lib/queryClient";
-import { getDriverPayoutStatus, getDriverPayoutStatusLabel } from "@/lib/driverPayoutSettings";
+import { getDriverPayoutStatus } from "@/lib/driverPayoutSettings";
 import { useDriverPaymentLifecycle } from "@/hooks/useDriverPaymentLifecycle";
 import { DriverLifecycleSummary } from "@/components/driver/DriverLifecycleSummary";
 import { DriverMaterialIntentSelector, driverMaterialIntentKey, type DriverMaterialIntent } from "@/components/driver/DriverMaterialIntentSelector";
@@ -468,9 +468,12 @@ export default function DriverDashboard() {
   const lotteryEntryCount = lotteryStatus?.driverEntryCount ?? 0;
   const lotteryActive = lotteryStatus?.enabled ?? false;
   const currentDrawing = lotteryStatus?.currentDrawing || null;
-  const currentDrawingLabel = currentDrawing?.monthName
-    ? `${currentDrawing.monthName} ${currentDrawing.lotteryYear}`
-    : lotteryStatus?.currentDrawingMessage || t("driver.dashboard.monthlyLottery");
+  const currentDrawingLabel = currentDrawing?.monthName && currentDrawing.lotteryYear
+    ? new Date(`${currentDrawing.monthName} 1, ${currentDrawing.lotteryYear}`).toLocaleDateString(
+        localeForLanguage(language),
+        { month: "long", year: "numeric" },
+      )
+    : t("driver.dashboard.awaitingDrawing");
 
   const latestActivity = Array.isArray(recentActivities) && recentActivities.length > 0 ? recentActivities[0] : null;
   const latestLocationName = latestActivity?.washout_locations?.name || latestActivity?.location?.name || t("driver.dashboard.latestStop");
@@ -532,7 +535,7 @@ export default function DriverDashboard() {
   const unreadNotifications = unreadNotificationsData?.notifications || [];
   const unreadNotificationCount = unreadNotificationsData?.count ?? unreadNotifications.length;
   const topUnreadNotifications = unreadNotifications.slice(0, 3);
-  const currentDrawingText = currentDrawingLabel || "Awaiting drawing";
+  const currentDrawingText = currentDrawingLabel;
   const optionalFinancialLoading = !deferredDashboardWidgetsEnabled || stripeAccountStatusLoading;
   const optionalDebitCardLoading = !deferredDashboardWidgetsEnabled || debitCardStatusLoading;
   const optionalNotificationsLoading = !deferredDashboardWidgetsEnabled || unreadNotificationsLoading;
@@ -803,7 +806,7 @@ export default function DriverDashboard() {
                       <span className="text-muted-foreground">{t("driver.dashboard.optionalStripe")}</span>
                       {optionalFinancialLoading ? <Skeleton className="h-5 w-24 bg-muted" /> : (
                         <DSStatusChip tone={stripeStatusUnavailable ? "neutral" : stripeReady ? "success" : "warning"} size="sm">
-                          {getDriverPayoutStatusLabel(stripePresentationStatus)}
+                          {t(`driver.payout.status.${stripePresentationStatus}`)}
                         </DSStatusChip>
                       )}
                     </div>
@@ -811,7 +814,7 @@ export default function DriverDashboard() {
                       <span className="text-muted-foreground">{t("driver.dashboard.optionalDebitCard")}</span>
                       {optionalDebitCardLoading ? <Skeleton className="h-5 w-24 bg-muted" /> : (
                         <DSStatusChip tone={debitCardStatusError ? "neutral" : debitCardState === "active" ? "success" : "neutral"} size="sm">
-                          {debitCardStatusError ? t("driver.dashboard.optionalFinancialStatusUnavailable") : debitCardState}
+                          {debitCardStatusError ? t("driver.dashboard.optionalFinancialStatusUnavailable") : t(`driver.dashboard.debitStatus.${debitCardState.replaceAll(" ", "_")}`)}
                         </DSStatusChip>
                       )}
                     </div>
@@ -833,7 +836,7 @@ export default function DriverDashboard() {
                     className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
                     onClick={() => setLocation('/wallet')}
                   >
-                    Wallet
+                    {t("common.wallet")}
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
                 </div>
@@ -845,10 +848,10 @@ export default function DriverDashboard() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
                     <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      Unread Notifications
+                      {t("driver.dashboard.unreadNotifications")}
                     </p>
                     <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
-                      Stay on top of updates
+                      {t("driver.dashboard.notificationsTitle")}
                     </h3>
                   </div>
                   <DSStatusChip tone={unreadNotificationCount > 0 ? "warning" : "neutral"} size="sm">
@@ -966,14 +969,14 @@ export default function DriverDashboard() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
                     <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      Rewards Summary
+                      {t("driver.dashboard.rewardsSummary")}
                     </p>
                     <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
-                      Monthly ticket progress
+                      {t("driver.dashboard.monthlyTicketProgress")}
                     </h3>
                   </div>
                   <DSStatusChip tone={optionalLotteryLoading ? "neutral" : lotteryActive ? "success" : "warning"} size="sm">
-                    {optionalLotteryLoading ? "…" : lotteryActive ? "Active" : "Paused"}
+                    {optionalLotteryLoading ? "…" : lotteryActive ? t("common.active") : t("driver.dashboard.paused")}
                   </DSStatusChip>
                 </div>
 
@@ -986,7 +989,7 @@ export default function DriverDashboard() {
                 <div className="space-y-2 text-sm">
                   <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      Current Month Entries
+                      {t("driver.dashboard.currentMonthEntries")}
                     </p>
                     <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
                       {lotteryEntryCount}
@@ -994,7 +997,7 @@ export default function DriverDashboard() {
                   </div>
                   <div className="rounded-2xl border border-border/70 bg-background/70 p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      Current Drawing
+                      {t("driver.dashboard.currentDrawingLabel")}
                     </p>
                     <p className="mt-1 text-sm font-semibold text-foreground">
                       {currentDrawingText}
@@ -1010,7 +1013,7 @@ export default function DriverDashboard() {
                     className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
                     onClick={() => setLocation('/driver/rewards')}
                   >
-                    View Rewards
+                    {t("driver.dashboard.viewRewards")}
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
                 </div>
@@ -1023,7 +1026,7 @@ export default function DriverDashboard() {
           <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-w-0">
               <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.16em]">
-                Location Intelligence
+                {t("driver.dashboard.locationIntelligence")}
               </p>
               <h3 className="break-words text-sm font-semibold tracking-tight text-foreground">
                 {t("driver.dashboard.locationDiscovery")}
@@ -1037,10 +1040,10 @@ export default function DriverDashboard() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
                     <p className="break-words text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      Recommended Location
+                      {t("driver.dashboard.recommendedLocation")}
                     </p>
                     <h3 className="break-words text-lg font-semibold tracking-tight text-foreground">
-                      Nearest suitable stop
+                      {t("driver.dashboard.nearestSuitableStop")}
                     </h3>
                   </div>
                   <MapPin className="h-5 w-5 shrink-0 text-primary" />

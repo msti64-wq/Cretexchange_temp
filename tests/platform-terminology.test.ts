@@ -85,6 +85,16 @@ test("Driver Intelligence and achievements route visible copy through bilingual 
   assert.ok(englishKeys.length >= 70);
 });
 
+test("Driver Dashboard operational cards do not leak hard-coded English into Spanish mode", async () => {
+  const dashboard = await source("client/src/pages/driver/dashboard.tsx");
+  for (const phrase of ["Unread Notifications", "Stay on top of updates", "Rewards Summary", "Monthly ticket progress", "Current Month Entries", "Location Intelligence", "Nearest suitable stop"]) {
+    assert.doesNotMatch(dashboard, new RegExp(`>${phrase}<|"${phrase}"`));
+  }
+  const englishKeys = Object.keys(translations.en).filter((key) => key.startsWith("driver.dashboard.")).sort();
+  const spanishKeys = Object.keys(translations.es).filter((key) => key.startsWith("driver.dashboard.")).sort();
+  assert.deepEqual(spanishKeys, englishKeys);
+});
+
 test("stable internal identifiers, routes, schema, analytics events, and financial isolation remain intact", async () => {
   const [schema, routes, analytics, policy] = await Promise.all([
     source("shared/schema.ts"),
