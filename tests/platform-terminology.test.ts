@@ -17,6 +17,8 @@ test("English and Spanish workflow terminology uses recovery language", () => {
     ["owner.locations.manageWashoutSites", "Manage recovery facilities", "Gestionar instalaciones de recuperación"],
     ["owner.dashboard.washoutStatusMix", "Recovery Activity Status Mix", "Resumen de estado de actividades de recuperación"],
     ["competition.verified", "Verified activities", "Actividades verificadas"],
+    ["driver.intelligence.recoveryHistory", "Recovery history", "Historial de recuperación"],
+    ["driver.intelligence.achievements", "Achievements", "Logros"],
   ] as const;
 
   for (const [key, english, spanish] of expectations) {
@@ -69,6 +71,18 @@ test("browser metadata positions the multi-material recovery platform", async ()
   assert.match(html, /Construction Materials Recovery Platform/);
   assert.match(html, /construction material recovery activity and intelligence/);
   assert.doesNotMatch(html, /Concrete Washout Location Management|manage washout services/i);
+});
+
+test("Driver Intelligence and achievements route visible copy through bilingual localization", async () => {
+  const component = await source("client/src/components/driver/DriverIntelligenceSummary.tsx");
+  assert.match(component, /useLanguage\(\)/);
+  for (const phrase of ["Your operational performance", "Recovery history", "Next achievement", "Facility insights", "Activity trends"]) {
+    assert.doesNotMatch(component, new RegExp(`>${phrase}<|\"${phrase}\"`));
+  }
+  const englishKeys = Object.keys(translations.en).filter((key) => key.startsWith("driver.intelligence.")).sort();
+  const spanishKeys = Object.keys(translations.es).filter((key) => key.startsWith("driver.intelligence.")).sort();
+  assert.deepEqual(spanishKeys, englishKeys);
+  assert.ok(englishKeys.length >= 70);
 });
 
 test("stable internal identifiers, routes, schema, analytics events, and financial isolation remain intact", async () => {
