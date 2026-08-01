@@ -7,6 +7,12 @@ import {
   ownerFacilityIntelligenceQueryPrefix,
   ownerFacilityIntelligenceRequest,
 } from "../client/src/lib/ownerFacilityIntelligenceQuery";
+import {
+  ownerFacilityIntelligencePath,
+  ownerFacilitySelectionStorageKey,
+  parseOwnerFacilityUrlSelection,
+  resolveOwnerFacilitySelection,
+} from "../client/src/lib/ownerFacilityIntelligenceSelection";
 
 const pageUrl = new URL("../client/src/pages/owner/facility-intelligence.tsx", import.meta.url);
 const dashboardUrl = new URL("../client/src/pages/owner/dashboard.tsx", import.meta.url);
@@ -17,8 +23,10 @@ const analyticsUrl = new URL("../server/platformAnalytics.ts", import.meta.url);
 
 test("Facility Intelligence has complete English and Spanish shared-catalog coverage", () => {
   const required = [
-    "nav", "eyebrow", "title", "description", "facilityAria", "selectFacility", "dateRangeAria",
-    "last30", "last90", "noFacility", "loading", "refreshing", "error", "retryAria", "overviewAria",
+    "nav", "eyebrow", "title", "description", "facilityAria", "facilitySelectorLabel", "selectFacility",
+    "selectionScope", "dateRangeAria", "last30", "last90", "noFacility", "noFacilitySelected",
+    "selectFacilityDescription", "invalidFacility", "invalidFacilityDescription", "facilityUnavailable",
+    "facilityUnavailableDescription", "retryFacilitiesAria", "loading", "refreshing", "error", "retryAria", "overviewAria",
     "verifiedActivities", "submittedActivities", "rejectedActivities", "administrativeReviews", "activeDrivers",
     "repeatDrivers", "operationalTrends", "trendPeriodAria", "daily", "weekly", "monthly", "trendChartAria",
     "facilityHealth", "healthScoreAria", "indicatorsAria", "driverIntelligence", "facilityOperations",
@@ -35,6 +43,45 @@ test("Facility Intelligence has complete English and Spanish shared-catalog cove
   }
   assert.equal(translate("owner.intelligence.verifiedActivities", "es"), "Actividades de recuperación verificadas");
   assert.equal(translate("owner.intelligence.stage.check_in", "es"), "Registro de llegada");
+});
+
+test("Facility selection hierarchy honors URL, stored, single, multiple, empty, and invalid states", () => {
+  const facilities = ["revel", "back-yard"];
+  assert.deepEqual(resolveOwnerFacilitySelection({
+    facilityIds: facilities,
+    urlSelection: { present: true, facilityId: "revel" },
+    storedFacilityId: "back-yard",
+  }), { state: "selected", facilityId: "revel", source: "url" });
+  assert.deepEqual(resolveOwnerFacilitySelection({
+    facilityIds: facilities,
+    urlSelection: { present: false, facilityId: null },
+    storedFacilityId: "back-yard",
+  }), { state: "selected", facilityId: "back-yard", source: "stored" });
+  assert.deepEqual(resolveOwnerFacilitySelection({
+    facilityIds: ["revel"],
+    urlSelection: { present: false, facilityId: null },
+  }), { state: "selected", facilityId: "revel", source: "single" });
+  assert.deepEqual(resolveOwnerFacilitySelection({
+    facilityIds: facilities,
+    urlSelection: { present: false, facilityId: null },
+  }), { state: "required", facilityId: null, source: null });
+  assert.deepEqual(resolveOwnerFacilitySelection({
+    facilityIds: [],
+    urlSelection: { present: false, facilityId: null },
+  }), { state: "empty", facilityId: null, source: null });
+  assert.deepEqual(resolveOwnerFacilitySelection({
+    facilityIds: facilities,
+    urlSelection: { present: true, facilityId: "another-owner" },
+    storedFacilityId: "revel",
+  }), { state: "invalid", facilityId: null, source: "url" });
+});
+
+test("Facility selection URL and persistence helpers are stable and Owner-scoped", () => {
+  assert.equal(ownerFacilityIntelligencePath("1367c68a-e12b-46a4-a417-6f21febe5640"), "/intelligence?facilityId=1367c68a-e12b-46a4-a417-6f21febe5640");
+  assert.deepEqual(parseOwnerFacilityUrlSelection("/intelligence?facilityId=revel"), { present: true, facilityId: "revel" });
+  assert.deepEqual(parseOwnerFacilityUrlSelection("/intelligence?facilityId="), { present: true, facilityId: null });
+  assert.deepEqual(parseOwnerFacilityUrlSelection("/intelligence"), { present: false, facilityId: null });
+  assert.notEqual(ownerFacilitySelectionStorageKey("owner-a"), ownerFacilitySelectionStorageKey("owner-b"));
 });
 
 test("Owner Intelligence page and navigation consume localization without hard-coded defect copy", async () => {
@@ -58,6 +105,20 @@ test("Owner Intelligence page and navigation consume localization without hard-c
     assert.notEqual(translate(key, "en"), key, `raw English key ${key}`);
     assert.notEqual(translate(key, "es"), key, `raw Spanish key ${key}`);
   }
+});
+
+test("Owner Intelligence never selects locations[0] and waits for a validated Facility", async () => {
+  const page = await readFile(pageUrl, "utf8");
+  assert.doesNotMatch(page, /selectedLocation \|\| locations\[0\]\?\.id/);
+  assert.match(page, /resolveOwnerFacilitySelection/);
+  assert.match(page, /enabled: Boolean\(locationId\)/);
+  assert.match(page, /value=\{locationId \|\| ""\}/);
+  assert.match(page, /onValueChange=\{selectFacility\}/);
+  assert.match(page, /setLocation\(ownerFacilityIntelligencePath\(facilityId\)\)/);
+  assert.match(page, /setTrendPeriod\("daily"\)/);
+  assert.match(page, /facility-intelligence-selection-required/);
+  assert.match(page, /facility-intelligence-invalid/);
+  assert.match(page, /grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2/);
 });
 
 test("Facility Intelligence request windows are fresh and query keys are facility-scoped", () => {
