@@ -9,8 +9,11 @@ import {
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
+import { es } from "date-fns/locale";
 import { MobileNav } from "@/components/MobileNav";
 import { DSCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
+import { useLanguage } from "@/lib/i18n";
+import { localizeDriverNotification } from "@/lib/driverNotificationLocalization";
 
 function getNotificationIcon(type: string) {
   switch (type) {
@@ -75,6 +78,7 @@ function getNotificationColor(type: string, isRead: boolean) {
 
 export default function DriverNotifications() {
   const [, setLocation] = useLocation();
+  const { language, t } = useLanguage();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -88,7 +92,7 @@ export default function DriverNotifications() {
     };
   }, []);
 
-  const { data: notifications = [], isLoading } = useQuery<any[]>({
+  const { data: notifications = [], isLoading, isError, refetch } = useQuery<any[]>({
     queryKey: ['/api/notifications'],
   });
 
@@ -121,14 +125,15 @@ export default function DriverNotifications() {
               variant="ghost"
               size="sm"
               onClick={() => setLocation('/')}
+              aria-label={t("messages.backAria")}
               className="border-border/70 bg-background/60 p-2 text-foreground hover:bg-background hover:text-foreground"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="font-semibold text-lg text-foreground">Message Center</h1>
+              <h1 className="font-semibold text-lg text-foreground">{t("messages.title")}</h1>
               <p className="text-sm text-foreground/75">
-                {unreadCount > 0 ? `${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}` : 'All caught up'}
+                {unreadCount > 0 ? t(unreadCount === 1 ? "messages.unread" : "messages.unreadPlural", { count: unreadCount }) : t("messages.allCaughtUp")}
               </p>
             </div>
           </div>
@@ -142,7 +147,7 @@ export default function DriverNotifications() {
                 disabled={markAllReadMutation.isPending}
               >
                 <CheckCheck className="w-4 h-4" />
-                Mark all read
+                {t("messages.markAllRead")}
               </Button>
             )}
             <Bell className="w-6 h-6" />
@@ -152,31 +157,43 @@ export default function DriverNotifications() {
 
       <main className="p-4 max-w-2xl mx-auto space-y-3">
         <DSSectionHeader
-          title="Message Center"
-          description={unreadCount > 0 ? `${unreadCount} unread message${unreadCount !== 1 ? 's' : ''}` : 'All caught up'}
+          title={t("messages.title")}
+          description={unreadCount > 0 ? t(unreadCount === 1 ? "messages.unread" : "messages.unreadPlural", { count: unreadCount }) : t("messages.allCaughtUp")}
         />
         {isLoading ? (
-          [1, 2, 3].map(i => (
+          <div role="status" aria-label={t("messages.loading")} className="space-y-3">
+          {[1, 2, 3].map(i => (
             <DSCard key={i} className="animate-pulse border-border/70 bg-card/90">
               <CardContent className="p-4">
                 <div className="h-20 rounded-2xl bg-muted/70" />
               </CardContent>
             </DSCard>
-          ))
+          ))}
+          </div>
+        ) : isError ? (
+          <DSCard padding="lg" className="border-border/70 bg-card/90" role="alert">
+            <CardContent className="p-12 text-center">
+              <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-amber-500" />
+              <p className="text-sm font-medium text-foreground">{t("messages.error")}</p>
+              <Button className="mt-4" variant="outline" onClick={() => void refetch()}>{t("messages.retry")}</Button>
+            </CardContent>
+          </DSCard>
         ) : notifications.length === 0 ? (
           <DSCard padding="lg" className="border-border/70 bg-card/90">
             <CardContent className="p-12 text-center">
               <Bell className="w-12 h-12 text-foreground/65 mx-auto mb-4" />
               <h3 className="mb-2 text-lg font-medium text-foreground">
-                No messages yet
+                {t("messages.emptyTitle")}
               </h3>
               <p className="text-sm text-foreground/70">
-                You'll see notifications here about lottery results, payments, and account updates.
+                {t("messages.emptyDescription")}
               </p>
             </CardContent>
           </DSCard>
         ) : (
-          notifications.map((notification: any) => (
+          notifications.map((notification: any) => {
+            const localized = localizeDriverNotification(notification, language, t);
+            return (
             <DSCard
               key={notification.id}
               className={`border ${getNotificationColor(notification.type, notification.isRead)}`}
@@ -189,20 +206,20 @@ export default function DriverNotifications() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <h3 className="font-semibold leading-snug text-foreground">
-                        {notification.title}
+                        {localized.title}
                       </h3>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {!notification.isRead && (
-                          <DSStatusChip tone="warning" className="text-xs">New</DSStatusChip>
+                          <DSStatusChip tone="warning" className="text-xs">{t("messages.new")}</DSStatusChip>
                         )}
                       </div>
                     </div>
                     <p className="mb-2 text-sm leading-relaxed text-foreground/78">
-                      {notification.message}
+                      {localized.message}
                     </p>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-foreground/65">
-                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: language === "es" ? es : undefined })}
                       </span>
                       {!notification.isRead && (
                         <Button
@@ -213,7 +230,7 @@ export default function DriverNotifications() {
                           className="h-7 border-border/70 bg-background/60 text-xs text-foreground hover:bg-background hover:text-foreground"
                         >
                           <Check className="w-3 h-3 mr-1" />
-                          Mark read
+                          {t("messages.markRead")}
                         </Button>
                       )}
                     </div>
@@ -221,7 +238,8 @@ export default function DriverNotifications() {
                 </div>
               </CardContent>
             </DSCard>
-          ))
+            );
+          })
         )}
       </main>
 

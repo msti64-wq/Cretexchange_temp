@@ -901,7 +901,7 @@ export default function DriverDashboard() {
                     variant="outline"
                     size="sm"
                     className="h-auto min-h-9 border-border/70 bg-card px-3 text-foreground hover:bg-muted/50"
-                    onClick={() => setLocation('/notifications')}
+                    onClick={() => setLocation('/messages')}
                   >
                     {t("driver.dashboard.notifications")}
                     <ArrowRight className="ml-1 h-4 w-4" />

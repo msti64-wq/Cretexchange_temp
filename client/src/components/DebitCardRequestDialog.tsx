@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { CreditCard, MapPin, CheckCircle2, Loader2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useLanguage } from "@/lib/i18n";
 
 interface DebitCardRequestDialogProps {
   open: boolean;
@@ -36,6 +37,7 @@ export function DebitCardRequestDialog({
   driverAddress = {},
 }: DebitCardRequestDialogProps) {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [formData, setFormData] = useState({
     shippingName: driverName,
     shippingStreet: driverAddress.street || "",
@@ -51,8 +53,8 @@ export function DebitCardRequestDialog({
     },
     onSuccess: () => {
       toast({
-        title: "Debit Card Requested!",
-        description: "Your virtual debit card has been created and is ready to use immediately! Card details are now visible in your wallet. Physical cards typically arrive within 7-10 business days when shipped.",
+        title: t("wallet.card.success"),
+        description: t("wallet.card.successBody"),
       });
       onOpenChange(false);
       // Invalidate the debit card query to refetch the new card
@@ -60,8 +62,8 @@ export function DebitCardRequestDialog({
     },
     onError: (error: any) => {
       toast({
-        title: "Request Failed",
-        description: error.message || "Failed to submit debit card request",
+        title: t("wallet.card.failed"),
+        description: t("wallet.card.failedBody"),
         variant: "destructive",
       });
     },
@@ -72,8 +74,8 @@ export function DebitCardRequestDialog({
     
     if (!formData.agreeToTerms) {
       toast({
-        title: "Terms Required",
-        description: "Please agree to the terms and conditions",
+        title: t("wallet.card.termsRequired"),
+        description: t("wallet.card.termsRequiredBody"),
         variant: "destructive",
       });
       return;
@@ -92,10 +94,10 @@ export function DebitCardRequestDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center text-slate-100">
             <CreditCard className="mr-2 h-5 w-5 text-sky-400" />
-            Request Debit Card
+            {t("wallet.card.dialogTitle")}
           </DialogTitle>
           <DialogDescription className="text-slate-400">
-            Get instant access to your funds with a debit card linked to your CreteXchange account
+            {t("wallet.card.dialogDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -104,7 +106,7 @@ export function DebitCardRequestDialog({
           <Alert className="border border-slate-800 bg-slate-900/70">
             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
             <AlertDescription className="text-sm text-slate-200">
-              <strong>Instant Access:</strong> Use your card at ATMs and stores without waiting for bank transfers
+              <strong>{t("wallet.card.instant")}</strong> {t("wallet.card.instantBody")}
             </AlertDescription>
           </Alert>
 
@@ -112,11 +114,11 @@ export function DebitCardRequestDialog({
           <div className="space-y-4">
             <div className="flex items-center space-x-2 text-sm font-medium text-slate-100">
               <MapPin className="h-4 w-4 text-sky-400" />
-              <span>Shipping Address</span>
+              <span>{t("wallet.card.shipping")}</span>
             </div>
 
             <div>
-              <Label htmlFor="shippingName" className="text-slate-200">Full Name on Card</Label>
+              <Label htmlFor="shippingName" className="text-slate-200">{t("wallet.card.fullName")}</Label>
               <Input
                 id="shippingName"
                 value={formData.shippingName}
@@ -129,7 +131,7 @@ export function DebitCardRequestDialog({
             </div>
 
             <div>
-              <Label htmlFor="shippingStreet" className="text-slate-200">Street Address</Label>
+              <Label htmlFor="shippingStreet" className="text-slate-200">{t("wallet.card.street")}</Label>
               <Input
                 id="shippingStreet"
                 value={formData.shippingStreet}
@@ -143,7 +145,7 @@ export function DebitCardRequestDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="shippingCity" className="text-slate-200">City</Label>
+                <Label htmlFor="shippingCity" className="text-slate-200">{t("wallet.card.city")}</Label>
                 <Input
                   id="shippingCity"
                   value={formData.shippingCity}
@@ -155,7 +157,7 @@ export function DebitCardRequestDialog({
                 />
               </div>
               <div>
-                <Label htmlFor="shippingState" className="text-slate-200">State</Label>
+                <Label htmlFor="shippingState" className="text-slate-200">{t("wallet.card.state")}</Label>
                 <Input
                   id="shippingState"
                   value={formData.shippingState}
@@ -170,7 +172,7 @@ export function DebitCardRequestDialog({
             </div>
 
             <div>
-              <Label htmlFor="shippingZip" className="text-slate-200">ZIP Code</Label>
+              <Label htmlFor="shippingZip" className="text-slate-200">{t("wallet.card.zip")}</Label>
               <Input
                 id="shippingZip"
                 value={formData.shippingZip}
@@ -197,8 +199,7 @@ export function DebitCardRequestDialog({
               htmlFor="agreeToTerms"
               className="text-sm leading-none text-slate-300 peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
-              I agree to receive a debit card and understand that it will be linked to my CreteXchange account. 
-              Card activation and usage are subject to terms and conditions.
+              {t("wallet.card.terms")}
             </label>
           </div>
 
@@ -211,7 +212,7 @@ export function DebitCardRequestDialog({
               className="border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800 hover:text-slate-100"
               data-testid="button-cancel"
             >
-              Cancel
+              {t("wallet.card.cancel")}
             </Button>
             <Button
               type="submit"
@@ -222,12 +223,12 @@ export function DebitCardRequestDialog({
               {requestCardMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Submitting...
+                  {t("wallet.card.submitting")}
                 </>
               ) : (
                 <>
                   <CreditCard className="w-4 h-4 mr-2" />
-                  Request Card
+                  {t("wallet.card.request")}
                 </>
               )}
             </Button>

@@ -124,6 +124,8 @@ function Router() {
           <Route path="/locations" component={DriverLocations} />
           <Route path="/activity" component={DriverActivity} />
           <Route path="/wallet" component={DriverWallet} />
+          <Route path="/billing" component={LegacyDriverBillingRedirect} />
+          <Route path="/messages" component={DriverNotifications} />
           <Route path="/notifications" component={DriverNotifications} />
           <Route path="/profile" component={DriverProfile} />
           <Route path="/reports" component={DriverReports} />
@@ -210,6 +212,16 @@ function LegacyLotteryDashboardRedirect() {
 
   useEffect(() => {
     setLocation("/lottery", { replace: true });
+  }, [setLocation]);
+
+  return null;
+}
+
+function LegacyDriverBillingRedirect() {
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    setLocation("/wallet", { replace: true });
   }, [setLocation]);
 
   return null;

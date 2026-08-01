@@ -32,9 +32,8 @@ import {
   Minus,
   User
 } from "lucide-react";
-import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useLanguage } from "@/lib/i18n";
+import { formatLocalizedCurrency, formatLocalizedDate, useLanguage } from "@/lib/i18n";
 import { useDriverPaymentLifecycle } from "@/hooks/useDriverPaymentLifecycle";
 import { DriverLifecycleSummary } from "@/components/driver/DriverLifecycleSummary";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip, DSTableShell } from "@/components/design-system";
@@ -67,7 +66,7 @@ interface ColumnOnboardingStatus {
 export default function DriverWallet() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const driverLifecycle = useDriverPaymentLifecycle();
   const [withdrawalAmount, setWithdrawalAmount] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -79,7 +78,7 @@ export default function DriverWallet() {
   const { enabled: issuingEnabled } = useFeatureFlag(FEATURE_FLAGS.ISSUING_ENABLED);
 
   // Fetch wallet balance
-  const { data: walletBalance, isLoading: balanceLoading, refetch: refetchBalance } = useQuery<WalletBalance>({
+  const { data: walletBalance, isLoading: balanceLoading, isError: balanceError, refetch: refetchBalance } = useQuery<WalletBalance>({
     queryKey: ['/api/wallet/balance'],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
@@ -90,7 +89,7 @@ export default function DriverWallet() {
   });
 
   // Fetch wallet transactions
-  const { data: transactionsData, isLoading: transactionsLoading, refetch: refetchTransactions } = useQuery({
+  const { data: transactionsData, isLoading: transactionsLoading, isError: transactionsError, refetch: refetchTransactions } = useQuery({
     queryKey: ['/api/wallet/transactions', currentPage],
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/wallet/transactions?page=${currentPage}&limit=${pageSize}`);
@@ -105,7 +104,7 @@ export default function DriverWallet() {
   });
 
   // Fetch payment account onboarding status
-  const { data: columnStatus, isLoading: columnLoading, refetch: refetchColumnStatus } = useQuery<ColumnOnboardingStatus>({
+  const { data: columnStatus, isLoading: columnLoading, isError: columnError, refetch: refetchColumnStatus } = useQuery<ColumnOnboardingStatus>({
     queryKey: ['/api/column/status'],
   });
 
@@ -139,8 +138,8 @@ export default function DriverWallet() {
     },
     onSuccess: () => {
       toast({
-        title: "Withdrawal Requested",
-        description: "Your withdrawal request has been submitted and will be processed within 1-2 business days.",
+        title: t("wallet.toast.withdrawRequested"),
+        description: t("wallet.toast.withdrawRequestedBody"),
       });
       setWithdrawalAmount("");
       refetchBalance();
@@ -148,8 +147,8 @@ export default function DriverWallet() {
     },
     onError: (error: any) => {
       toast({
-        title: "Withdrawal Failed",
-        description: error.message || "Failed to process withdrawal request",
+        title: t("wallet.toast.withdrawFailed"),
+        description: t("wallet.toast.withdrawFailedBody"),
         variant: "destructive",
       });
     },
@@ -164,8 +163,8 @@ export default function DriverWallet() {
       
     if (previousIsOnboarded === false && currentIsOnboarded === true) {
       toast({
-        title: "Account Connected! 🎉",
-        description: "Your bank account is now ready for withdrawals.",
+        title: t("wallet.toast.accountConnected"),
+        description: t("wallet.toast.accountConnectedBody"),
       });
     }
     
@@ -192,16 +191,16 @@ export default function DriverWallet() {
     // Handle terms status loading and error states
     if (termsLoading) {
       toast({
-        title: "Loading Terms Status",
-        description: "Please wait while we verify your account status",
+        title: t("wallet.toast.loadingTerms"),
+        description: t("wallet.toast.loadingTermsBody"),
       });
       return;
     }
 
     if (termsError) {
       toast({
-        title: "Terms Status Error",
-        description: "Unable to verify terms status. Please try again.",
+        title: t("wallet.toast.termsError"),
+        description: t("wallet.toast.termsErrorBody"),
         variant: "destructive",
       });
       return;
@@ -210,8 +209,8 @@ export default function DriverWallet() {
     const amount = parseFloat(withdrawalAmount);
     if (isNaN(amount) || amount < 5) {
       toast({
-        title: "Invalid Amount",
-        description: "Minimum withdrawal amount is $5.00",
+        title: t("wallet.toast.invalidAmount"),
+        description: t("wallet.toast.minimumBody"),
         variant: "destructive",
       });
       return;
@@ -219,8 +218,8 @@ export default function DriverWallet() {
 
     if (amount > (walletBalance?.availableBalance || 0)) {
       toast({
-        title: "Insufficient Funds",
-        description: "Withdrawal amount exceeds available balance",
+        title: t("wallet.toast.insufficient"),
+        description: t("wallet.toast.insufficientBody"),
         variant: "destructive",
       });
       return;
@@ -241,8 +240,8 @@ export default function DriverWallet() {
     
     if (isNaN(amount) || amount < 5) {
       toast({
-        title: "Invalid Amount",
-        description: "Please enter a valid withdrawal amount of at least $5.00",
+        title: t("wallet.toast.invalidAmount"),
+        description: t("wallet.toast.minimumValidBody"),
         variant: "destructive",
       });
       return;
@@ -250,8 +249,8 @@ export default function DriverWallet() {
 
     if (amount > (walletBalance?.availableBalance || 0)) {
       toast({
-        title: "Insufficient Funds",
-        description: "Withdrawal amount exceeds available balance",
+        title: t("wallet.toast.insufficient"),
+        description: t("wallet.toast.insufficientBody"),
         variant: "destructive",
       });
       return;
@@ -266,8 +265,8 @@ export default function DriverWallet() {
     driverLifecycle.refresh();
     refetchColumnStatus();
     toast({
-      title: "Data Refreshed",
-      description: "Wallet information has been updated",
+      title: t("wallet.toast.refreshed"),
+      description: t("wallet.toast.refreshedBody"),
     });
   };
 
@@ -303,11 +302,18 @@ export default function DriverWallet() {
     }
   };
 
+  const getTransactionDescription = (transaction: WalletTransaction) => {
+    if (transaction.sourceType === "washout") return t("wallet.transaction.recovery");
+    if (transaction.sourceType === "withdrawal") return t("wallet.transaction.withdrawal");
+    if (transaction.sourceType === "adjustment") return t("wallet.transaction.adjustment");
+    return transaction.description;
+  };
+
   const canWithdraw = columnStatus?.isOnboarded === true;
 
   if (balanceLoading || columnLoading) {
     return (
-      <div className="dark min-h-screen bg-background text-foreground">
+      <div className="dark min-h-screen bg-background text-foreground" role="status" aria-label={t("wallet.loading")}>
         <DriverHeader />
         <div className="p-4 space-y-4">
           <Skeleton className="h-32 rounded-lg" />
@@ -323,10 +329,18 @@ export default function DriverWallet() {
       <DriverHeader />
 
       <div className="p-4 space-y-6">
+        {balanceError || columnError || transactionsError ? (
+          <DSCard padding="md" role="alert">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-destructive">{t("wallet.error")}</p>
+              <Button variant="outline" onClick={refreshAllData}>{t("wallet.retry")}</Button>
+            </div>
+          </DSCard>
+        ) : null}
         {/* Page Header */}
         <DSSectionHeader
-          title="My Wallet"
-          description="Manage your wallet and withdrawal settings"
+          title={t("wallet.title")}
+          description={t("wallet.intro")}
           actions={
             <Button
               variant="outline"
@@ -336,64 +350,64 @@ export default function DriverWallet() {
               data-testid="button-refresh-wallet"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>Refresh</span>
+              <span>{t("wallet.refresh")}</span>
             </Button>
           }
         />
 
         <DriverLifecycleSummary lifecycle={driverLifecycle.lifecycle} isLoading={driverLifecycle.isLoading} paymentError={driverLifecycle.paymentError} onViewActivity={() => setLocation('/activity')} variant="wallet" />
         <div className="grid grid-cols-1 gap-3">
-          <DSKpiCard label="Wallet Balance" value={formatCurrency(walletBalance?.availableBalance || 0)} detail="Shown separately from activity and payment status" accentTone="success" data-testid="text-available-balance" />
+          <DSKpiCard label={t("wallet.balance")} value={formatLocalizedCurrency(walletBalance?.availableBalance || 0, language)} detail={t("wallet.balanceDetail")} accentTone="success" data-testid="text-available-balance" />
         </div>
 
         {/* Bank Account Status */}
         <DSCard padding="lg">
           <DSSectionHeader
-            title="Payment Account Status"
+            title={t("wallet.paymentStatus")}
             eyebrow={<CreditCard className="inline-block h-4 w-4 align-[-2px]" />}
           />
           <div className="mt-4">
             {!columnStatus?.isOnboarded ? (
               <div className="text-center py-6">
                 <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-                <h3 className="font-semibold mb-2">Payment Account Setup Required</h3>
+                <h3 className="font-semibold mb-2">{t("wallet.setupRequired")}</h3>
                 <p className="text-muted-foreground mb-4">
-                  Complete your payment account setup on your Profile page to receive recovery activity payments
+                  {t("wallet.setupDescription")}
                 </p>
                 <Button
-                  onClick={() => window.location.href = '/driver/profile'}
+                  onClick={() => setLocation('/profile')}
                   data-testid="button-go-to-profile"
                 >
                   <User className="w-4 h-4 mr-2" />
-                  Go to Profile & Set Up Account
+                  {t("wallet.goProfile")}
                 </Button>
                 <p className="text-xs text-muted-foreground mt-3">
-                  You'll need to complete a one-time account verification to start earning
+                  {t("wallet.verificationHelp")}
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Account Status</span>
+                  <span className="text-muted-foreground">{t("wallet.accountStatus")}</span>
                   <DSStatusChip tone="success" data-testid="badge-account-status">
-                    Connected & Ready
+                    {t("wallet.connectedReady")}
                   </DSStatusChip>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-muted-foreground">Bank Account Connected</span>
+                    <span className="text-muted-foreground">{t("wallet.bankConnected")}</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-muted-foreground">Identity Verified</span>
+                    <span className="text-muted-foreground">{t("wallet.identityVerified")}</span>
                   </div>
                   {columnStatus?.accountLast4 && (
                     <div className="flex items-center space-x-2 col-span-2">
                       <Banknote className="w-4 h-4 text-muted-foreground" />
                       <span className="text-muted-foreground">
-                        Account ending in {columnStatus.accountLast4}
+                        {t("wallet.accountEnding", { last4: columnStatus.accountLast4 })}
                       </span>
                     </div>
                   )}
@@ -403,7 +417,7 @@ export default function DriverWallet() {
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500 mt-0.5" />
                     <p className="text-sm text-foreground/85">
-                      Your bank account is ready to receive payments
+                      {t("wallet.bankReady")}
                     </p>
                   </div>
                 </div>
@@ -415,23 +429,23 @@ export default function DriverWallet() {
         {/* Withdrawal Request Form */}
         <DSCard padding="lg">
           <DSSectionHeader
-            title="Request Withdrawal"
+            title={t("wallet.withdrawTitle")}
             description={
               !termsStatus?.hasAgreed 
-                ? "$1 fee under $10, then 10% • ACH transfer to your bank (1-2 business days)"
-                : "ACH transfer to your bank (1-2 business days)"
+                ? t("wallet.withdrawTermsFee")
+                : t("wallet.withdrawDescription")
             }
           />
           <div className="mt-4 space-y-4">
             {!canWithdraw ? (
               <div className="text-center py-6 text-muted-foreground">
                 <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>Complete account verification to enable withdrawals</p>
+                <p>{t("wallet.withdrawDisabled")}</p>
               </div>
             ) : (
               <>
                 <div>
-                  <Label htmlFor="withdrawal-amount">Withdrawal Amount</Label>
+                  <Label htmlFor="withdrawal-amount">{t("wallet.withdrawAmount")}</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -447,26 +461,26 @@ export default function DriverWallet() {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Minimum withdrawal: $5.00
+                    {t("wallet.minimum")}
                   </p>
                 </div>
 
                 {withdrawAmount > 0 && (
                   <DSCard padding="sm" elevated={false} className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Withdrawal Amount:</span>
-                      <span data-testid="text-withdrawal-amount">{formatCurrency(withdrawAmount)}</span>
+                      <span>{t("wallet.withdrawAmount")}:</span>
+                      <span data-testid="text-withdrawal-amount">{formatLocalizedCurrency(withdrawAmount, language)}</span>
                     </div>
                     {!termsStatus?.hasAgreed && (
                       <div className="flex justify-between text-sm text-amber-600">
-                        <span>Processing Fee ({withdrawAmount < 10 ? '$1 flat fee' : '10%'}):</span>
-                        <span data-testid="text-fee-amount">-{formatCurrency(feeAmount)}</span>
+                        <span>{t("wallet.processingFee", { fee: withdrawAmount < 10 ? t("wallet.flatFee") : "10%" })}</span>
+                        <span data-testid="text-fee-amount">-{formatLocalizedCurrency(feeAmount, language)}</span>
                       </div>
                     )}
                     <div className="flex justify-between border-t pt-2 font-semibold">
-                      <span>You'll Receive:</span>
+                      <span>{t("wallet.receive")}</span>
                       <span className="text-green-600" data-testid="text-net-amount">
-                        {formatCurrency(netAmount)}
+                        {formatLocalizedCurrency(netAmount, language)}
                       </span>
                     </div>
                   </DSCard>
@@ -489,7 +503,7 @@ export default function DriverWallet() {
                   ) : (
                     <Banknote className="w-4 h-4 mr-2" />
                   )}
-                  Request Withdrawal
+                  {t("wallet.withdrawButton")}
                 </Button>
 
                 <div className="rounded-2xl border border-border/70 bg-card/90 p-4">
@@ -497,7 +511,7 @@ export default function DriverWallet() {
                     <Clock className="h-4 w-4 shrink-0 text-primary mt-0.5" />
                     <div className="space-y-2">
                       <p className="font-medium text-foreground/90">
-                        ACH withdrawals to your bank account typically arrive in 1-2 business days
+                        {t("wallet.achTiming")}
                       </p>
                       
                       {issuingEnabled && debitCardStatus?.hasCard ? (
@@ -505,25 +519,25 @@ export default function DriverWallet() {
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0">
                               <p className="font-semibold text-foreground">
-                                Debit Card {debitCardStatus.card?.cardStatus === 'active' ? 'Active' : 'Requested'}
+                                {debitCardStatus.card?.cardStatus === 'active' ? t("wallet.debitActive") : t("wallet.debitRequested")}
                               </p>
                               <p className="text-sm text-foreground/75">
-                                {debitCardStatus.card?.cardType === 'virtual' ? 'Virtual' : 'Physical'} Card •••• {debitCardStatus.card?.cardLast4}
+                                {debitCardStatus.card?.cardType === 'virtual' ? t("wallet.virtualCard") : t("wallet.physicalCard")} •••• {debitCardStatus.card?.cardLast4}
                               </p>
                               <p className="mt-1 text-xs text-foreground/65">
-                                Expires {debitCardStatus.card?.expirationMonth}/{debitCardStatus.card?.expirationYear}
+                                {t("wallet.expires", { month: debitCardStatus.card?.expirationMonth || "—", year: debitCardStatus.card?.expirationYear || "—" })}
                               </p>
                             </div>
-                            <DSStatusChip tone="success">{debitCardStatus.card?.cardStatus}</DSStatusChip>
+                            <DSStatusChip tone="success">{t(`driver.dashboard.debitStatus.${debitCardStatus.card?.cardStatus || "requested"}`)}</DSStatusChip>
                           </div>
                         </div>
                       ) : issuingEnabled ? (
                         <>
                           <p className="text-sm text-foreground/85">
-                            <strong>Need instant access?</strong> Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
+                            <strong>{t("wallet.instantAccessLead")}</strong> {t("wallet.instantAccessBody")}
                           </p>
                           <p className="text-xs text-foreground/65 mt-1">
-                            Physical cards typically arrive within 7-10 business days at your registered address.
+                            {t("wallet.physicalArrival")}
                           </p>
                           <Button
                             variant="outline"
@@ -533,7 +547,7 @@ export default function DriverWallet() {
                             data-testid="button-request-debit-card"
                           >
                             <CreditCard className="w-4 h-4 mr-2" />
-                            Request Debit Card
+                            {t("wallet.requestDebit")}
                           </Button>
                         </>
                       ) : null}
@@ -549,8 +563,8 @@ export default function DriverWallet() {
         {issuingEnabled && (
           <DSCard padding="lg">
             <DSSectionHeader
-              title="Debit Card"
-              description="Instant access to your wallet funds"
+              title={t("wallet.debitCard")}
+              description={t("wallet.debitDescription")}
               eyebrow={<CreditCard className="inline-block h-4 w-4 align-[-2px]" />}
             />
             <div className="space-y-4">
@@ -559,31 +573,31 @@ export default function DriverWallet() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-semibold text-foreground">
-                        Debit Card {debitCardStatus.card?.cardStatus === 'active' ? 'Active' : 'Requested'}
+                        {debitCardStatus.card?.cardStatus === 'active' ? t("wallet.debitActive") : t("wallet.debitRequested")}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {debitCardStatus.card?.cardType === 'virtual' ? 'Virtual' : 'Physical'} Card •••• {debitCardStatus.card?.cardLast4}
+                        {debitCardStatus.card?.cardType === 'virtual' ? t("wallet.virtualCard") : t("wallet.physicalCard")} •••• {debitCardStatus.card?.cardLast4}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Expires {debitCardStatus.card?.expirationMonth}/{debitCardStatus.card?.expirationYear}
+                        {t("wallet.expires", { month: debitCardStatus.card?.expirationMonth || "—", year: debitCardStatus.card?.expirationYear || "—" })}
                       </p>
                     </div>
                     <DSStatusChip tone={debitCardStatus.card?.cardStatus === 'active' ? 'success' : 'warning'}>
-                      {debitCardStatus.card?.cardStatus}
+                      {t(`driver.dashboard.debitStatus.${debitCardStatus.card?.cardStatus || "requested"}`)}
                     </DSStatusChip>
                   </div>
                 </DSCard>
               ) : (
                 <div className="text-center py-6">
                   <CreditCard className="w-12 h-12 mx-auto mb-3 text-primary" />
-                  <h3 className="font-semibold mb-2">Get Instant Access to Your Funds</h3>
+                  <h3 className="font-semibold mb-2">{t("wallet.getInstant")}</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Request a debit card linked to your wallet for immediate access to your funds at ATMs and stores.
+                    {t("wallet.instantAccessBody")}
                   </p>
                   <div className="rounded-2xl border border-border/70 bg-card/90 p-3 mb-4">
                     <div className="space-y-1 text-sm text-foreground/85">
-                      <p><strong>Virtual Card:</strong> $0.01 • Instant delivery</p>
-                      <p><strong>Physical Card:</strong> $30.00 • 2-day shipping</p>
+                      <p>{t("wallet.virtualPrice")}</p>
+                      <p>{t("wallet.physicalPrice")}</p>
                     </div>
                   </div>
                   <Button
@@ -591,7 +605,7 @@ export default function DriverWallet() {
                     data-testid="button-request-debit-card"
                   >
                     <CreditCard className="w-4 h-4 mr-2" />
-                    Request Debit Card
+                    {t("wallet.requestDebit")}
                   </Button>
                 </div>
               )}
@@ -601,8 +615,8 @@ export default function DriverWallet() {
 
         {/* Transaction History */}
         <DSTableShell
-          title="Transaction History"
-          description={(transactionsData as any)?.total > 0 ? `${(transactionsData as any).total} total transactions` : undefined}
+          title={t("wallet.transactions")}
+          description={(transactionsData as any)?.total > 0 ? t("wallet.totalTransactions", { count: (transactionsData as any).total }) : undefined}
         >
           <div className="space-y-3">
             {transactionsLoading ? (
@@ -619,8 +633,8 @@ export default function DriverWallet() {
             ) : !(transactionsData as any)?.transactions?.length ? (
                 <div className="text-center py-8 text-foreground/75">
                   <Receipt className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p>No transactions yet</p>
-                  <p className="text-sm">Your transaction history will appear here</p>
+                  <p>{t("wallet.noTransactions")}</p>
+                  <p className="text-sm">{t("wallet.noTransactionsHelp")}</p>
                 </div>
               ) : (
                 <>
@@ -636,17 +650,17 @@ export default function DriverWallet() {
                       </div>
                       <div>
                         <div className="font-medium text-sm" data-testid={`transaction-description-${index}`}>
-                          {transaction.description}
+                          {getTransactionDescription(transaction)}
                         </div>
                         <div className="text-xs text-foreground/65">
-                          {formatDateTime(transaction.createdAt)}
+                          {formatLocalizedDate(transaction.createdAt, language, { year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                         </div>
                         <div className="flex items-center space-x-2 mt-1">
                           <DSStatusChip tone={transaction.status === 'posted' ? 'success' : 'neutral'} className="text-xs">
-                            {transaction.status}
+                            {t(`wallet.status.${transaction.status}`)}
                           </DSStatusChip>
                           <span className="text-xs text-foreground/65">
-                            Balance: {formatCurrency(transaction.balanceAfter)}
+                            {t("wallet.balanceAfter", { amount: formatLocalizedCurrency(transaction.balanceAfter, language) })}
                           </span>
                         </div>
                       </div>
@@ -654,7 +668,7 @@ export default function DriverWallet() {
                     <div className="text-right">
                       <div className={`font-semibold ${getTransactionColor(transaction)}`} data-testid={`transaction-amount-${index}`}>
                         {transaction.direction === 'credit' ? '+' : '-'}
-                        {formatCurrency(Math.abs(transaction.amount))}
+                        {formatLocalizedCurrency(Math.abs(transaction.amount), language)}
                       </div>
                     </div>
                   </div>
@@ -670,10 +684,10 @@ export default function DriverWallet() {
                       disabled={currentPage === 1}
                       data-testid="button-prev-page"
                     >
-                      Previous
+                      {t("wallet.previous")}
                     </Button>
                     <span className="flex items-center px-3 text-sm">
-                      Page {currentPage} of {(transactionsData as any).totalPages}
+                      {t("wallet.page", { current: currentPage, total: (transactionsData as any).totalPages })}
                     </span>
                     <Button
                       variant="outline"
@@ -682,7 +696,7 @@ export default function DriverWallet() {
                       disabled={currentPage === (transactionsData as any).totalPages}
                       data-testid="button-next-page"
                     >
-                      Next
+                      {t("wallet.next")}
                     </Button>
                   </div>
                 )}

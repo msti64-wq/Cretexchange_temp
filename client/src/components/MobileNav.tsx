@@ -36,7 +36,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/driver/competition", icon: Medal, label: t("nav.competition"), testIdLabel: "competition" },
           { path: "/rewards", icon: Trophy, label: t("nav.rewards"), testIdLabel: "rewards" },
           { path: "/wallet", icon: Wallet, label: t("nav.wallet"), testIdLabel: "wallet" },
-          { path: "/notifications", icon: Bell, label: t("nav.messages"), testIdLabel: "messages" },
+          { path: "/messages", icon: Bell, label: t("nav.messages"), testIdLabel: "messages" },
           { path: "/profile", icon: User, label: t("nav.profile"), testIdLabel: "profile" },
         ];
       case "owner":
@@ -100,7 +100,7 @@ export function MobileNav({ role }: MobileNavProps) {
           : "min-w-max grid-flow-col auto-cols-[minmax(72px,1fr)]"
       )}>
         {navItems.map((item) => {
-          const isActive = location === item.path;
+          const isActive = location === item.path || (item.path === "/messages" && location === "/notifications");
           const Icon = item.icon;
           
           return (
