@@ -54,6 +54,7 @@ test("report, CSV, dashboard, intelligence, competition, and achievement labels 
     source("client/src/pages/admin/reports.tsx"),
     source("client/src/pages/admin/locations.tsx"),
     source("client/src/pages/admin/network-intelligence.tsx"),
+    source("client/index.html"),
   ]);
   const visible = visibleSources.join("\n");
   for (const required of ["Recovery Activities", "Recovery Verification", "Recovery Evidence", "Material Recovery", "Recovery Facilities"]) {
@@ -61,6 +62,13 @@ test("report, CSV, dashboard, intelligence, competition, and achievement labels 
   }
   assert.doesNotMatch(visible, />\s*Washouts?\b|"Washout (?:Status|Location|Report|Verification|Photos?)/i);
   assert.ok(DRIVER_ACHIEVEMENT_DEFINITIONS.every((definition) => !/washouts?/i.test(`${definition.name} ${definition.description} ${definition.unit}`)));
+});
+
+test("browser metadata positions the multi-material recovery platform", async () => {
+  const html = await source("client/index.html");
+  assert.match(html, /Construction Materials Recovery Platform/);
+  assert.match(html, /construction material recovery activity and intelligence/);
+  assert.doesNotMatch(html, /Concrete Washout Location Management|manage washout services/i);
 });
 
 test("stable internal identifiers, routes, schema, analytics events, and financial isolation remain intact", async () => {
