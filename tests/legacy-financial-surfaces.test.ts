@@ -139,12 +139,13 @@ test("fees and billing readiness remain read-only, bilingual, and available only
   assert.match(billing, /financialVisibility\.historical/);
 });
 
-test("browser metadata includes the standard mobile capability declaration and login uses current-password autocomplete", async () => {
+test("browser metadata includes the standard mobile capability declaration and login fields expose autocomplete", async () => {
   const [html, login] = await Promise.all([
     readFile(new URL("../client/index.html", import.meta.url), "utf8"),
     readFile(new URL("../client/src/pages/auth/login.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(html, /name="mobile-web-app-capable" content="yes"/);
   assert.match(html, /name="apple-mobile-web-app-capable" content="yes"/);
+  assert.match(login, /autoComplete="username"/);
   assert.match(login, /autoComplete="current-password"/);
 });

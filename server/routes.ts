@@ -5950,7 +5950,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const location = await storage.getWashoutLocation(activity.locationId);
     if (!location || location.ownerId !== owner.id) return res.status(404).json({ message: "Activity not found." });
     const review = await storage.getWashoutActivityAdminReview(activity.id);
-    if (!review) return res.status(404).json({ message: "Administrative review not found." });
+    // Administrative Review is optional. Once ownership has been proven, an
+    // absent review is a normal empty state rather than a failed resource load.
+    if (!review) return res.json(null);
     return res.json({
       requestedAt: review.requestedAt,
       resolution: review.resolution,

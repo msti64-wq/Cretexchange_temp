@@ -46,6 +46,8 @@ test("admin and owner API projections enforce role boundaries", () => {
   assert.match(driverHandler, /rationale: review\.adminRationale/);
   assert.match(ownerHandler, /req\.user\?\.role !== "owner"/);
   assert.match(ownerHandler, /location\.ownerId !== owner\.id/);
+  assert.match(ownerHandler, /if \(!review\) return res\.json\(null\)/);
+  assert.doesNotMatch(ownerHandler, /Administrative review not found/);
   assert.match(ownerHandler, /rationale: review\.adminRationale/);
   assert.match(ownerHandler, /returnedToOwnerReview/);
   assert.match(adminHandler, /actor\.role !== "admin" && actor\.role !== "super_admin"/);

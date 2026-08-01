@@ -127,6 +127,7 @@ export default function Login() {
                 <Input
                   id="username"
                   type="text"
+                  autoComplete="username"
                   placeholder={t("auth.login.usernamePlaceholder")}
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
