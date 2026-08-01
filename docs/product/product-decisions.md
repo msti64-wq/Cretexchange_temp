@@ -721,9 +721,9 @@ the server.
 
 **Related Documents:** [CTX-ARCH-003](../architecture/driver-operations-architecture.md), [CTX-ARCH-005](../architecture/material-management-architecture.md), and [PD-015](#pd-015---owner-material-acceptance).
 
-## PD-056 - Driver Achievement, Rewards, and Shared Leaderboard Future Direction
+## PD-056 - Driver Achievement, Authenticated Competition, and Future Rewards
 
-**Decision:** [PD-056](./PD-056-driver-achievement-rewards-and-leaderboard-future-direction.md) records the approved future direction for a separate Driver Achievement Center, related Driver Rewards Center, and opt-in shared Driver Leaderboard. It preserves operational and financial separation, auditable future reward-ledger requirements, privacy boundaries, and qualification-integrity rules.
+**Decision:** [PD-056](./PD-056-driver-achievement-rewards-and-leaderboard-future-direction.md) authorizes private Driver achievements and the Phase 3 Sprint 4 authenticated, privacy-safe verified-washout competition while retaining rewards, prizes, public profiles, and public leaderboards as future-only direction. It preserves operational and financial separation, future reward-ledger requirements, privacy boundaries, and qualification-integrity rules.
 
 **Status:** Approved Future Product Direction — Not Authorized for Pilot Implementation
 

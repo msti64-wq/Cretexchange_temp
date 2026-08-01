@@ -40,3 +40,9 @@ Document API changes when contracts or expected behavior change. Keep this folde
 `GET /api/admin/analytics/network/overview` is a read-only Admin/Super Admin contract. Query parameters are `start`, `end` (inclusive UTC, maximum 366 days), optional two-letter `state`, optional `facilityId`, and bounded geography `page`, `pageSize`, `sort`, and `direction`.
 
 The stable response contains `window`, `history`, `overview`, `engagement`, `quality`, `growth`, `adoption`, `trends`, paginated `geography`, `utilization`, and explicit privacy flags. It never returns raw events, metadata, contacts, coordinates, media paths, Owner identities, or financial fields. Anonymous access is rejected by authentication; Driver and Owner roles receive 403.
+
+# Driver Competition
+
+`GET /api/drivers/competition/leaderboard` is an authenticated Driver-only, read-only contract. It accepts `period=week|month|year|all_time`, optional two-letter `state`, optional eligible `facilityId`, and bounded `page`/`pageSize` values. The caller cannot supply a Driver identity; the current Driver is resolved from the session.
+
+The response contains the UTC window, privacy-safe ranked rows, the caller's separate current position, nearby ranks, total ranked Drivers, pagination, available state/Facility filters, and explicit empty or insufficient-data state. Counts are distinct canonical verified activities. Anonymous access is rejected by authentication; Owner, Admin, and Super Admin roles receive 403. No raw Driver ID, contact data, precise GPS, private Facility history, event payload, media path, or financial field is returned.

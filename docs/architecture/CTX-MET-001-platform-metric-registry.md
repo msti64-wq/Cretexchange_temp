@@ -1,6 +1,6 @@
 # CTX-MET-001 — Platform Metric Registry
 
-**Status:** Approved through Phase 3 Sprint 3 Network Intelligence Foundation
+**Status:** Approved through Phase 3 Sprint 4 Driver Competition and Leaderboards
 **Owner:** V8 Laboratories
 **Classification:** Internal operational analytics; no financial, payment, private-storage, contact, GPS, or sensitive metadata is included.
 
@@ -76,6 +76,21 @@ Each definition is evaluated independently and remains earned after its threshol
 The next milestone for a category is its lowest unearned threshold. The overall next achievement is the category-next milestone with the highest completion percentage; ties use the smallest remaining count and then the stable definition order above. When all current definitions are earned, no next achievement is returned.
 
 Achievement timestamps and ordering use UTC. No status, payment, wallet, payout, Stripe, reward-entry, drawing, public-profile, leaderboard, or cross-Driver data participates. Later reversal or disqualification semantics require a separately governed canonical correction event; the current engine never invents a correction from mutable state.
+
+## Driver competition definitions
+
+| Term | Canonical definition |
+| --- | --- |
+| Qualifying washout | One distinct `activity_id` with an immutable `activity.verified` event inside the selected UTC period and optional Facility-derived geography. Submitted, pending, rejected, Administrative Review, duplicate event replay, and non-activity records do not qualify. |
+| Ranked Driver | Active account with role `driver` and at least one qualifying washout. Inactive accounts and zero-count Drivers are unranked. |
+| Displayed rank | Qualifying count descending. Equal counts share the same dense rank. Equal-count presentation order is earliest attainment, then stable internal Driver ID; the ID is never returned. |
+| Current position | Authenticated Driver's own rank and verified count, returned separately even when outside the requested page. Nearby positions are at most two ordered rows above and below. |
+| Distance to next rank | For a non-leading Driver, `nearest higher distinct total - current total + 1`; null for a leading Driver and one for an unranked Driver. |
+| Recognition milestone | Highest reached threshold from the existing verified-washout achievement definitions. No other private achievement history is shared. |
+
+Week starts Monday 00:00 UTC; month and year start at their calendar UTC boundary; all-time starts at the beginning of recorded canonical coverage. Network-wide, two-letter state, and eligible-Facility views use the same formula. State and Facility always come from the Facility attached to the verified event. Pagination is server-side and bounded to 25 rows per page.
+
+The leaderboard display identity is first name plus last initial. It never includes full surname, contact information, precise GPS, Facility history, private Driver analytics, media/storage references, event metadata, payment, wallet, payout, Stripe, or reward information. Competition recognition is operational only and has no prize or financial value.
 
 ## Network Intelligence definitions
 

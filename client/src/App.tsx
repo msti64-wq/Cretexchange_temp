@@ -25,6 +25,7 @@ const DriverWallet = lazy(() => import("@/pages/driver/wallet"));
 const DriverNotifications = lazy(() => import("@/pages/driver/notifications"));
 const DriverReports = lazy(() => import("@/pages/driver/reports"));
 const DriverRewards = lazy(() => import("@/pages/driver/rewards"));
+const DriverCompetition = lazy(() => import("@/pages/driver/competition"));
 
 // Owner pages
 const OwnerDashboard = lazy(() => import("@/pages/owner/dashboard"));
@@ -128,6 +129,7 @@ function Router() {
           <Route path="/reports" component={DriverReports} />
           <Route path="/rewards" component={DriverRewards} />
           <Route path="/driver/rewards" component={DriverRewards} />
+          <Route path="/driver/competition" component={DriverCompetition} />
           <Route path="/check-in/:locationId?" component={DriverCheckIn} />
           <Route component={NotFound} />
         </Switch>

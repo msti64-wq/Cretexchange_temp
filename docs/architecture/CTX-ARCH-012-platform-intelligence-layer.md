@@ -1,8 +1,8 @@
 # CTX-ARCH-012 — Platform Intelligence Layer
 
-**Status:** Approved through Phase 3 Sprint 2 Driver Achievements & Recognition
+**Status:** Approved through Phase 3 Sprint 4 Driver Competition and Leaderboards
 **Owner:** V8 Laboratories
-**Scope:** Immutable operational analytics, governed metrics, journeys, role-scoped read APIs, owner-scoped Facility Intelligence, Driver-scoped personal intelligence, private Driver achievements, and Admin-only Network Intelligence. No public profile, ranking, competition, reward, prize, point, financial incentive, environmental claim, AI inference, or financial-execution change is authorized.
+**Scope:** Immutable operational analytics, governed metrics, journeys, role-scoped read APIs, owner-scoped Facility Intelligence, Driver-scoped personal intelligence, private Driver achievements, authenticated privacy-safe Driver competition, and Admin-only Network Intelligence. No public profile, public ranking, reward, prize, point, financial incentive, environmental claim, AI inference, or financial-execution change is authorized.
 
 ## Purpose and source of truth
 
@@ -72,6 +72,14 @@ The projection returns earned achievements, earned dates, bounded progress, the 
 `GET /api/drivers/achievements` resolves the Driver profile exclusively from the authenticated account. It accepts no Driver identifier and returns only that Driver's private projection. Owners, Admins acting through this Driver route, other Drivers, anonymous users, and public callers cannot retrieve the projection. Future competition, rewards, public recognition, or comparative use requires separately governed APIs and authorization; this endpoint does not provide cross-Driver inputs.
 
 Achievement calculation is performed from a maximum of 10,000 qualifying canonical events in chronological order. A larger result fails closed rather than silently truncating recognition. Historical coverage begins with Platform Intelligence instrumentation; the service does not infer or backfill unrecorded activity from mutable status.
+
+## Authenticated Driver competition
+
+`server/driverCompetition.ts` is a reusable, read-only projection over canonical `activity.verified` events. `GET /api/drivers/competition/leaderboard` resolves the caller's Driver profile from the authenticated session and rejects non-Driver roles. It accepts week, month, year, or all-time UTC periods and optional state or eligible-Facility filters. State is attributed only from the Facility on the verified event; no Driver GPS or profile location participates.
+
+Ranked totals count distinct activity IDs, so replayed analytics events cannot add a second washout. Only active Driver accounts with at least one qualifying event appear. Rows use first name plus last initial, shared rank for equal totals, earliest attainment then internal ID for deterministic ordering, bounded server pagination, and a separate current-Driver position with nearby ranks. The response exposes no raw identifiers, contact details, Facility history, precise GPS, media paths, event payloads, or financial fields.
+
+The leaderboard reuses the existing verified-washout achievement thresholds for milestone recognition; it does not create points, prizes, rewards, monetary value, public profiles, or a new event stream. Queries cap the ranked set at 10,000 and eligible filter Facilities at 100 and fail closed above those bounds. Existing event type/time, Driver/time, and Facility/time indexes support the principal aggregation; no schema or pre-aggregation change is authorized for this sprint.
 
 ## Network Intelligence extension
 

@@ -160,6 +160,7 @@ import {
   PlatformAnalyticsQueryError,
 } from "./platformAnalytics";
 import { buildDriverAchievementProjection } from "./driverAchievements";
+import { buildDriverCompetitionProjection, DriverCompetitionQueryError, parseDriverCompetitionQuery } from "./driverCompetition";
 import { buildNetworkIntelligence, parseNetworkIntelligenceQuery } from "./networkIntelligence";
 import {
   buildBillingAuditReport,
@@ -14294,6 +14295,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error aggregating driver achievements:", error);
       return res.status(500).json({ message: "Failed to aggregate driver achievements" });
+    }
+  });
+
+  // Shared competition uses only privacy-safe names and distinct canonical
+  // verified activity. The caller can never select another Driver identity.
+  app.get("/api/drivers/competition/leaderboard", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== "driver") return res.status(403).json({ message: "Driver competition access required" });
+      const driver = await storage.getDriver(user.id);
+      if (!driver) return res.status(404).json({ message: "Driver profile not found" });
+      const query = parseDriverCompetitionQuery(req.query || {});
+      return res.json(await buildDriverCompetitionProjection(db, {
+        driverId: driver.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      }, query));
+    } catch (error) {
+      if (error instanceof DriverCompetitionQueryError) return res.status(400).json({ message: error.message });
+      console.error("Error aggregating Driver competition:", error);
+      return res.status(500).json({ message: "Failed to aggregate Driver competition" });
     }
   });
 

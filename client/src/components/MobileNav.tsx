@@ -1,4 +1,4 @@
-import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag, RefreshCw, Wrench, Clock, Trophy, ClipboardList, Images, Globe2 } from "lucide-react";
+import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag, RefreshCw, Wrench, Clock, Trophy, ClipboardList, Images, Globe2, Medal } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +33,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/", icon: Home, label: t("common.dashboard"), testIdLabel: "dashboard" },
           { path: "/locations", icon: Map, label: t("common.locations"), testIdLabel: "locations" },
           { path: "/activity", icon: List, label: t("nav.activity"), testIdLabel: "activity" },
+          { path: "/driver/competition", icon: Medal, label: t("nav.competition"), testIdLabel: "competition" },
           { path: "/rewards", icon: Trophy, label: "Rewards", testIdLabel: "rewards" },
           { path: "/wallet", icon: Wallet, label: t("nav.wallet"), testIdLabel: "wallet" },
           { path: "/notifications", icon: Bell, label: t("nav.messages"), testIdLabel: "messages" },
