@@ -85,7 +85,7 @@ export function PhotoModal({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-h-[90vh] max-w-4xl border-slate-800 bg-slate-950 text-slate-100 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-slate-100">Washout Photos</DialogTitle>
+            <DialogTitle className="text-slate-100">Recovery Evidence Photos</DialogTitle>
           </DialogHeader>
           <div className="flex items-center justify-center p-8 text-slate-300">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -104,7 +104,7 @@ export function PhotoModal({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-h-[90vh] max-w-4xl border-slate-800 bg-slate-950 text-slate-100 shadow-2xl">
           <DialogHeader>
-            <DialogTitle className="text-slate-100">Washout Photos</DialogTitle>
+            <DialogTitle className="text-slate-100">Recovery Evidence Photos</DialogTitle>
           </DialogHeader>
           <div className="flex items-center justify-center p-8 text-red-400">
             <ImageIcon className="h-8 w-8" />
@@ -121,7 +121,7 @@ export function PhotoModal({
         <DialogContent className="max-h-[90vh] max-w-4xl border-slate-800 bg-slate-950 text-slate-100 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between text-slate-100">
-              <span>Washout Verification</span>
+              <span>Recovery Verification</span>
               <Badge 
                 variant={status === 'verified' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'}
               >
@@ -131,7 +131,7 @@ export function PhotoModal({
           </DialogHeader>
           <div className="flex items-center justify-center p-8 text-slate-400">
             <ImageIcon className="h-8 w-8" />
-            <span className="ml-2">No photos available for this washout</span>
+            <span className="ml-2">No photos available for this recovery activity</span>
           </div>
         </DialogContent>
       </Dialog>
@@ -178,7 +178,7 @@ export function PhotoModal({
       <DialogContent className="max-h-[90vh] overflow-hidden border-slate-800 bg-slate-950 text-slate-100 shadow-2xl max-w-4xl">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between text-slate-100">
-            <span>Washout Verification</span>
+            <span>Recovery Verification</span>
             <Badge 
               variant={status === 'verified' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'}
             >
@@ -213,7 +213,7 @@ export function PhotoModal({
               {/* Main Photo - NEW: Simple img tag with signed URL */}
               <AuthenticatedImage
                 src={currentPhoto.url}
-                alt={`Washout photo ${currentPhotoIndex + 1}`}
+                alt={`Recovery evidence photo ${currentPhotoIndex + 1}`}
                 className="max-h-[500px] max-w-full rounded-lg object-contain"
                 data-testid={`photo-${currentPhotoIndex}`}
               />

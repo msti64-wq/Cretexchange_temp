@@ -1511,7 +1511,7 @@ function buildLotteryParticipantMessage(monthName: string, year: number, winners
 
   return {
     title: `🎰 ${monthName} ${year} Monthly Prize Drawing Complete!`,
-    message: `The ${monthName} ${year} Monthly Prize Drawing is complete. Reward winners: ${winnerSummary}. Thank you for participating. Every completed washout earns another reward entry for the next drawing in ${nextMonthName} ${nextYear}.`,
+    message: `The ${monthName} ${year} Monthly Prize Drawing is complete. Reward winners: ${winnerSummary}. Thank you for participating. Every completed recovery activity earns another reward entry for the next drawing in ${nextMonthName} ${nextYear}.`,
   };
 }
 
@@ -3358,7 +3358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Verify owner has saved payment method (required for batch processing)
         if (!owner.stripeCustomerId) {
           return res.status(400).json({ 
-            message: "Please add a credit card in Payment Methods before processing washouts.",
+            message: "Please add a credit card in Payment Methods before processing recovery activities.",
             needsPaymentMethod: true,
           });
         }
@@ -5601,7 +5601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       if (req.user?.role !== "owner") {
-        return res.status(403).json({ message: "Only facility owners can approve washouts." });
+        return res.status(403).json({ message: "Only facility owners can approve recovery activities." });
       }
 
       const [owner, activity] = await Promise.all([
@@ -5611,12 +5611,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!owner) return res.status(404).json({ message: "Owner not found" });
       if (!activity) return res.status(404).json({ message: "Activity not found" });
       if (activity.status !== "pending") {
-        return res.status(409).json({ message: "This washout is no longer awaiting owner approval." });
+        return res.status(409).json({ message: "This recovery activity is no longer awaiting owner approval." });
       }
 
       const location = await storage.getWashoutLocation(activity.locationId) as WashoutLocation | undefined;
       if (!location || location.ownerId !== owner.id) {
-        return res.status(403).json({ message: "This washout does not belong to your location." });
+        return res.status(403).json({ message: "This recovery activity does not belong to your facility." });
       }
 
       const intentToken = randomBytes(32).toString("base64url");
@@ -5650,7 +5650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
     let approvedActivity: WashoutActivity | null = null;
-    let approvalResponseMessage = "Washout approved.";
+    let approvalResponseMessage = "Recovery activity approved.";
     let approvalResponsePaymentStatus: string | null = null;
     let approvalResponsePayoutStatus: string | null = null;
     let approvalResponseDeferReason: string | null = null;
@@ -5708,7 +5708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         console.error("❌ Washout approval rejected due to ownership mismatch:", failureDetails);
         return res.status(403).json({
-          message: "This washout does not belong to your location.",
+          message: "This recovery activity does not belong to your facility.",
           details: failureDetails,
         });
       }
@@ -5728,7 +5728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
         console.error("❌ Washout approval rejected due to invalid state transition:", failureDetails);
         return res.status(409).json({
-          message: "This washout has already been processed or is not awaiting owner approval.",
+          message: "This recovery activity has already been processed or is not awaiting owner approval.",
           details: failureDetails,
         });
       }
@@ -5779,18 +5779,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // legacy `immediate` cadence must never reach Stripe, billing, or wallet writes.
       return res.json({
         ...buildApprovedActivityPayload(verifiedActivity),
-        message: "Washout approved. Payment information is handled separately.",
+        message: "Recovery activity approved. Payment information is handled separately.",
       });
 
     } catch (error: any) {
       if (error?.code === "WASHOUT_ACTIVITY_NOT_PENDING") {
         return res.status(409).json({
-          message: "This washout has already been processed or is not awaiting owner approval.",
+          message: "This recovery activity has already been processed or is not awaiting owner approval.",
         });
       }
       if (error?.code === "WASHOUT_APPROVAL_INTENT_INVALID") {
         return res.status(409).json({
-          message: "This approval confirmation has expired or was already used. Please review the washout again.",
+          message: "This approval confirmation has expired or was already used. Please review the recovery activity again.",
           code: "WASHOUT_APPROVAL_INTENT_INVALID",
         });
       }
@@ -5918,7 +5918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const location = await storage.getWashoutLocation(activity.locationId);
       if (!location) return res.status(404).json({ message: "Activity not found." });
       const review = await storage.createWashoutActivityAdminReview({ activityId: activity.id, driverId: driver.id, driverUserId: req.user.id, ownerId: location.ownerId, rejectionReasonSnapshot: activity.rejectionReason, driverExplanation: parsed.data.explanation });
-      return res.status(201).json({ id: review.id, activityId: review.activityId, requestedAt: review.requestedAt, resolution: review.resolution, message: "Administrative review requested. This review does not approve the washout or create a payment entitlement." });
+      return res.status(201).json({ id: review.id, activityId: review.activityId, requestedAt: review.requestedAt, resolution: review.resolution, message: "Administrative review requested. This review does not approve the recovery activity or create a payment entitlement." });
     } catch (error: any) {
       if (error?.code === "23505") return res.status(409).json({ message: "An administrative review is already open for this activity." });
       console.error("[ADMIN_REVIEW_REQUEST_FAILED]", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
@@ -6098,7 +6098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reason: parsed.data.reason || null,
         actionSource: `admin-photo-review-${parsed.data.decision}`,
       });
-      return res.json({ item: projectAdminPhotoReviewItem(item), message: "Photo evidence review recorded. The washout operational status was not changed." });
+      return res.json({ item: projectAdminPhotoReviewItem(item), message: "Photo evidence review recorded. The recovery activity operational status was not changed." });
     } catch (error: any) {
       if (error?.code === "PHOTO_REVIEW_NOT_FOUND") return res.status(404).json({ message: "Photo review item not found." });
       if (error?.code === "PHOTO_REVIEW_STALE") return res.status(409).json({ message: "Photo review item has changed. Refresh the queue before deciding." });
@@ -12913,7 +12913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const missingWashoutActivityIds = requestedWashoutActivityIds.filter((activityId: string) => !approvedWashoutLookup.has(activityId));
       if (requestedWashoutActivityIds.length > 0 && missingWashoutActivityIds.length > 0) {
         return res.status(400).json({
-          message: "One or more washouts are not approved or already billed",
+          message: "One or more recovery activities are not approved or already billed",
           reason: "selected_washouts_not_billable",
           missingWashoutActivityIds,
         });
@@ -16824,7 +16824,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerId: location?.ownerId ?? null,
       });
       if (!location) {
-        return res.status(400).json({ message: "Invalid location. Please reselect the washout site and try again." });
+        return res.status(400).json({ message: "Invalid location. Please reselect the recovery facility and try again." });
       }
 
       if (activityResult.data.status !== "pending") {

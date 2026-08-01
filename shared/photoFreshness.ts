@@ -40,7 +40,7 @@ export function evaluatePhotoFreshness({
     return {
       status: "rejected",
       ageHours,
-      reason: "Please take a new photo at the washout site before completing checkout.",
+      reason: "Please take a new photo at the recovery facility before completing check-in.",
     };
   }
 

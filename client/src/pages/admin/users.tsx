@@ -253,7 +253,7 @@ export default function AdminUsers() {
     onSuccess: () => {
       toast({
         title: "Platform Fee Updated",
-        description: "The owner's platform fee per washout has been updated successfully.",
+        description: "The owner's platform fee per verified activity has been updated successfully.",
       });
       setPlatformFeeDialogOpen(false);
       setSelectedOwner(null);
@@ -265,7 +265,7 @@ export default function AdminUsers() {
     onError: (error: any) => {
       toast({
         title: "Update Failed",
-        description: error.message || "Failed to update platform fee per washout",
+        description: error.message || "Failed to update platform fee per verified activity",
         variant: "destructive",
       });
     },
@@ -750,7 +750,7 @@ export default function AdminUsers() {
                         )}
                         {user.role === 'owner' && (currentUser as any)?.role === 'super_admin' && (
                           <p className="text-sm text-muted-foreground mt-1" data-testid={`text-platform-fee-${index}`}>
-                            <strong>Platform Fee per Washout:</strong> {user.roleData?.customPlatformFee !== null && user.roleData?.customPlatformFee !== undefined ? `$${user.roleData.customPlatformFee} (custom)` : 'Using global fee'}
+                            <strong>Platform Fee per Verified Activity:</strong> {user.roleData?.customPlatformFee !== null && user.roleData?.customPlatformFee !== undefined ? `$${user.roleData.customPlatformFee} (custom)` : 'Using global fee'}
                           </p>
                         )}
                       </div>
@@ -983,7 +983,7 @@ export default function AdminUsers() {
       <Dialog open={platformFeeDialogOpen} onOpenChange={setPlatformFeeDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Set Platform Fee per Washout</DialogTitle>
+            <DialogTitle>Set Platform Fee per Verified Activity</DialogTitle>
           </DialogHeader>
           
           <div className="mb-4 text-sm text-muted-foreground">
@@ -995,7 +995,7 @@ export default function AdminUsers() {
                 <p className="mb-2">
                   <span className="font-medium">Months on Platform:</span> {selectedOwner.createdAt && calculateMonthsOnPlatform(selectedOwner.createdAt)}
                 </p>
-                <p>Set the platform fee per washout for this owner. Leave blank to use the platform default. A superadmin can override this owner rate at the location level. Enter 0.00 to waive the fee.</p>
+                <p>Set the platform fee per verified recovery activity for this owner. Leave blank to use the platform default. A superadmin can override this owner rate at the facility level. Enter 0.00 to waive the fee.</p>
               </>
             )}
           </div>
@@ -1007,7 +1007,7 @@ export default function AdminUsers() {
                 name="customPlatformFee"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Platform Fee per Washout ($)</FormLabel>
+                    <FormLabel>Platform Fee per Verified Activity ($)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -1182,7 +1182,7 @@ export default function AdminUsers() {
                 name="customWashoutRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Custom Washout Rate ($)</FormLabel>
+                    <FormLabel>Custom Recovery Activity Rate ($)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"

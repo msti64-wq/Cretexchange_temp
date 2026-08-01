@@ -42,7 +42,7 @@ export function downloadReportPdf(
   doc.text(`Date range: ${report.dateRange.label}`, 14, 30);
 
   const summaryLines = [
-    `Washouts: ${report.summary.totalWashouts}`,
+    `Recovery Activities: ${report.summary.totalWashouts}`,
     `Charged: $${report.summary.totalAmountCharged}`,
     `Platform fees: $${report.summary.totalPlatformFees}`,
     `Tips: $${report.summary.totalTips}`,

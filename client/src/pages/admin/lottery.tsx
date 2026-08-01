@@ -2014,7 +2014,7 @@ export default function AdminLottery() {
                 <Ticket className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No reward entries for {MONTH_NAMES[selectedMonth - 1]} {selectedYear}</p>
                 {isCurrentMonth && (
-                  <p className="text-sm">Entries will appear when washouts are verified</p>
+                  <p className="text-sm">Entries will appear when recovery activities are verified</p>
                 )}
               </div>
             )}

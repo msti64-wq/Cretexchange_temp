@@ -690,7 +690,7 @@ export function OwnerWalletWizard({ onComplete, onCancel, isOpen }: OwnerWalletW
                 <ul className="text-sm text-green-700 space-y-1 list-disc list-inside">
                   <li>Your account is being verified</li>
                   <li>You'll receive an email once verification is complete</li>
-                  <li>Start adding washout locations to your account</li>
+                  <li>Start adding recovery facilities to your account</li>
                   <li>Begin accepting payments from drivers</li>
                 </ul>
               </div>

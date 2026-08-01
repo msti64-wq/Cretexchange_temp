@@ -772,7 +772,7 @@ export default function OwnerDashboard() {
               value={pendingReviewCount}
               detail={
                 <div className="space-y-0.5">
-                  <div>{`${pendingReviewCount} Washout${pendingReviewCount === 1 ? "" : "s"}`}</div>
+                  <div>{`${pendingReviewCount} Recovery Activit${pendingReviewCount === 1 ? "y" : "ies"}`}</div>
                   <div>{t("owner.dashboard.potentialCharges", { amount: formatLocalizedCurrency(pendingReviewPotentialChargesCents / 100, language) })}</div>
                 </div>
               }
@@ -784,7 +784,7 @@ export default function OwnerDashboard() {
               value={formatLocalizedCurrency(currentReceivablesCents / 100, language)}
               detail={
                 <div className="space-y-0.5">
-                  <div>{`${approvedCount} Approved Washouts`}</div>
+                  <div>{`${approvedCount} Approved Recovery Activities`}</div>
                   <div>Owner charge awaiting collection</div>
                 </div>
               }
@@ -880,7 +880,7 @@ export default function OwnerDashboard() {
                 detail={
                   <div className="space-y-0.5">
                     <div>{`${ownerWashoutStatusCounts.approved} approved / ${ownerWashoutStatusCounts.pending} pending / ${ownerWashoutStatusCounts.rejected} rejected`}</div>
-                    <div>{`Selected range washouts: ${billableWashoutCount}`}</div>
+                    <div>{`Selected range recovery activities: ${billableWashoutCount}`}</div>
                     <div className="text-xs text-muted-foreground">{t("owner.dashboard.derivedFromOwnerActivity")}</div>
                   </div>
                 }

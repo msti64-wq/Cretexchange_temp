@@ -6,7 +6,7 @@ import {
 } from "./platformAnalytics";
 
 export type DriverAchievementCategory = "verified_washouts" | "consistency" | "quality" | "participation";
-export type DriverAchievementUnit = "verified washouts" | "active days" | "verified without rejection" | "facilities";
+export type DriverAchievementUnit = "verified activities" | "active days" | "verified without rejection" | "facilities";
 
 export type DriverAchievementDefinition = {
   id: string;
@@ -43,19 +43,19 @@ export const DRIVER_ACHIEVEMENT_DEFINITIONS: readonly DriverAchievementDefinitio
   ...verifiedMilestones.map((threshold) => ({
     id: `verified_washouts_${threshold}`,
     category: "verified_washouts" as const,
-    name: threshold === 1 ? "First Verified Washout" : `${threshold.toLocaleString("en-US")} Verified Washouts`,
+    name: threshold === 1 ? "First Verified Recovery Activity" : `${threshold.toLocaleString("en-US")} Verified Recovery Activities`,
     description: threshold === 1
-      ? "Complete your first owner-verified washout."
-      : `Complete ${threshold.toLocaleString("en-US")} owner-verified washouts.`,
+      ? "Complete your first owner-verified recovery activity."
+      : `Complete ${threshold.toLocaleString("en-US")} owner-verified recovery activities.`,
     threshold,
-    unit: "verified washouts" as const,
+    unit: "verified activities" as const,
     sourceEvents: ["activity.verified"] as const,
   })),
   ...streakMilestones.map((threshold) => ({
     id: `active_day_streak_${threshold}`,
     category: "consistency" as const,
     name: `${threshold}-Day Streak`,
-    description: `Record submitted washout activity on ${threshold} consecutive UTC days.`,
+    description: `Record submitted recovery activity on ${threshold} consecutive UTC days.`,
     threshold,
     unit: "active days" as const,
     sourceEvents: ["activity.submitted"] as const,
@@ -74,8 +74,8 @@ export const DRIVER_ACHIEVEMENT_DEFINITIONS: readonly DriverAchievementDefinitio
     category: "participation" as const,
     name: threshold === 1 ? "First Facility" : `${threshold === 5 ? "Five" : "Ten"} Facilities Visited`,
     description: threshold === 1
-      ? "Submit washout activity at your first facility."
-      : `Submit washout activity across ${threshold} distinct facilities.`,
+      ? "Submit recovery activity at your first facility."
+      : `Submit recovery activity across ${threshold} distinct facilities.`,
     threshold,
     unit: "facilities" as const,
     sourceEvents: ["activity.submitted"] as const,

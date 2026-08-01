@@ -358,7 +358,7 @@ export default function DriverWallet() {
                 <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
                 <h3 className="font-semibold mb-2">Payment Account Setup Required</h3>
                 <p className="text-muted-foreground mb-4">
-                  Complete your payment account setup on your Profile page to receive washout payments
+                  Complete your payment account setup on your Profile page to receive recovery activity payments
                 </p>
                 <Button
                   onClick={() => window.location.href = '/driver/profile'}

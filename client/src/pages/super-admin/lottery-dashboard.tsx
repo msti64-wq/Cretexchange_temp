@@ -446,7 +446,7 @@ export default function SuperAdminLotteryDashboard() {
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Eligible washouts</p>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Eligible recovery activities</p>
                   <p className="text-2xl font-semibold text-foreground">{lotteryOverview.totalEligibleWashouts || 0}</p>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">

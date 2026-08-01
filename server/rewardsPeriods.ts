@@ -10,7 +10,7 @@ export const TICKET_ELIGIBILITY_STATUSES = ["eligible", "ineligible", "cancelled
 const transitions: Record<RewardsPeriodStatus, RewardsPeriodStatus[]> = {
   scheduled: ["active", "cancelled"], active: ["paused", "cancelled", "completed"], paused: ["active", "cancelled"], cancelled: [], completed: [],
 };
-const cancellationMessage = "The CreteXchange Driver Rewards Program will not be held for this month. Entries associated with this rewards period will not be included in a drawing. Normal washout activity and verification remain unaffected.";
+const cancellationMessage = "The CreteXchange Driver Rewards Program will not be held for this month. Entries associated with this rewards period will not be included in a drawing. Normal material recovery activity and verification remain unaffected.";
 
 export const REWARDS_PERIOD_CANCELLATION_ANNOUNCEMENT = cancellationMessage;
 

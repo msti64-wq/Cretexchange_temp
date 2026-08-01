@@ -224,6 +224,7 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 | --- | --- | --- |
 | CTX-STD-001 | CreteXchange Platform Standards | Defines mandatory engineering and development standards governing the platform. |
 | CTX-STD-002 | [Documentation Governance, Metadata, Lifecycle, Authority, and Relationship Standard](./standards/CTX-STD-002-documentation-governance-metadata-lifecycle-authority-and-relationships.md) | Approved detailed metadata, lifecycle, classification, authority, and relationship model for governed documentation. |
+| CTX-STD-003 | [CreteXchange Product Terminology Standard](./standards/CTX-STD-003-product-terminology-standard.md) | Defines canonical recovery-platform language while preserving material classifications, legal language, and stable internal identifiers. |
 | CTX-DB-001 | [Database Migration and Schema Governance Standard](./standards/CTX-DB-001-database-migration-and-schema-governance-standard.md) | Defines the documentation and governance requirements for controlled database migration and schema change. |
 | CTX-GOV-001 | [Documentation Governance Standard](./standards/CTX-GOV-001-documentation-governance-standard.md) | Approved library-wide standard for documentation authority, lifecycle, metadata, relationships, and authoring practice. |
 | CTX-GOV-002 | [Documentation Program Health Assessment](./standards/CTX-GOV-002-documentation-program-health-assessment.md) | Draft non-governing assessment of library health, discovery, integrity, and refresh gaps. |

@@ -599,7 +599,7 @@ export default function AdminSettings() {
                   <p className="text-sm text-muted-foreground">
                     <strong>What it does:</strong> Scans all users and creates Stripe Connect accounts (for drivers) 
                     and Stripe Customer accounts (for owners) for users missing them. This enables payment processing 
-                    for washout activities.
+                    for recovery activities.
                   </p>
                 </div>
               </div>

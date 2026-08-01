@@ -146,7 +146,7 @@ export default function Register() {
                   </div>
                   <h3 className="text-lg font-semibold mb-2">Concrete Truck Driver</h3>
                   <p className="text-muted-foreground text-sm">
-                    Find nearby washout locations, track your earnings, and get paid for completed washouts.
+                    Find nearby recovery facilities, track your earnings, and get paid for completed recovery activities.
                   </p>
                 </div>
                 <RegistrationForm
@@ -161,9 +161,9 @@ export default function Register() {
                   <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Building2 className="w-8 h-8 text-accent" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">Washout Location Owner</h3>
+                  <h3 className="text-lg font-semibold mb-2">Recovery Facility Owner</h3>
                   <p className="text-muted-foreground text-sm">
-                    Manage washout locations, set rates, monitor driver activity, and process payments.
+                    Manage recovery facilities, set rates, monitor driver activity, and process payments.
                   </p>
                 </div>
                 <RegistrationForm

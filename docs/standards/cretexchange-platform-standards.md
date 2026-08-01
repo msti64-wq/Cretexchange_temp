@@ -126,6 +126,8 @@ Reference CTX-ARCH-005.
 
 ## 11. UI Standards
 
+Customer-facing product language and localization MUST follow [CTX-STD-003 — CreteXchange Product Terminology Standard](./CTX-STD-003-product-terminology-standard.md). Material classifications and stable internal identifiers MUST remain distinct from platform terminology.
+
 - Keep dashboards consistent.
 - Use clear card layouts, tables, and forms.
 - Maintain strong typography and iconography conventions.

@@ -71,7 +71,7 @@ export function evaluatePhotoVerification({
     return {
       status: "needs_review",
       distanceMiles: null,
-      reason: "GPS unavailable or washout location coordinates missing.",
+      reason: "GPS unavailable or recovery facility coordinates missing.",
     };
   }
 
@@ -86,7 +86,7 @@ export function evaluatePhotoVerification({
     return {
       status: "verified",
       distanceMiles,
-      reason: `Within ${PHOTO_VERIFICATION_RADIUS_MILES.verified} mile of the washout location.`,
+      reason: `Within ${PHOTO_VERIFICATION_RADIUS_MILES.verified} mile of the recovery facility.`,
     };
   }
 
@@ -94,13 +94,13 @@ export function evaluatePhotoVerification({
     return {
       status: "warning",
       distanceMiles,
-      reason: `Photo GPS is ${distanceMiles.toFixed(2)} miles from the washout location.`,
+      reason: `Photo GPS is ${distanceMiles.toFixed(2)} miles from the recovery facility.`,
     };
   }
 
   return {
     status: "failed",
     distanceMiles,
-    reason: `Photo GPS is ${distanceMiles.toFixed(2)} miles from the washout location.`,
+    reason: `Photo GPS is ${distanceMiles.toFixed(2)} miles from the recovery facility.`,
   };
 }

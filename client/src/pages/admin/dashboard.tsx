@@ -617,7 +617,7 @@ export default function AdminDashboard() {
                 >
                   <Search className="h-5 w-5 text-amber-600" />
                   <span className="text-sm font-semibold">Billing Audit</span>
-                  <span className="text-xs text-muted-foreground">Reconcile Stripe and washouts</span>
+                  <span className="text-xs text-muted-foreground">Reconcile Stripe and recovery activities</span>
                 </Button>
               )}
             </div>
@@ -630,12 +630,12 @@ export default function AdminDashboard() {
                 {totalOwnerReceivablesValue}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {billingReceivablesError || "Platform fee + driver incentive across billable washouts"}
+                {billingReceivablesError || "Platform fee + driver incentive across billable recovery activities"}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {billingReceivablesSummary ? (
                   <>
-                    {billingReceivablesSummary.approvedWashoutCount} approved washouts • {billingReceivablesSummary.unbilledApprovedWashoutCount} unbilled • {formatCentsToDollars(Number(billingReceivablesSummary.platformFeesOwedCents || 0))} platform fees • {formatCentsToDollars(Number(billingReceivablesSummary.driverTipTotalCents || 0))} driver tips
+                    {billingReceivablesSummary.approvedWashoutCount} approved recovery activities • {billingReceivablesSummary.unbilledApprovedWashoutCount} unbilled • {formatCentsToDollars(Number(billingReceivablesSummary.platformFeesOwedCents || 0))} platform fees • {formatCentsToDollars(Number(billingReceivablesSummary.driverTipTotalCents || 0))} driver tips
                   </>
                 ) : (
                   "Loading current receivables"
@@ -648,7 +648,7 @@ export default function AdminDashboard() {
                 {paidPlatformFeesValue}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {billingReceivablesError || "Approved washouts already collected through billing"}
+                {billingReceivablesError || "Approved recovery activities already collected through billing"}
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
@@ -670,7 +670,7 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div className="rounded-2xl border border-border/70 bg-muted/30 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Approved washouts</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Approved recovery activities</p>
               <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{approvedWashoutsValue}</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {washoutRevenueError || "eligible for platform fee and reward entry"}
@@ -1541,7 +1541,7 @@ export default function AdminDashboard() {
             <DashboardMetricCard
               title="Total Owner Charge / Receivables"
               value={totalOwnerReceivablesValue}
-              helper={billingReceivablesError || "Platform fee + driver incentive across billable washouts"}
+              helper={billingReceivablesError || "Platform fee + driver incentive across billable recovery activities"}
               icon={DollarSign}
               toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300"
               dataTestId="text-washout-revenue-summary"
@@ -1549,7 +1549,7 @@ export default function AdminDashboard() {
             <DashboardMetricCard
               title="Platform Revenue Paid"
               value={paidPlatformFeesValue}
-              helper={billingReceivablesError || "Approved washouts already collected"}
+              helper={billingReceivablesError || "Approved recovery activities already collected"}
               icon={CheckCircle}
               toneClassName="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
               dataTestId="text-paid-platform-fees-summary"
@@ -1579,7 +1579,7 @@ export default function AdminDashboard() {
               dataTestId="text-lottery-ticket-count-summary"
             />
             <DashboardMetricCard
-              title="Approved Washouts"
+              title="Approved Recovery Activities"
               value={approvedWashoutsValue}
               helper={washoutRevenueError || "Approved and eligible for billing"}
               icon={CheckCircle}
@@ -1613,7 +1613,7 @@ export default function AdminDashboard() {
             <DashboardMetricCard
               title="Driver Stripe Deferred"
               value={awaitingDriverStripeCount}
-              helper="Approved washouts waiting on driver setup"
+              helper="Approved recovery activities waiting on driver setup"
               icon={CreditCard}
               toneClassName="bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300"
               dataTestId="text-awaiting-driver-stripe-summary"
@@ -1623,8 +1623,8 @@ export default function AdminDashboard() {
 
         {awaitingDriverStripeCount > 0 && (
           <DashboardSectionCard
-            title="Approved Washouts Waiting on Driver Tip Payout Setup"
-            description="These washouts are approved, but owner-funded tips will not be processed until the driver finishes optional tip payout onboarding."
+            title="Approved Recovery Activities Waiting on Driver Tip Payout Setup"
+            description="These recovery activities are approved, but owner-funded tips will not be processed until the driver finishes optional tip payout onboarding."
             icon={<CreditCard className="h-4 w-4 text-primary" />}
           >
             <div className="space-y-2">
@@ -1640,7 +1640,7 @@ export default function AdminDashboard() {
                         {payment.driverUser?.username || payment.driver?.user?.username || payment.driver?.user?.firstName || "Driver"}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {payment.location?.name || payment.activity?.location?.name || "Washout"} • {payment.activity?.location?.street || payment.location?.street || ""}
+                        {payment.location?.name || payment.activity?.location?.name || "Recovery Activity"} • {payment.activity?.location?.street || payment.location?.street || ""}
                       </p>
                     </div>
                     <div className="text-right">
@@ -1676,7 +1676,7 @@ export default function AdminDashboard() {
                 <p className="mt-2 text-3xl font-semibold tracking-tight text-foreground" data-testid="text-weekly-platform-revenue">
                   {platformWashoutRevenueValue}
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground">Completed and approved washouts only</p>
+                <p className="mt-1 text-sm text-muted-foreground">Completed and approved recovery activities only</p>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button

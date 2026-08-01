@@ -215,7 +215,7 @@ export default function AdminLocations() {
             </div>
             <div>
               <h1 className="font-semibold text-lg">Location Management</h1>
-              <p className="text-white/80 text-sm">Monitor washout sites</p>
+              <p className="text-white/80 text-sm">Monitor recovery facilities</p>
             </div>
           </div>
           <Button
@@ -260,7 +260,7 @@ export default function AdminLocations() {
             <div className="text-xl font-bold text-accent" data-testid="text-avg-rate">
               {formatCurrency(stats.avgRate)}
             </div>
-            <div className="text-xs text-muted-foreground">Per Washout</div>
+            <div className="text-xs text-muted-foreground">Per Verified Activity</div>
           </StatCard>
         </div>
 
@@ -321,7 +321,7 @@ export default function AdminLocations() {
         <div className="space-y-3">
           <h2 className="text-lg font-semibold flex items-center">
             <Building className="w-5 h-5 mr-2" />
-            Washout Locations ({filteredLocations.length})
+            Recovery Facilities ({filteredLocations.length})
           </h2>
 
           {filteredLocations.length === 0 ? (
@@ -394,7 +394,7 @@ export default function AdminLocations() {
                       <div className="text-xl font-bold text-accent mb-1" data-testid={`text-location-rate-${index}`}>
                         {formatCurrency(Number(location.rate))}
                       </div>
-                      <div className="text-xs text-muted-foreground mb-1">driver payout per washout</div>
+                      <div className="text-xs text-muted-foreground mb-1">driver incentive per verified activity</div>
                       <div className="text-xs text-muted-foreground mb-3">
                         Driver tip: {formatCurrency(resolveLocationDriverTipRateCents(location.rate) / 100)}
                       </div>
@@ -526,7 +526,7 @@ export default function AdminLocations() {
                   <FormItem>
                     <FormLabel>Location Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Riverside Washout Facility" {...field} />
+                      <Input placeholder="e.g. Riverside Recovery Facility" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -597,7 +597,7 @@ export default function AdminLocations() {
                   name="rate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Rate ($/washout)</FormLabel>
+                      <FormLabel>Rate ($/verified activity)</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" min="0" placeholder="0.50" {...field} />
                       </FormControl>
@@ -612,7 +612,7 @@ export default function AdminLocations() {
                 name="driverTipRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Driver Tip Per Washout</FormLabel>
+                    <FormLabel>Driver Tip Per Verified Activity</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" min="0" placeholder="0.01" {...field} />
                     </FormControl>
@@ -670,7 +670,7 @@ export default function AdminLocations() {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit Driver Tip Per Washout</DialogTitle>
+            <DialogTitle>Edit Driver Tip Per Verified Activity</DialogTitle>
             <DialogDescription>
               Update the stored `washout_locations.rate` value for this location.
             </DialogDescription>

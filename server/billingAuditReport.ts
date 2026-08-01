@@ -482,10 +482,10 @@ const AUDIT_CSV_COLUMNS: Array<{ key: keyof BillingAuditItem; label: string }> =
   { key: "locationId", label: "Location ID" },
   { key: "locationName", label: "Location Name" },
   { key: "locationAddress", label: "Location Address" },
-  { key: "washoutId", label: "Washout ID" },
-  { key: "washoutStatus", label: "Washout Status" },
+  { key: "washoutId", label: "Recovery Activity ID" },
+  { key: "washoutStatus", label: "Recovery Verification Status" },
   { key: "verificationStatus", label: "Verification Status" },
-  { key: "checkInTime", label: "Washout Date/Time" },
+  { key: "checkInTime", label: "Recovery Activity Date/Time" },
   { key: "amountCharged", label: "Amount Charged" },
   { key: "platformFeeTotal", label: "Platform Fee Total" },
   { key: "driverTipRate", label: "Driver Incentive Tip" },
@@ -523,7 +523,7 @@ export function billingAuditReportToPdfBuffer(report: BillingAuditReportResponse
   const doc = new jsPDF({ orientation: "landscape" });
 
   doc.setFontSize(16);
-  doc.text("Billing & Washout Audit Report", 14, 16);
+  doc.text("Billing & Recovery Activity Audit Report", 14, 16);
 
   doc.setFontSize(10);
   doc.text(`Generated: ${new Date(report.generatedAt).toLocaleString()}`, 14, 24);
@@ -539,7 +539,7 @@ export function billingAuditReportToPdfBuffer(report: BillingAuditReportResponse
 
   const summaryLines = [
     `Runs: ${report.summary.totalRuns}`,
-    `Washouts: ${report.summary.totalWashouts}`,
+    `Recovery Activities: ${report.summary.totalWashouts}`,
     `Charged: $${report.summary.totalAmountCharged}`,
     `Platform fees: $${report.summary.totalPlatformFeeTotal}`,
     `Driver tips: $${report.summary.totalDriverTips}`,
@@ -562,7 +562,7 @@ export function billingAuditReportToPdfBuffer(report: BillingAuditReportResponse
     doc.setFontSize(9);
     startY += 5;
     doc.text(
-      `Owner: ${run.ownerDisplayName || run.ownerCompanyName || run.ownerId} | Status: ${run.billingRunStatus} | Washouts: ${run.washoutCount} | Drivers: ${run.driverCount} | Locations: ${run.locationCount}`,
+      `Owner: ${run.ownerDisplayName || run.ownerCompanyName || run.ownerId} | Status: ${run.billingRunStatus} | Recovery Activities: ${run.washoutCount} | Drivers: ${run.driverCount} | Facilities: ${run.locationCount}`,
       14,
       startY
     );
@@ -577,7 +577,7 @@ export function billingAuditReportToPdfBuffer(report: BillingAuditReportResponse
     autoTable(doc, {
       startY: startY + 2,
       head: [[
-        "Washout ID",
+        "Recovery Activity ID",
         "Driver",
         "Location",
         "Date/Time",

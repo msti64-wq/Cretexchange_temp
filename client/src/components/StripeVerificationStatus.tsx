@@ -194,7 +194,7 @@ export default function StripeVerificationStatus({ userRole, purpose = 'owner-pa
           {purpose === 'driver-tip-payouts' && userRole === 'driver'
             ? (isPastDue
               ? 'Your optional tip payout setup is missing required information and cannot receive owner-funded tips until resolved.'
-              : 'This optional setup is only needed if you want to receive owner-funded tips. Washouts and lottery entries do not require it.')
+              : 'This optional setup is only needed if you want to receive owner-funded tips. Recovery activities and lottery entries do not require it.')
             : (isPastDue
               ? 'Your payment account is missing required information and cannot process payments until resolved.'
               : 'Complete verification to enable full payment functionality.')}

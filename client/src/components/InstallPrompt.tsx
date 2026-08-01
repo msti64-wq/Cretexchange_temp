@@ -41,7 +41,7 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
       ? {
           title: "Add CreteXchange to Your Phone",
           description:
-            "Get one-tap access while driving — find washout locations instantly.",
+            "Get one-tap access while driving — find recovery facilities instantly.",
           benefits: [
             "One tap from your home screen",
             "Works even with spotty cell service",
@@ -51,11 +51,11 @@ export function InstallPrompt({ userType, onInstall, onDismiss }: InstallPromptP
         }
       : {
           title: "Add CreteXchange to Your Phone",
-          description: "Manage your washout locations with instant access from your phone.",
+          description: "Manage your recovery facilities with instant access from your phone.",
           benefits: [
             "Quick access to manage your locations",
             "Monitor driver activity on-the-go",
-            "Instant notifications for new washouts",
+            "Instant notifications for new recovery activities",
             "Professional app experience",
           ],
         };

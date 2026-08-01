@@ -84,7 +84,7 @@ export function OwnerColumnOnboardingDialog({
                   <FormControl>
                     <Input
                       {...field}
-                      placeholder="ABC Washout Services LLC"
+                      placeholder="ABC Recovery Services LLC"
                       data-testid="input-company-name"
                     />
                   </FormControl>

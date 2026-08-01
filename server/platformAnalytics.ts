@@ -63,7 +63,7 @@ export type PlatformMetricDefinition = {
 /** The one canonical registry consumed by API consumers and documentation. */
 export const PLATFORM_METRIC_REGISTRY: readonly PlatformMetricDefinition[] = [
   {
-    key: "submitted_activity", name: "Submitted Activity", description: "Count of submitted operational washout activities.", businessPurpose: "Measures marketplace activity entering owner review.", sourceEvents: ["activity.submitted"], sourceOperationalTables: ["washout_activities"], calculation: "COUNT(activity.submitted)", inclusionRules: "One immutable event for each successfully committed submission.", exclusionRules: "No payment, wallet, duplicate, or failed transaction records.", timeAttribution: "submission occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner", "driver"],
+    key: "submitted_activity", name: "Submitted Activity", description: "Count of submitted material recovery activities.", businessPurpose: "Measures network activity entering owner review.", sourceEvents: ["activity.submitted"], sourceOperationalTables: ["washout_activities"], calculation: "COUNT(activity.submitted)", inclusionRules: "One immutable event for each successfully committed submission.", exclusionRules: "No payment, wallet, duplicate, or failed transaction records.", timeAttribution: "submission occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner", "driver"],
   },
   {
     key: "verified_activity", name: "Verified Activity", description: "Count of canonical owner-verified activities.", businessPurpose: "Measures completed operational verification.", sourceEvents: ["activity.verified"], sourceOperationalTables: ["washout_activities", "washout_activity_review_events"], calculation: "COUNT(activity.verified)", inclusionRules: "Only the pending-to-verified owner decision.", exclusionRules: "Administrative facilitator actions, payment success, and non-final activity.", timeAttribution: "verification occurred_at", timezonePolicy: "UTC timestamps; presentation converts only at the consuming boundary.", securityClassification: "internal_operational", visibleRoles: ["admin", "super_admin", "owner", "driver"],
@@ -112,10 +112,10 @@ export const PLATFORM_JOURNEYS: readonly PlatformJourneyDefinition[] = [
     { key: "registration", name: "Registration", sourceEventTypes: ["facility.registered"] },
     { key: "approval", name: "Approval", sourceEventTypes: ["facility.approved"] },
     { key: "first_driver", name: "First Driver", sourceEventTypes: ["facility.first_driver"] },
-    { key: "first_verified_washout", name: "First Verified Washout", sourceEventTypes: ["facility.first_verified"] },
+    { key: "first_verified_washout", name: "First Verified Recovery Activity", sourceEventTypes: ["facility.first_verified"] },
     { key: "recurring_usage", name: "Recurring Usage", sourceEventTypes: ["facility.recurring_usage"] },
   ] },
-  { key: "washout", name: "Washout Journey", entity: "activity", stages: [
+  { key: "washout", name: "Material Recovery Journey", entity: "activity", stages: [
     { key: "check_in", name: "Check-In", sourceEventTypes: ["activity.checked_in"] },
     { key: "photo_upload", name: "Photo Upload", sourceEventTypes: ["photo.uploaded"] },
     { key: "owner_review", name: "Owner Review", sourceEventTypes: ["activity.owner_reviewed"] },

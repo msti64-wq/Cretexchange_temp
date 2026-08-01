@@ -277,7 +277,7 @@ export function ReportExplorer({
 
             {showWashoutStatusFilter && (
               <div className="space-y-2">
-                <Label>Washout Status</Label>
+                <Label>Recovery Verification Status</Label>
                 <Select value={washoutStatus} onValueChange={setWashoutStatus}>
                   <SelectTrigger>
                     <SelectValue />
@@ -356,7 +356,7 @@ export function ReportExplorer({
             <div className="grid gap-4 border-t border-border pt-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label>Search report rows</Label>
-                <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Driver, location, status, or washout ID" data-testid="input-report-search" />
+                <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Driver, facility, status, or recovery activity ID" data-testid="input-report-search" />
               </div>
               <div className="space-y-2">
                 <Label>Driver</Label>
@@ -425,7 +425,7 @@ export function ReportExplorer({
             </div>
           ) : (
             <div className={`grid gap-4 ${data.reportType === "driver" ? "md:grid-cols-2 xl:grid-cols-7" : "md:grid-cols-2 xl:grid-cols-6"}`}>
-              <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Washouts</div><div className="text-2xl font-semibold">{data.summary.totalWashouts}</div></CardContent></Card>
+              <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Recovery Activities</div><div className="text-2xl font-semibold">{data.summary.totalWashouts}</div></CardContent></Card>
               <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Charged</div><div className="text-2xl font-semibold">{formatCurrency(Number(data.summary.totalAmountCharged))}</div></CardContent></Card>
               <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Platform Fees</div><div className="text-2xl font-semibold">{formatCurrency(Number(data.summary.totalPlatformFees))}</div></CardContent></Card>
               <Card><CardContent className="p-4"><div className="text-xs text-muted-foreground">Tips</div><div className="text-2xl font-semibold">{formatCurrency(Number(data.summary.totalTips))}</div></CardContent></Card>
@@ -452,7 +452,7 @@ export function ReportExplorer({
                     {visibleRows.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={columns.length} className="py-8 text-center text-muted-foreground">
-                          No washouts found for the selected filters.
+                          No recovery activities found for the selected filters.
                         </TableCell>
                       </TableRow>
                     ) : (

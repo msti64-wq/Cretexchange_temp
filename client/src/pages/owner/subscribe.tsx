@@ -235,9 +235,9 @@ export default function OwnerSubscribe() {
       price: 15,
       period: "one-time",
       features: [
-        "Unlimited washout locations",
+        "Unlimited recovery facilities",
         "Real-time driver tracking",
-        "Photo verification for washouts",
+        "Photo evidence review for recovery activities",
         "Automated payment processing",
         "Priority customer support",
         "Analytics & reporting dashboard",

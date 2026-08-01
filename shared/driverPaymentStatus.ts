@@ -14,5 +14,5 @@ export function getAwaitingDriverStripePaymentStatuses(): string[] {
 }
 
 export function getDriverStripeSetupMessage(): string {
-  return "You have approved washouts with owner-funded tips waiting on your Stripe payout setup. Complete Stripe payout setup to receive tip payouts.";
+  return "You have approved recovery activities with owner-funded tips waiting on your Stripe payout setup. Complete Stripe payout setup to receive tip payouts.";
 }

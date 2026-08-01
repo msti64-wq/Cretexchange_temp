@@ -173,14 +173,14 @@ export default function BillingAuditReportPage() {
       toast({
         title: repairDryRun ? "Repair dry run complete" : "Repair complete",
         description: repairDryRun
-          ? "The washout repair endpoint returned a dry-run result."
-          : "The washout repair endpoint backfilled missing payment rows.",
+          ? "The recovery activity repair endpoint returned a dry-run result."
+          : "The recovery activity repair endpoint backfilled missing payment rows.",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Repair failed",
-        description: error?.message || "Unable to run washout payment repair.",
+        description: error?.message || "Unable to run recovery activity payment repair.",
         variant: "destructive",
       });
     },
@@ -191,7 +191,7 @@ export default function BillingAuditReportPage() {
       <div className="min-h-screen bg-background pb-20">
         <header className="gradient-bg p-4 text-white shadow-lg">
           <div className="mx-auto max-w-6xl">
-            <h1 className="text-lg font-semibold">Billing & Washout Audit Report</h1>
+            <h1 className="text-lg font-semibold">Billing & Recovery Activity Audit Report</h1>
           </div>
         </header>
         <main className="mx-auto max-w-6xl px-4 py-5">
@@ -214,7 +214,7 @@ export default function BillingAuditReportPage() {
 
   const summaryCards = [
     { label: "Billing Runs", value: runCount, helper: runStatus, icon: ReceiptText },
-    { label: "Washouts", value: washoutCount, helper: `${data?.summary.totalLegacyUnlinked || 0} legacy / unlinked`, icon: FileText },
+    { label: "Recovery Activities", value: washoutCount, helper: `${data?.summary.totalLegacyUnlinked || 0} legacy / unlinked`, icon: FileText },
     { label: "Charged", value: formatCurrency(Number(data?.summary.totalAmountCharged || 0)), helper: "Total amount charged", icon: Download },
     { label: "Platform Fees", value: formatCurrency(Number(data?.summary.totalPlatformFeeTotal || 0)), helper: "Fees captured", icon: TriangleAlert },
   ];
@@ -225,8 +225,8 @@ export default function BillingAuditReportPage() {
         <div className="mx-auto max-w-6xl flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">Superadmin report</p>
-            <h1 className="text-lg font-semibold">Billing & Washout Audit Report</h1>
-            <p className="text-sm text-white/80">Reconcile Stripe charges against washout activity, runs, and payouts.</p>
+            <h1 className="text-lg font-semibold">Billing & Recovery Activity Audit Report</h1>
+            <p className="text-sm text-white/80">Reconcile Stripe charges against material recovery activity, runs, and payouts.</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -380,12 +380,12 @@ export default function BillingAuditReportPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wrench className="h-5 w-5" />
-              Washout Payment Repair
+              Recovery Activity Payment Repair
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Temporary super-admin repair action for verified washouts that are missing payment rows.
+              Temporary super-admin repair action for verified recovery activities that are missing payment rows.
             </p>
 
             <div className="grid gap-4 lg:grid-cols-4">
@@ -508,7 +508,7 @@ export default function BillingAuditReportPage() {
                         <p className="font-semibold">{formatCurrency(Number(run.totalPlatformFeeTotal || 0))}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Washouts</p>
+                        <p className="text-muted-foreground">Recovery Activities</p>
                         <p className="font-semibold">{run.washoutCount}</p>
                       </div>
                       <div>
@@ -553,7 +553,7 @@ export default function BillingAuditReportPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Washout</TableHead>
+                          <TableHead>Recovery Activity</TableHead>
                           <TableHead>Driver</TableHead>
                           <TableHead>Location</TableHead>
                           <TableHead>Date/Time</TableHead>

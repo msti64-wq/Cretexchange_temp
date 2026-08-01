@@ -154,7 +154,7 @@ export function PlatformPerformanceCard({ dateRange }: PlatformPerformanceCardPr
             <div className="text-xl font-bold text-foreground" data-testid="text-total-washouts">
               {data.totalWashouts}
             </div>
-            <div className="text-xs text-muted-foreground">Total Washouts</div>
+            <div className="text-xs text-muted-foreground">Total Recovery Activities</div>
           </div>
           <div>
             <div className="text-xl font-bold text-foreground" data-testid="text-total-withdrawals">

@@ -147,7 +147,7 @@ export default function AdminBatchPayments() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Batch Payment Management</h1>
-            <p className="text-muted-foreground">Manage hourly batch processing for washout payments</p>
+            <p className="text-muted-foreground">Manage hourly batch processing for recovery activity payments</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -349,11 +349,11 @@ export default function AdminBatchPayments() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground space-y-2">
             <p>
-              <strong>Hourly Batch Processing:</strong> Washout payments are queued when owners approve washouts, 
+              <strong>Hourly Batch Processing:</strong> Recovery activity payments are queued when owners approve recovery activities,{" "}
               then processed in hourly batches to minimize transaction fees.
             </p>
             <p>
-              <strong>Single Charge per Owner:</strong> All pending washouts for an owner are combined into a single 
+              <strong>Single Charge per Owner:</strong> All pending recovery activities for an owner are combined into a single{" "}
               credit card charge, with metadata showing the driver payment splits.
             </p>
             <p>

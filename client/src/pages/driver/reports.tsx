@@ -10,7 +10,7 @@ export default function DriverReports() {
       <main className="p-4">
         <ReportExplorer
           title="Driver Report"
-          description="View your washouts, tickets, driver payments, and related payment history."
+          description="View your recovery activities, tickets, driver payments, and related payment history."
           endpoint="/api/reports/driver"
           filenamePrefix="driver-report"
           defaultDateRange="weekly"
@@ -22,4 +22,3 @@ export default function DriverReports() {
     </div>
   );
 }
-

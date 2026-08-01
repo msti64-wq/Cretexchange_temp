@@ -743,7 +743,7 @@ export default function OwnerProfile() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
-                  How you will pay drivers for completed washouts
+                  How you will pay drivers for completed recovery activities
                 </p>
               </div>
             </CardContent>

@@ -163,7 +163,7 @@ export default function AdminFeatureFlags() {
       setPlatformFee("");
       toast({
         title: "Platform Fee Updated",
-        description: "The platform washout fee has been successfully updated.",
+        description: "The platform recovery activity fee has been successfully updated.",
       });
     },
     onError: (error: Error) => {
@@ -322,9 +322,9 @@ export default function AdminFeatureFlags() {
             <div className="rounded-xl border border-border/70 bg-background/70 p-4 space-y-3 shadow-sm dark:bg-background/40">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold" style={{ color: dsTokens.colors.sectionTitle }}>Platform Fee per Washout</h3>
+                  <h3 className="text-base font-semibold" style={{ color: dsTokens.colors.sectionTitle }}>Platform Fee per Verified Activity</h3>
                   <p className="mt-1 text-sm" style={{ color: dsTokens.colors.bodyText }}>
-                    Fee charged per completed washout (blank/default can be overridden by a superadmin to $0.00; currently ${currentPlatformFee})
+                    Fee charged per completed recovery activity (blank/default can be overridden by a superadmin to $0.00; currently ${currentPlatformFee})
                   </p>
                   <p className="mt-2 text-xs" style={{ color: dsTokens.colors.helperText }}>
                     Leave blank to use the current default. Enter 0.00 to waive the fee. Superadmins can override the default rate per owner or location.
@@ -350,7 +350,7 @@ export default function AdminFeatureFlags() {
                       data-testid="input-platform-fee"
                     />
                   </div>
-                  <p className="mt-2 text-xs text-foreground/75">Enter dollars per approved washout.</p>
+                  <p className="mt-2 text-xs text-foreground/75">Enter dollars per approved recovery activity.</p>
                 </div>
                 <Button
                   onClick={handleUpdatePlatformFee}

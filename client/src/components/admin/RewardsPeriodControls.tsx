@@ -93,7 +93,7 @@ export function RewardsPeriodControls() {
       <CardHeader className="gap-1">
         <CardTitle>Rewards periods</CardTitle>
         <CardDescription>
-          Control the active Driver Rewards Program month. These controls do not affect washout verification, billing, or payments.
+          Control the active Driver Rewards Program month. These controls do not affect recovery verification, billing, or payments.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

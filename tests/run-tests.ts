@@ -82,6 +82,7 @@ await import("./admin-activity-reporting.test.ts");
 await import("./owner-access.test.ts");
 await import("./driver-achievements.test.ts");
 await import("./network-intelligence.test.ts");
+await import("./platform-terminology.test.ts");
 
 test("billing policy resolver treats blank and null as defaults and zero as an override", () => {
   const platform = {
@@ -3880,7 +3881,7 @@ test("create-with-photos stores verification metadata from driver gps", async ()
         assert.equal(capturedPhotos[0].locationId, "location_1");
         assert.equal(capturedPhotos[0].verificationStatus, "verified");
         assert.equal(capturedPhotos[0].verificationDistanceMiles, "0.000");
-        assert.equal(capturedPhotos[0].verificationReason, "Within 1 mile of the washout location.");
+        assert.equal(capturedPhotos[0].verificationReason, "Within 1 mile of the recovery facility.");
       } finally {
         if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
         else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
@@ -4050,7 +4051,7 @@ test("create-with-photos rejects stale photo metadata", async () => {
         assert.equal(res.statusCode, 400);
         assert.match(
           String((res.body as { message?: string }).message || ""),
-          /Please take a new photo at the washout site before completing checkout\./,
+          /Please take a new photo at the recovery facility before completing check-in\./,
         );
       } finally {
         if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
@@ -4463,7 +4464,7 @@ test("owner verify rejects washouts outside the owner's locations", async () => 
       assert.equal(res.statusCode, 403);
       assert.match(
         String((res.body as { message?: string }).message || ""),
-        /does not belong to your location/i,
+        /does not belong to your facility/i,
       );
     },
   );
