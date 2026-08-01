@@ -252,6 +252,7 @@ export interface IStorage {
   updateLocationStatus(locationId: string, ownerId: string, isActive: boolean): Promise<WashoutLocation>;
   deleteWashoutLocation(locationId: string, ownerId: string): Promise<boolean>;
   getAllLocations(): Promise<(WashoutLocation & { owner: Owner & { user: User } })[]>;
+  getAdminLocationSummaries(): Promise<Array<{ id: string; name: string; state: string }>>;
   // Admin pricing operations
   batchUpdateAllLocationRates(newRate: string): Promise<{ updated: number; locations: WashoutLocation[] }>;
   batchUpdatePendingActivityAmounts(newAmount: string): Promise<{ updated: number; activities: WashoutActivity[] }>;
@@ -1625,6 +1626,13 @@ export class DatabaseStorage implements IStorage {
       })(),
     })) as any;
     return mappedPayments;
+  }
+
+  async getAdminLocationSummaries(): Promise<Array<{ id: string; name: string; state: string }>> {
+    return db
+      .select({ id: washoutLocations.id, name: washoutLocations.name, state: washoutLocations.state })
+      .from(washoutLocations)
+      .orderBy(washoutLocations.name);
   }
 
   // Admin pricing operations - batch update all locations to new rate

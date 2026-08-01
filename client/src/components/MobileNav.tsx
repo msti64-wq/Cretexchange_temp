@@ -50,34 +50,34 @@ export function MobileNav({ role }: MobileNavProps) {
       case "admin":
         // Regular admins only see Dashboard, Users, and Locations
         return [
-          { path: "/", icon: BarChart3, label: "Dashboard" },
-          { path: "/users", icon: Users, label: "Users" },
-          { path: "/locations", icon: Building, label: "Locations" },
-          { path: "/reports", icon: BarChart3, label: "Activity Reports", testIdLabel: "activity-reports" },
+          { path: "/", icon: BarChart3, label: t("adminNav.dashboard") },
+          { path: "/users", icon: Users, label: t("adminNav.users") },
+          { path: "/locations", icon: Building, label: t("adminNav.facilities") },
+          { path: "/reports", icon: BarChart3, label: t("adminNav.reports"), testIdLabel: "activity-reports" },
           { path: "/network-intelligence", icon: Globe2, label: t("network.nav"), testIdLabel: "network-intelligence" },
-          { path: "/admin/financial-operations", icon: ClipboardList, label: "Financial Operations", testIdLabel: "financial-operations" },
-          { path: "/admin/administration-repository", icon: FileText, label: "Operations Library", testIdLabel: "administration-repository" },
-          { path: "/admin/photo-review", icon: Images, label: "Photo Review", testIdLabel: "photo-review" },
-          { path: "/profile", icon: Settings, label: "Profile" },
+          { path: "/admin/financial-operations", icon: ClipboardList, label: t("adminNav.financialOperations"), testIdLabel: "financial-operations" },
+          { path: "/admin/administration-repository", icon: FileText, label: t("adminNav.operationsLibrary"), testIdLabel: "administration-repository" },
+          { path: "/admin/photo-review", icon: Images, label: t("adminNav.photoReview"), testIdLabel: "photo-review" },
+          { path: "/profile", icon: Settings, label: t("adminNav.profile") },
         ];
       case "super_admin":
         // Super admins see everything
         return [
-          { path: "/", icon: BarChart3, label: "Dashboard" },
-          { path: "/users", icon: Users, label: "Users" },
-          { path: "/locations", icon: Building, label: "Locations" },
-          { path: "/reports", icon: BarChart3, label: "Activity Reports", testIdLabel: "activity-reports" },
+          { path: "/", icon: BarChart3, label: t("adminNav.dashboard") },
+          { path: "/users", icon: Users, label: t("adminNav.users") },
+          { path: "/locations", icon: Building, label: t("adminNav.facilities") },
+          { path: "/reports", icon: BarChart3, label: t("adminNav.reports"), testIdLabel: "activity-reports" },
           { path: "/network-intelligence", icon: Globe2, label: t("network.nav"), testIdLabel: "network-intelligence" },
-          { path: "/admin/financial-operations", icon: ClipboardList, label: "Financial Operations", testIdLabel: "financial-operations" },
-          { path: "/admin/administration-repository", icon: FileText, label: "Operations Library", testIdLabel: "administration-repository" },
-          { path: "/admin/photo-review", icon: Images, label: "Photo Review", testIdLabel: "photo-review" },
-          { path: "/lottery", icon: Trophy, label: "Rewards Program" },
-          { path: "/reconciliation", icon: RefreshCw, label: "Reconcile" },
-          { path: "/subscriptions", icon: Receipt, label: "Subscriptions" },
-          { path: "/service-accounts", icon: CreditCard, label: "Service Accounts" },
-          { path: "/feature-flags", icon: Flag, label: "Features" },
-          { path: "/settings", icon: Wrench, label: "Settings" },
-          { path: "/profile", icon: Settings, label: "Profile" },
+          { path: "/admin/financial-operations", icon: ClipboardList, label: t("adminNav.financialOperations"), testIdLabel: "financial-operations" },
+          { path: "/admin/administration-repository", icon: FileText, label: t("adminNav.operationsLibrary"), testIdLabel: "administration-repository" },
+          { path: "/admin/photo-review", icon: Images, label: t("adminNav.photoReview"), testIdLabel: "photo-review" },
+          { path: "/lottery", icon: Trophy, label: t("adminNav.rewardsProgram") },
+          { path: "/reconciliation", icon: RefreshCw, label: t("adminNav.reconcile") },
+          { path: "/subscriptions", icon: Receipt, label: t("adminNav.subscriptions") },
+          { path: "/service-accounts", icon: CreditCard, label: t("adminNav.serviceAccounts") },
+          { path: "/feature-flags", icon: Flag, label: t("adminNav.features") },
+          { path: "/settings", icon: Wrench, label: t("adminNav.settings") },
+          { path: "/profile", icon: Settings, label: t("adminNav.profile") },
         ];
       default:
         return [];

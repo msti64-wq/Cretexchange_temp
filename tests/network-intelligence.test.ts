@@ -56,9 +56,32 @@ test("retention avoids false churn and empty/partial history states remain expli
   assert.equal(result.geography.rows.length, 0);
 });
 
+test("facility filter scopes results and clearing it restores network-wide results", () => {
+  const input = {
+    start: new Date("2026-07-01T00:00:00Z"), end: new Date("2026-07-30T23:59:59Z"),
+    drivers: [{ id: "d1", createdAt: new Date("2026-06-01") }, { id: "d2", createdAt: new Date("2026-06-01") }],
+    facilities: [
+      { id: "f1", state: "TX", createdAt: new Date("2026-06-01"), approved: true, active: true },
+      { id: "f2", state: "OK", createdAt: new Date("2026-06-01"), approved: true, active: true },
+    ],
+    events: [
+      event("activity.submitted", "2026-07-10T10:00:00Z", { driverId: "d1", locationId: "f1", activityId: "a1" }),
+      event("activity.verified", "2026-07-10T10:05:00Z", { driverId: "d1", locationId: "f1", activityId: "a1" }),
+      event("activity.submitted", "2026-07-11T10:00:00Z", { driverId: "d2", locationId: "f2", activityId: "a2" }),
+    ],
+  };
+  const selected = calculateNetworkIntelligence({ ...input, facilityId: "f1" });
+  const cleared = calculateNetworkIntelligence(input);
+  assert.equal(selected.overview.activeFacilities, 1);
+  assert.equal(selected.overview.totalVerifiedWashouts, 1);
+  assert.deepEqual(selected.geography.rows.map((row) => row.state), ["TX"]);
+  assert.equal(cleared.overview.activeFacilities, 2);
+  assert.deepEqual(cleared.geography.rows.map((row) => row.state), ["TX", "OK"]);
+});
+
 test("network filters, date boundaries, pagination, and sorting are bounded", () => {
-  const parsed = parseNetworkIntelligenceQuery({ state: "tx", page: "99999", pageSize: "999", sort: "state", direction: "asc" }, new Date("2026-07-30T00:00:00Z"));
-  assert.deepEqual({ state: parsed.state, page: parsed.page, pageSize: parsed.pageSize, sort: parsed.sort, direction: parsed.direction }, { state: "TX", page: 10_000, pageSize: 50, sort: "state", direction: "asc" });
+  const parsed = parseNetworkIntelligenceQuery({ state: "tx", facilityId: "facility-1", page: "99999", pageSize: "999", sort: "state", direction: "asc" }, new Date("2026-07-30T00:00:00Z"));
+  assert.deepEqual({ state: parsed.state, facilityId: parsed.facilityId, page: parsed.page, pageSize: parsed.pageSize, sort: parsed.sort, direction: parsed.direction }, { state: "TX", facilityId: "facility-1", page: 10_000, pageSize: 50, sort: "state", direction: "asc" });
   assert.throws(() => parseNetworkIntelligenceQuery({ start: "2024-01-01", end: "2026-01-01" }), /366 days/);
   assert.throws(() => parseNetworkIntelligenceQuery({ state: "Texas" }), /Invalid state/);
 });
@@ -85,5 +108,17 @@ test("Admin UI and navigation are bilingual and omit prohibited data", async () 
   assert.match(page, /api\/admin\/analytics\/network\/overview/);
   assert.match(i18n, /"network\.title": "Network Intelligence"/);
   assert.match(i18n, /"network\.title": "Inteligencia de la red"/);
+  assert.match(page, /api\/admin\/locations\?view=network-filter/);
+  assert.match(page, /params\.set\("facilityId", facilityId\)/);
+  assert.match(page, /if \(facilityId\) params\.set\("facilityId", facilityId\)/);
+  assert.match(page, /setFacilityId\(event\.target\.value\); setPage\(1\)/);
+  assert.match(page, /value="">\{t\("network\.allFacilities"\)\}/);
+  assert.match(i18n, /"network\.allFacilities": "All Facilities"/);
+  assert.match(i18n, /"network\.allFacilities": "Todas las instalaciones"/);
+  for (const key of ["dashboard", "users", "facilities", "reports", "financialOperations", "operationsLibrary", "photoReview", "settings", "profile"]) {
+    assert.match(nav, new RegExp(`t\\(\\"adminNav\\.${key}\\"\\)`));
+    assert.match(i18n, new RegExp(`\\"adminNav\\.${key}\\"`));
+  }
+  assert.doesNotMatch(nav, /label: "(?:Dashboard|Users|Locations|Activity Reports|Financial Operations|Operations Library|Photo Review|Settings|Profile)"/);
   assert.doesNotMatch(page, /latitude|longitude|email|phone|stripe|wallet|payout/i);
 });

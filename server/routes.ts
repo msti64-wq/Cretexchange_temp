@@ -11120,6 +11120,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Admin access required" });
       }
 
+      if (req.query?.view === 'network-filter') {
+        return res.json(await storage.getAdminLocationSummaries());
+      }
+
       const locations = await storage.getAllLocations();
       res.json(locations);
     } catch (error) {

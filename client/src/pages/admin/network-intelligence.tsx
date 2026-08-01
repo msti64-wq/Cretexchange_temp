@@ -28,6 +28,8 @@ type NetworkResponse = {
   utilization: Record<string, number | boolean | null>;
 };
 
+type FacilityOption = { id: string; name: string; state: string };
+
 function value(number: number | null | undefined) { return number == null ? "—" : Number.isInteger(number) ? number.toLocaleString() : number.toFixed(1); }
 function percent(number: number | null | undefined) { return number == null ? "—" : `${Math.round(number * 100)}%`; }
 function Metric({ label, value: metricValue }: { label: string; value: string }) {
@@ -37,22 +39,31 @@ function Metric({ label, value: metricValue }: { label: string; value: string })
 export default function NetworkIntelligence() {
   const { user } = useAuth();
   const { t, language, setLanguage } = useLanguage();
+  const allowed = user?.role === "admin" || user?.role === "super_admin";
   const [days, setDays] = useState("30");
   const [state, setState] = useState("");
+  const [facilityId, setFacilityId] = useState("");
   const [page, setPage] = useState(1);
   const query = useMemo(() => {
     const end = new Date();
     const start = new Date(end.getTime() - (Number(days) - 1) * 86_400_000);
     const params = new URLSearchParams({ start: start.toISOString(), end: end.toISOString(), page: String(page), pageSize: "10", sort: "verified", direction: "desc" });
     if (state.trim()) params.set("state", state.trim().toUpperCase());
+    if (facilityId) params.set("facilityId", facilityId);
     return params.toString();
-  }, [days, page, state]);
+  }, [days, facilityId, page, state]);
+  const facilities = useQuery<FacilityOption[]>({
+    queryKey: ["/api/admin/locations", "network-filter"],
+    queryFn: async () => (await apiRequest("GET", "/api/admin/locations?view=network-filter")).json(),
+    enabled: allowed,
+    retry: false,
+  });
   const network = useQuery<NetworkResponse>({
     queryKey: ["/api/admin/analytics/network/overview", query],
     queryFn: async () => (await apiRequest("GET", `/api/admin/analytics/network/overview?${query}`)).json(),
+    enabled: allowed,
     retry: false,
   });
-  const allowed = user?.role === "admin" || user?.role === "super_admin";
   if (!allowed) return <main className="p-6" role="alert">{t("network.accessRequired")}</main>;
   const data = network.data;
   const monthlyMax = Math.max(1, ...(data?.trends.monthly.map((item) => item.verifiedCount) || [1]));
@@ -63,9 +74,10 @@ export default function NetworkIntelligence() {
         <div className="flex gap-2" aria-label={t("language.toggle")}><Button size="sm" variant={language === "en" ? "default" : "outline"} onClick={() => setLanguage("en")}>EN</Button><Button size="sm" variant={language === "es" ? "default" : "outline"} onClick={() => setLanguage("es")}>ES</Button></div>
       </header>
 
-      <Card><CardHeader><CardTitle>{t("network.filters")}</CardTitle><CardDescription>{t("network.filtersHelp")}</CardDescription></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2">
+      <Card><CardHeader><CardTitle>{t("network.filters")}</CardTitle><CardDescription>{t("network.filtersHelp")}</CardDescription></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className="grid gap-1 text-sm"><span>{t("network.dateRange")}</span><select aria-label={t("network.dateRange")} className="h-10 rounded-md border bg-background px-3" value={days} onChange={(event) => { setDays(event.target.value); setPage(1); }}><option value="30">{t("network.last30")}</option><option value="90">{t("network.last90")}</option><option value="365">{t("network.last365")}</option></select></label>
         <label className="grid gap-1 text-sm"><span>{t("network.state")}</span><Input maxLength={2} aria-label={t("network.state")} value={state} onChange={(event) => { setState(event.target.value.replace(/[^a-z]/gi, "").slice(0, 2)); setPage(1); }} placeholder={t("network.allStates")} /></label>
+        <label className="grid gap-1 text-sm"><span>{t("network.facility")}</span><select aria-label={t("network.facility")} className="h-10 rounded-md border bg-background px-3" value={facilityId} disabled={facilities.isLoading || facilities.isError} onChange={(event) => { setFacilityId(event.target.value); setPage(1); }}><option value="">{t("network.allFacilities")}</option>{(facilities.data || []).map((facility) => <option key={facility.id} value={facility.id}>{facility.name} ({facility.state})</option>)}</select>{facilities.isLoading && <span className="text-xs text-muted-foreground" role="status">{t("network.facilitiesLoading")}</span>}{facilities.isError && <span className="text-xs text-destructive" role="alert">{t("network.facilitiesError")}</span>}{facilities.data?.length === 0 && <span className="text-xs text-muted-foreground">{t("network.facilitiesEmpty")}</span>}</label>
       </CardContent></Card>
 
       {network.isLoading && <Card><CardContent className="p-8 text-sm text-muted-foreground">{t("network.loading")}</CardContent></Card>}

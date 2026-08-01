@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
 
-type Migration = { id: "0036" | "0037" | "0038"; file: string; sha256: string; expectedObjects: number };
+type Migration = { id: "0013" | "0036" | "0037" | "0038"; file: string; sha256: string; expectedObjects: number };
 type MigrationState = "pending" | "applied";
 const CLIENT_CLOSE_TIMEOUT_MS = 5_000;
 
@@ -12,6 +12,7 @@ const CLIENT_CLOSE_TIMEOUT_MS = 5_000;
 // production-authorized allowlist and refuses every environment other than the
 // explicitly identified Railway production deployment.
 const migrations: readonly Migration[] = [
+  { id: "0013", file: "migrations/0013_add_localized_terms_acceptance.sql", sha256: "21c04112cae0901781c0dfb572c3de88e4e8a3ff1bf09bdaeae6633d191dc22f", expectedObjects: 7 },
   { id: "0036", file: "migrations/0036_add_washout_activity_admin_reviews.sql", sha256: "81c8c5dbceb87ed0aa024d3a34b432a72825722703e53574af785cbc8a08fdb0", expectedObjects: 7 },
   { id: "0037", file: "migrations/0037_add_washout_photo_review_audit.sql", sha256: "5714306b60592c536dc9d1e5dbe71e20392faedde97fd06d2d4b180fb58c7e5b", expectedObjects: 4 },
   { id: "0038", file: "migrations/0038_add_platform_analytics_events.sql", sha256: "684a072dac88a16515118bfd7eb3e9208570b375f4dff3a3c632c6426fbee667", expectedObjects: 13 },
@@ -24,7 +25,7 @@ function sha(value: string | undefined): string | null { return value && /^[a-f0
 function selectMigrations(from: string | undefined, to: string | undefined): readonly Migration[] {
   const first = migrations.findIndex((migration) => migration.id === from);
   const last = migrations.findIndex((migration) => migration.id === to);
-  if (first < 0 || last < first) fail("Only the ordered 0036 through 0038 production allowlist is permitted.");
+  if (first < 0 || last < first) fail("Only the ordered 0013 and 0036 through 0038 production allowlist is permitted.");
   return migrations.slice(first, last + 1);
 }
 
@@ -42,6 +43,12 @@ async function count(client: pg.Client, text: string, values: string[]): Promise
 }
 
 async function migrationObjectCount(client: pg.Client, migration: Migration): Promise<number> {
+  if (migration.id === "0013") {
+    const tables = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name = ANY($2::text[])", ["public", "{terms_versions,terms_acceptances}"]);
+    const indexes = await count(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])", ["public", "{uniq_terms_versions_storage_key_version,idx_terms_versions_type_language_current,uniq_terms_acceptance_user_doc_version,idx_terms_acceptances_user}"]);
+    const foreignKeys = await count(client, "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid=to_regclass($1) AND contype='f'", ["public.terms_acceptances"]);
+    return tables + indexes + foreignKeys;
+  }
   if (migration.id === "0036") {
     const tables = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name=$2", ["public", "washout_activity_admin_reviews"]);
     const indexes = await count(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])", ["public", "{uniq_washout_activity_admin_reviews_unresolved,idx_washout_activity_admin_reviews_activity_requested,idx_washout_activity_admin_reviews_owner_resolution,idx_washout_activity_admin_reviews_driver_resolution}"]);
@@ -69,6 +76,13 @@ async function state(client: pg.Client, migration: Migration): Promise<Migration
   if (actual === 0) return "pending";
   if (actual === migration.expectedObjects) return "applied";
   fail(`Catalog state for ${migration.id} is partial (${actual}/${migration.expectedObjects}); no repair is authorized.`);
+}
+
+async function legacyTermsCounts(client: pg.Client) {
+  const users = await count(client, "SELECT count(*)::int AS value FROM users", []);
+  const drivers = await count(client, "SELECT count(*)::int AS value FROM drivers WHERE has_agreed_to_terms=true", []);
+  const owners = await count(client, "SELECT count(*)::int AS value FROM owners WHERE has_agreed_to_terms=true", []);
+  return { users, drivers, owners };
 }
 
 /**
@@ -125,6 +139,7 @@ async function main() {
     for (const migration of selected) {
       const before = await state(client, migration);
       if (before === "applied") { console.log(`ALREADY_APPLIED ${migration.id}`); continue; }
+      const legacyBefore = migration.id === "0013" ? await legacyTermsCounts(client) : null;
       const sql = await readFile(path.resolve(migration.file), "utf8");
       await client.query("BEGIN");
       try {
@@ -132,6 +147,11 @@ async function main() {
         await client.query("SET LOCAL lock_timeout = '5s'");
         await client.query(sql);
         if (await state(client, migration) !== "applied") fail(`Catalog verification failed for ${migration.id}.`);
+        if (legacyBefore) {
+          const legacyAfter = await legacyTermsCounts(client);
+          if (JSON.stringify(legacyAfter) !== JSON.stringify(legacyBefore)) fail("Legacy terms data changed while applying 0013.");
+          console.log(`DATA_PRESERVED 0013 users=${legacyAfter.users} driver_terms=${legacyAfter.drivers} owner_terms=${legacyAfter.owners}`);
+        }
         await client.query("COMMIT");
         console.log(`APPLIED ${migration.id}`);
       } catch (error) { await client.query("ROLLBACK"); throw error; }
