@@ -177,6 +177,8 @@ test("competition UI is lazy, mobile-bounded, bilingual, accessible, and has all
   assert.match(app, /lazy\(\(\) => import\("@\/pages\/driver\/competition"\)\)/);
   assert.match(app, /path="\/driver\/competition"/);
   assert.match(nav, /t\("nav\.competition"\)/);
+  assert.match(nav, /t\("nav\.rewards"\)/);
+  assert.doesNotMatch(nav, /label: "Rewards"/);
   assert.match(page, /max-w-\[100vw\] overflow-x-hidden/);
   assert.match(page, /<Table aria-label=/);
   assert.match(page, /competition-loading/);
@@ -185,6 +187,7 @@ test("competition UI is lazy, mobile-bounded, bilingual, accessible, and has all
   assert.match(page, /competition-insufficient/);
   assert.match(i18n, /"competition\.title": "Driver Competition"/);
   assert.match(i18n, /"competition\.title": "Competencia de conductores"/);
+  assert.match(i18n, /"nav\.rewards": "Recompensas"/);
 });
 
 test("competition response contract excludes private and financial fields", () => {

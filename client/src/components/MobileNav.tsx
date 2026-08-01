@@ -34,7 +34,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/locations", icon: Map, label: t("common.locations"), testIdLabel: "locations" },
           { path: "/activity", icon: List, label: t("nav.activity"), testIdLabel: "activity" },
           { path: "/driver/competition", icon: Medal, label: t("nav.competition"), testIdLabel: "competition" },
-          { path: "/rewards", icon: Trophy, label: "Rewards", testIdLabel: "rewards" },
+          { path: "/rewards", icon: Trophy, label: t("nav.rewards"), testIdLabel: "rewards" },
           { path: "/wallet", icon: Wallet, label: t("nav.wallet"), testIdLabel: "wallet" },
           { path: "/notifications", icon: Bell, label: t("nav.messages"), testIdLabel: "messages" },
           { path: "/profile", icon: User, label: t("nav.profile"), testIdLabel: "profile" },
