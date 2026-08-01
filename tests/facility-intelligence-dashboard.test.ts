@@ -10,9 +10,9 @@ test("Facility Intelligence dashboard is owner-routed, facility-scoped, and disp
   ]);
   assert.match(app, /path="\/intelligence" component=\{OwnerFacilityIntelligence\}/);
   assert.match(navigation, /path: "\/intelligence"/);
-  assert.match(page, /\/api\/owners\/facilities\/\$\{locationId\}\/intelligence\/dashboard/);
-  assert.match(page, /Verified washouts/);
-  assert.match(page, /Drop-off intelligence/);
-  assert.match(page, /Facility health/);
+  assert.match(page, /ownerFacilityIntelligenceRequest\(locationId!, range\)/);
+  assert.match(page, /owner\.intelligence\.verifiedActivities/);
+  assert.match(page, /owner\.intelligence\.dropoff/);
+  assert.match(page, /owner\.intelligence\.facilityHealth/);
   assert.doesNotMatch(page, /wallet|stripe|payout|payment/i);
 });

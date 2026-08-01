@@ -25,6 +25,7 @@ import { resolveConfiguredWashoutPlatformFeeCents } from "@shared/billingPolicy"
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { filterPendingWashoutApprovals, isBillableWashoutForOwnerBilling, isPendingWashoutApproval } from "@shared/washoutApproval";
 import { formatLocalizedCurrency, useLanguage } from "@/lib/i18n";
+import { ownerFacilityIntelligenceQueryPrefix } from "@/lib/ownerFacilityIntelligenceQuery";
 import { normalizeDollarInputToCents } from "@shared/money";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -308,6 +309,11 @@ export default function OwnerDashboard() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/drivers/dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/billing/settings'] });
+      if (data?.locationId) {
+        queryClient.invalidateQueries({
+          queryKey: ownerFacilityIntelligenceQueryPrefix(String(data.locationId)),
+        });
+      }
       queryClient.invalidateQueries({ predicate: (query) => 
         Boolean(query.queryKey[0]?.toString().startsWith('/api/owners/activities'))
       });

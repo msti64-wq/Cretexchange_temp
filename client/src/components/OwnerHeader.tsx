@@ -49,7 +49,7 @@ export function OwnerHeader() {
             className="h-11 border-border bg-card text-foreground hover:bg-muted sm:h-10"
           >
             <BarChart3 className="mr-2 h-4 w-4" />
-            Intelligence
+            {t("owner.intelligence.nav")}
           </Button>
           <Button
             variant="outline"

@@ -22,6 +22,7 @@
     "test:driver-competition": "NODE_ENV=test JWT_SECRET=test-only-jwt-secret-32-characters-minimum SESSION_SECRET=test-only-session-secret DATABASE_URL=postgres://user:pass@127.0.0.1:1/test node --import tsx --test tests/driver-competition.test.ts",
     "test:platform-terminology": "NODE_ENV=test JWT_SECRET=test-only-jwt-secret-32-characters-minimum SESSION_SECRET=test-only-session-secret DATABASE_URL=postgres://user:pass@127.0.0.1:1/test FINANCIAL_EXECUTION_ENABLED=false node --import tsx --test tests/platform-terminology.test.ts",
     "test:driver-spanish-localization": "NODE_ENV=test JWT_SECRET=test-only-jwt-secret-32-characters-minimum SESSION_SECRET=test-only-session-secret DATABASE_URL=postgres://user:pass@127.0.0.1:1/test FINANCIAL_EXECUTION_ENABLED=false node --import tsx --test tests/driver-spanish-localization.test.ts",
+    "test:owner-intelligence-remediation": "NODE_ENV=test JWT_SECRET=test-only-jwt-secret-32-characters-minimum SESSION_SECRET=test-only-session-secret DATABASE_URL=postgres://user:pass@127.0.0.1:1/test FINANCIAL_EXECUTION_ENABLED=false node --import tsx --test tests/owner-intelligence-remediation.test.ts tests/facility-intelligence-dashboard.test.ts",
     "create:superadmin": "node --import tsx scripts/create-superadmin.ts",
     "bootstrap:staging-admin": "node --import tsx scripts/bootstrap-staging-admin.ts",
     "bootstrap:staging-pilot-acceptance": "node --import tsx scripts/bootstrap-staging-pilot-acceptance.ts"
