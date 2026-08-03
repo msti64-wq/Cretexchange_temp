@@ -3407,32 +3407,31 @@ test("driver locations require driver role and omit owner payment and identity f
 test("notification read route scopes updates to the authenticated user", async () => {
   const { app, puts } = createRouteRegistry();
   const calls: Array<{ notificationId: string; userId: string }> = [];
+  const { notificationService } = await import("../server/notificationService");
+  const originalMarkRead = notificationService.markRead;
+  notificationService.markRead = async (userId: string, notificationId: string) => {
+    calls.push({ notificationId, userId });
+    return userId === "driver_user_1"
+      ? { id: notificationId, userId, isRead: true } as never
+      : null;
+  };
+  try {
+    const { registerRoutes } = await import("../server/routes");
+    await registerRoutes(app as never);
+    const route = puts.get("/api/notifications/:id/read");
+    assert.equal(typeof route, "function");
 
-  await withPatchedStorage(
-    {
-      markNotificationAsRead: async (notificationId: string, userId: string) => {
-        calls.push({ notificationId, userId });
-        return userId === "driver_user_1"
-          ? { id: notificationId, userId, isRead: true }
-          : undefined;
-      },
-    },
-    async () => {
-      const { registerRoutes } = await import("../server/routes");
-      await registerRoutes(app as never);
-      const route = puts.get("/api/notifications/:id/read");
-      assert.equal(typeof route, "function");
+    const ownedRes = createResponse();
+    await route!({ user: { id: "driver_user_1" }, params: { id: "notification_1" } }, ownedRes);
+    assert.equal(ownedRes.statusCode, 200);
+    assert.deepEqual(calls[0], { notificationId: "notification_1", userId: "driver_user_1" });
 
-      const ownedRes = createResponse();
-      await route!({ user: { id: "driver_user_1" }, params: { id: "notification_1" } }, ownedRes);
-      assert.equal(ownedRes.statusCode, 200);
-      assert.deepEqual(calls[0], { notificationId: "notification_1", userId: "driver_user_1" });
-
-      const foreignRes = createResponse();
-      await route!({ user: { id: "driver_user_2" }, params: { id: "notification_1" } }, foreignRes);
-      assert.equal(foreignRes.statusCode, 404);
-    },
-  );
+    const foreignRes = createResponse();
+    await route!({ user: { id: "driver_user_2" }, params: { id: "notification_1" } }, foreignRes);
+    assert.equal(foreignRes.statusCode, 404);
+  } finally {
+    notificationService.markRead = originalMarkRead;
+  }
 });
 
 test("create-with-photos applies ACL metadata for location owners", async () => {
