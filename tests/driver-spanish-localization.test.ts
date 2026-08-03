@@ -52,18 +52,20 @@ test("mobile install prompt is localized while install behavior is preserved", a
   assert.equal(es("install.dismissAria"), "Cerrar indicaciones de instalación");
 });
 
-test("Message Center routes visible copy through localization and preserves user-authored bodies", async () => {
-  const [page, app, nav] = await Promise.all([
+test("Message Center routes visible copy through the shared localization center and preserves user-authored bodies", async () => {
+  const [page, center, app, nav] = await Promise.all([
     source("client/src/pages/driver/notifications.tsx"),
+    source("client/src/components/notifications/NotificationCenter.tsx"),
     source("client/src/App.tsx"),
     source("client/src/components/MobileNav.tsx"),
   ]);
-  assert.match(page, /localizeDriverNotification/);
-  assert.match(page, /locale: language === "es"/);
+  assert.match(page, /NotificationCenter role="driver"/);
+  assert.match(center, /localizeCenterNotification/);
+  assert.match(center, /locale: language === "es"/);
   assert.match(app, /path="\/messages" component=\{DriverNotifications\}/);
   assert.match(nav, /path: "\/messages".*nav\.messages/);
   for (const phrase of ["Message Center", "Mark all read", "No messages yet", "Mark read"]) {
-    assert.doesNotMatch(page, new RegExp(`>${phrase}<|"${phrase}"`));
+    assert.doesNotMatch(center, new RegExp(`>${phrase}<|"${phrase}"`));
   }
   const system = localizeDriverNotification({ title: "Bank Account Connected", message: "Your bank account has been successfully connected and verified. You can now receive payments!", type: "success" }, "es", es);
   assert.equal(system.title, "Cuenta bancaria conectada");

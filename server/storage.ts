@@ -3957,17 +3957,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async markAllNotificationsAsRead(userId: string): Promise<void> {
+    const now = new Date();
     await db
       .update(notifications)
-      .set({ isRead: true })
-      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
+      .set({ isRead: true, readAt: now, updatedAt: now })
+      .where(and(eq(notifications.userId, userId), eq(notifications.isRead, false), isNull(notifications.archivedAt)));
   }
 
   async markNotificationAsRead(notificationId: string, userId: string): Promise<Notification | undefined> {
+    const now = new Date();
     const [notification] = await db
       .update(notifications)
-      .set({ isRead: true })
-      .where(and(eq(notifications.id, notificationId), eq(notifications.userId, userId)))
+      .set({ isRead: true, readAt: now, updatedAt: now })
+      .where(and(eq(notifications.id, notificationId), eq(notifications.userId, userId), isNull(notifications.archivedAt)))
       .returning();
     return notification;
   }

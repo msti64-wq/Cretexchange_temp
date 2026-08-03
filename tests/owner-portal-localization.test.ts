@@ -19,7 +19,11 @@ const ownerRoutes = [
 test("Owner Portal routes use the shared language hook", () => {
   for (const route of ownerRoutes) {
     const source = readFileSync(new URL(`../client/src/pages/owner/${route}`, import.meta.url), "utf8");
-    assert.match(source, /useLanguage/, `${route} must use the shared Owner Portal language state`);
+    if (route === "notifications.tsx") {
+      assert.match(source, /NotificationCenter role="owner"/, `${route} must use the localized shared Notification Center`);
+    } else {
+      assert.match(source, /useLanguage/, `${route} must use the shared Owner Portal language state`);
+    }
   }
 });
 

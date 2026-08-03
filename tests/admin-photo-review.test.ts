@@ -46,7 +46,7 @@ test("the protected Admin queue is paginated, least-privilege, and does not expo
   assert.doesNotMatch(list, /storageKey|gpsLatitude|gpsLongitude|imageFingerprint|wallet|stripe/i);
   assert.match(routes, /confirmationAcknowledged: z\.literal\(true\)/);
   assert.match(decision, /nextStatus: parsed\.data\.decision === "approve" \? "verified" : "failed"/);
-  assert.match(decision, /washout operational status was not changed/);
+  assert.match(decision, /recovery activity operational status was not changed/);
   assert.doesNotMatch(decision, /createPayment|wallet|stripe|payout|settlement|updateWashoutActivityStatus/i);
 });
 
@@ -64,7 +64,7 @@ test("the Admin Photo Review UI uses the existing authorized photo endpoint, pra
   assert.match(page, /expectedStatus: selected!\.photo\.verificationStatus/);
   assert.match(page, /t\("photoReview\.confirmation"\)/);
   assert.match(app, /\/admin\/photo-review/);
-  assert.match(nav, /label: "Photo Review"/);
+  assert.match(nav, /label: t\("adminNav\.photoReview"\)/);
 });
 
 test("Photo Review workflow strings exist in English and Spanish", () => {

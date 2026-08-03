@@ -14,6 +14,7 @@ const releaseMigrations: Migration[] = [
   { id: "0036", file: "migrations/0036_add_washout_activity_admin_reviews.sql", sha256: "81c8c5dbceb87ed0aa024d3a34b432a72825722703e53574af785cbc8a08fdb0", verify: verify0036 },
   { id: "0037", file: "migrations/0037_add_washout_photo_review_audit.sql", sha256: "5714306b60592c536dc9d1e5dbe71e20392faedde97fd06d2d4b180fb58c7e5b", verify: verify0037 },
   { id: "0038", file: "migrations/0038_add_platform_analytics_events.sql", sha256: "684a072dac88a16515118bfd7eb3e9208570b375f4dff3a3c632c6426fbee667", verify: verify0038 },
+  { id: "0039", file: "migrations/0039_extend_notifications_for_communication_center.sql", sha256: "90d7ffe79169b3735f8af4cfa77805aac34def6f9afddf48d878abfbec9b4c79", verify: verify0039 },
 ];
 
 function fail(message: string): never { throw new Error(message); }
@@ -21,7 +22,7 @@ function arg(name: string): string | undefined { const index = process.argv.inde
 function selectedMigrations(from: string | undefined, to: string | undefined): Migration[] {
   const first = releaseMigrations.findIndex((migration) => migration.id === from);
   const last = releaseMigrations.findIndex((migration) => migration.id === to);
-  if (first < 0 || last < first) fail("Only the ordered 0031 through 0038 release allowlist is permitted.");
+  if (first < 0 || last < first) fail("Only the ordered 0031 through 0039 release allowlist is permitted.");
   return releaseMigrations.slice(first, last + 1);
 }
 async function assertChecksums(migrations: Migration[]) {
@@ -81,6 +82,11 @@ async function verify0038(client: pg.Client) {
   await requireCount(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname='public' AND indexname IN ('platform_analytics_events_type_occurred_idx','platform_analytics_events_activity_occurred_idx','platform_analytics_events_driver_occurred_idx','platform_analytics_events_location_occurred_idx')", 4, "0038 indexes");
   await requireCount(client, "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid='platform_analytics_events'::regclass AND conname IN ('platform_analytics_events_event_type_valid','platform_analytics_events_source_record_type_valid','platform_analytics_events_source_event_key_unique','platform_analytics_events_version_positive')", 4, "0038 constraints");
   await requireCount(client, "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid='platform_analytics_events'::regclass AND contype='f'", 4, "0038 foreign keys");
+}
+async function verify0039(client: pg.Client) {
+  await requireCount(client, "SELECT count(*)::int AS value FROM information_schema.columns WHERE table_schema='public' AND table_name='notifications' AND column_name IN ('recipient_role','category','template_key','template_version','read_at','archived_at','deep_link','source_entity_type','source_entity_id','idempotency_key','priority','delivery_state','schema_version','updated_at')", 14, "0039 columns");
+  await requireCount(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname='public' AND indexname IN ('notifications_idempotency_key_unique','notifications_user_archived_created_idx','notifications_user_read_archived_idx','notifications_user_category_created_idx')", 4, "0039 indexes");
+  await requireCount(client, "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid='notifications'::regclass AND conname IN ('notifications_recipient_role_valid','notifications_category_valid','notifications_priority_valid','notifications_delivery_state_valid','notifications_schema_version_positive')", 5, "0039 constraints");
 }
 
 async function main() {

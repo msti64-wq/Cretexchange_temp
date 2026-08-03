@@ -46,3 +46,16 @@ The stable response contains `window`, `history`, `overview`, `engagement`, `qua
 `GET /api/drivers/competition/leaderboard` is an authenticated Driver-only, read-only contract. It accepts `period=week|month|year|all_time`, optional two-letter `state`, optional eligible `facilityId`, and bounded `page`/`pageSize` values. The caller cannot supply a Driver identity; the current Driver is resolved from the session.
 
 The response contains the UTC window, privacy-safe ranked rows, the caller's separate current position, nearby ranks, total ranked Drivers, pagination, available state/Facility filters, and explicit empty or insufficient-data state. Counts are distinct canonical verified activities. Anonymous access is rejected by authentication; Owner, Admin, and Super Admin roles receive 403. No raw Driver ID, contact data, precise GPS, private Facility history, event payload, media path, or financial field is returned.
+
+# Notification & Communication Center
+
+All Notification Center endpoints require authentication and derive the recipient from the authenticated session. They never accept a target user ID.
+
+- `GET /api/notifications/center?page=1&pageSize=25&category=operational` returns unarchived items and bounded pagination. `pageSize` is capped at 50. Category is optional.
+- `GET /api/notifications/unread` returns a count-only compatibility payload; notification content is not loaded for the navigation badge.
+- `PUT /api/notifications/:id/read` marks one notification owned by the caller read.
+- `PUT /api/notifications/read-all` marks only the caller's unarchived unread notifications read.
+- `POST /api/notifications/:id/archive` archives only a notification owned by the caller.
+- `POST /api/admin/notifications/announcements` is Admin/Super Admin only. It accepts a governed recipient role, plain-text title/body, and optional role-allowed internal deep link. It cannot send HTML, external links, or private metadata.
+
+`GET /api/notifications` remains a bounded legacy compatibility response, and Driver `/messages` remains a UI alias. Structured response items expose presentation fields, safe metadata, read state, priority, and safe deep link. They exclude recipient user IDs, idempotency keys, internal source identifiers, authentication data, contact data, precise GPS, media/storage paths, raw analytics payloads, and financial information.

@@ -114,3 +114,7 @@ All Network Intelligence windows use inclusive UTC timestamps. The default windo
 Network density is reported as active Drivers per active Facility, verified washouts per active Facility, verified washouts per active Driver, and repeat participation by state. State is derived only from the canonical Facility address. Metro/market and operating-region aggregation remain unavailable because no authoritative model exists. Activity volume and average daily verified activity are utilization indicators; physical capacity percentages are prohibited without an authoritative capacity source.
 
 Metrics based on Platform Intelligence events are explicitly partial when operational account or Facility records predate the earliest event. No mutable status backfill or estimated historic value is mixed into an event metric.
+
+## Notification Center boundary
+
+Notification creation, unread state, read/archive timestamps, categories, and delivery state are communication read-model facts, not Platform Intelligence metrics. Phase 5 Sprint 1 adds no notification analytics event and no notification-derived business KPI. Achievement and competition notices consume the existing canonical projections; they do not generate or alter achievement, competition, activity, or financial facts. Any future communication-effectiveness metric requires a separately approved registry definition and privacy review.

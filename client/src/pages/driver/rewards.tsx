@@ -53,6 +53,7 @@ type RewardNotification = {
   type: string;
   isRead?: boolean;
   createdAt: string | Date;
+  data?: Record<string, unknown>;
 };
 
 type LotteryDrawing = {
@@ -222,11 +223,6 @@ export default function DriverRewards() {
     refetchInterval: 30000,
   });
 
-  const { data: unreadData, isLoading: unreadLoading, isError: unreadError, refetch: refetchUnread } = useQuery<any>({
-    queryKey: ["/api/notifications/unread"],
-    refetchInterval: 30000,
-  });
-
   const { data: lotteryHistoryData, isLoading: lotteryHistoryLoading, isError: lotteryHistoryError, refetch: refetchLotteryHistory } = useQuery<DriverLotteryHistoryItem[]>({
     queryKey: ["/api/drivers/lottery-history"],
     refetchInterval: 60000,
@@ -279,16 +275,15 @@ export default function DriverRewards() {
   );
 
   const rewardUnreadCount = useMemo(() => {
-    const unreadNotifications = Array.isArray(unreadData?.notifications) ? unreadData.notifications : [];
-    return unreadNotifications.filter(isRewardNotification).length;
-  }, [unreadData]);
+    return rewardNotifications.filter((notification) => !notification.isRead).length;
+  }, [rewardNotifications]);
 
   const rewardUpdateCount = rewardNotifications.length;
   const ticketEntries = Array.isArray(lotteryEntriesData) ? lotteryEntriesData : [];
   const lotteryHistoryEntries = Array.isArray(lotteryHistoryData) ? lotteryHistoryData : [];
   const lotteryFulfillmentEntries = Array.isArray(lotteryFulfillmentData) ? lotteryFulfillmentData : [];
   const rewardSummaryLoading = dashboardLoading || lotteryStatusLoading;
-  const rewardNotificationsLoading = notificationsLoading || unreadLoading;
+  const rewardNotificationsLoading = notificationsLoading;
   const drawingLabel =
     currentDrawing?.monthName
       ? formatNamedMonthYear(currentDrawing.monthName, currentDrawing.lotteryYear, language)
@@ -298,13 +293,12 @@ export default function DriverRewards() {
   const drawingPrizes = [currentDrawing?.firstPrize, currentDrawing?.secondPrize, currentDrawing?.thirdPrize].filter(
     Boolean,
   );
-  const rewardsError = dashboardError || lotteryStatusError || lotteryEntriesError || notificationsError || unreadError || lotteryHistoryError || lotteryFulfillmentError;
+  const rewardsError = dashboardError || lotteryStatusError || lotteryEntriesError || notificationsError || lotteryHistoryError || lotteryFulfillmentError;
   const retryRewards = () => {
     void refetchDashboard();
     void refetchLotteryStatus();
     void refetchLotteryEntries();
     void refetchNotifications();
-    void refetchUnread();
     void refetchLotteryHistory();
     void refetchLotteryFulfillment();
   };

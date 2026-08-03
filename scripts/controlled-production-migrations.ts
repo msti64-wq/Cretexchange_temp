@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
 
-type Migration = { id: "0013" | "0036" | "0037" | "0038"; file: string; sha256: string; expectedObjects: number };
+type Migration = { id: "0013" | "0036" | "0037" | "0038" | "0039"; file: string; sha256: string; expectedObjects: number };
 type MigrationState = "pending" | "applied";
 const CLIENT_CLOSE_TIMEOUT_MS = 5_000;
 
@@ -16,6 +16,7 @@ const migrations: readonly Migration[] = [
   { id: "0036", file: "migrations/0036_add_washout_activity_admin_reviews.sql", sha256: "81c8c5dbceb87ed0aa024d3a34b432a72825722703e53574af785cbc8a08fdb0", expectedObjects: 7 },
   { id: "0037", file: "migrations/0037_add_washout_photo_review_audit.sql", sha256: "5714306b60592c536dc9d1e5dbe71e20392faedde97fd06d2d4b180fb58c7e5b", expectedObjects: 4 },
   { id: "0038", file: "migrations/0038_add_platform_analytics_events.sql", sha256: "684a072dac88a16515118bfd7eb3e9208570b375f4dff3a3c632c6426fbee667", expectedObjects: 13 },
+  { id: "0039", file: "migrations/0039_extend_notifications_for_communication_center.sql", sha256: "90d7ffe79169b3735f8af4cfa77805aac34def6f9afddf48d878abfbec9b4c79", expectedObjects: 23 },
 ] as const;
 
 function fail(message: string): never { throw new Error(message); }
@@ -25,7 +26,7 @@ function sha(value: string | undefined): string | null { return value && /^[a-f0
 function selectMigrations(from: string | undefined, to: string | undefined): readonly Migration[] {
   const first = migrations.findIndex((migration) => migration.id === from);
   const last = migrations.findIndex((migration) => migration.id === to);
-  if (first < 0 || last < first) fail("Only the ordered 0013 and 0036 through 0038 production allowlist is permitted.");
+  if (first < 0 || last < first) fail("Only the ordered 0013 and 0036 through 0039 production allowlist is permitted.");
   return migrations.slice(first, last + 1);
 }
 
@@ -64,6 +65,12 @@ async function migrationObjectCount(client: pg.Client, migration: Migration): Pr
     // the catalog state as pending and apply the governed migration.
     const foreignKeys = await count(client, "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid=to_regclass($1) AND contype='f'", ["public.platform_analytics_events"]);
     return tables + indexes + constraints + foreignKeys;
+  }
+  if (migration.id === "0039") {
+    const columns = await count(client, "SELECT count(*)::int AS value FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2 AND column_name = ANY($3::text[])", ["public", "notifications", "{recipient_role,category,template_key,template_version,read_at,archived_at,deep_link,source_entity_type,source_entity_id,idempotency_key,priority,delivery_state,schema_version,updated_at}"]);
+    const indexes = await count(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])", ["public", "{notifications_idempotency_key_unique,notifications_user_archived_created_idx,notifications_user_read_archived_idx,notifications_user_category_created_idx}"]);
+    const constraints = await count(client, "SELECT count(*)::int AS value FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname=$1 AND t.relname=$2 AND c.conname = ANY($3::text[])", ["public", "notifications", "{notifications_recipient_role_valid,notifications_category_valid,notifications_priority_valid,notifications_delivery_state_valid,notifications_schema_version_positive}"]);
+    return columns + indexes + constraints;
   }
   const tables = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name=$2", ["public", "washout_photo_review_events"]);
   const indexes = await count(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])", ["public", "{washout_photo_review_events_photo_created_idx,washout_photo_review_events_activity_created_idx}"]);

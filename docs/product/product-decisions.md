@@ -738,3 +738,11 @@ the server.
 **Status:** Active — Phase 3 Sprint 3
 
 **Implications:** UTC cohort rules and definitions live in CTX-MET-001; the implementation lives in the shared Network Intelligence service. State and Facility are the only authorized geographic dimensions until a separately governed market model exists. Future competition, grant, investor, environmental, or municipality experiences must consume separately authorized contracts rather than treating this internal screen as public.
+
+## PD-058 - Notification and Communication Boundary
+
+**Decision:** [PD-058](./PD-058-notification-and-communication-boundary.md) establishes one structured, recipient-scoped in-application Notification domain while preserving the separate Admin support-message history and the Driver `/messages` compatibility route.
+
+**Status:** Active — Phase 5 Sprint 1
+
+**Implications:** Canonical workflows emit safe, idempotent notification intents after successful transitions. Notifications use governed localization metadata, bounded recipient-only APIs, and RBAC-safe links. Email, SMS, push, chat, marketing, financial notifications, payment reminders, and Platform Intelligence notification metrics remain out of scope.

@@ -921,10 +921,34 @@ export const notifications = pgTable("notifications", {
   title: varchar("title").notNull(),
   message: text("message").notNull(),
   type: varchar("type").notNull().default("info"),
-  isRead: boolean("is_read").default(false),
+  recipientRole: varchar("recipient_role"),
+  category: varchar("category").notNull().default("system"),
+  templateKey: varchar("template_key"),
+  templateVersion: varchar("template_version").notNull().default("1"),
+  isRead: boolean("is_read").notNull().default(false),
+  readAt: timestamp("read_at"),
+  archivedAt: timestamp("archived_at"),
+  deepLink: varchar("deep_link"),
+  sourceEntityType: varchar("source_entity_type"),
+  sourceEntityId: varchar("source_entity_id"),
+  idempotencyKey: varchar("idempotency_key"),
+  priority: varchar("priority").notNull().default("normal"),
+  deliveryState: varchar("delivery_state").notNull().default("delivered"),
+  schemaVersion: integer("schema_version").notNull().default(1),
   data: jsonb("data"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("notifications_idempotency_key_unique").on(table.idempotencyKey),
+  index("notifications_user_archived_created_idx").on(table.userId, table.archivedAt, table.createdAt),
+  index("notifications_user_read_archived_idx").on(table.userId, table.isRead, table.archivedAt),
+  index("notifications_user_category_created_idx").on(table.userId, table.category, table.createdAt),
+  check("notifications_recipient_role_valid", sql`${table.recipientRole} IS NULL OR ${table.recipientRole} IN ('driver','owner','admin','super_admin')`),
+  check("notifications_category_valid", sql`${table.category} IN ('operational','achievement','competition','administrative','system','announcement')`),
+  check("notifications_priority_valid", sql`${table.priority} IN ('normal','high')`),
+  check("notifications_delivery_state_valid", sql`${table.deliveryState} IN ('delivered','suppressed')`),
+  check("notifications_schema_version_positive", sql`${table.schemaVersion} > 0`),
+]);
 
 // Legal document versions and user acceptance ledger
 export const termsVersions = pgTable("terms_versions", {
@@ -1602,6 +1626,7 @@ export const insertPaymentSchema = createInsertSchema(payments).omit({
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export const insertTermsVersionSchema = createInsertSchema(termsVersions).omit({

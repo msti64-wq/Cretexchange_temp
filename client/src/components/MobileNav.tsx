@@ -17,11 +17,12 @@ export function MobileNav({ role }: MobileNavProps) {
   // Use the role prop if provided, otherwise get from auth context
   const userRole = role || (user as any)?.role;
 
-  // Fetch unread notifications count for drivers and owners
+  // Fetch a bounded count for every authenticated role; the center refreshes
+  // this cache after read/archive actions without aggressive polling.
   const { data: unreadData } = useQuery({
     queryKey: ['/api/notifications/unread'],
-    enabled: userRole === 'owner' || userRole === 'driver',
-    refetchInterval: 30000, // Refresh every 30 seconds
+    enabled: ['owner', 'driver', 'admin', 'super_admin'].includes(userRole),
+    staleTime: 60_000,
   });
 
   const unreadCount = (unreadData as any)?.count || 0;
@@ -59,6 +60,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/admin/financial-operations", icon: ClipboardList, label: t("adminNav.financialOperations"), testIdLabel: "financial-operations" },
           { path: "/admin/administration-repository", icon: FileText, label: t("adminNav.operationsLibrary"), testIdLabel: "administration-repository" },
           { path: "/admin/photo-review", icon: Images, label: t("adminNav.photoReview"), testIdLabel: "photo-review" },
+          { path: "/notifications", icon: Bell, label: t("nav.alerts"), testIdLabel: "alerts" },
           { path: "/profile", icon: Settings, label: t("adminNav.profile") },
         ];
       case "super_admin":
@@ -72,6 +74,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/admin/financial-operations", icon: ClipboardList, label: t("adminNav.financialOperations"), testIdLabel: "financial-operations" },
           { path: "/admin/administration-repository", icon: FileText, label: t("adminNav.operationsLibrary"), testIdLabel: "administration-repository" },
           { path: "/admin/photo-review", icon: Images, label: t("adminNav.photoReview"), testIdLabel: "photo-review" },
+          { path: "/notifications", icon: Bell, label: t("nav.alerts"), testIdLabel: "alerts" },
           { path: "/lottery", icon: Trophy, label: t("adminNav.rewardsProgram") },
           { path: "/reconciliation", icon: RefreshCw, label: t("adminNav.reconcile") },
           { path: "/subscriptions", icon: Receipt, label: t("adminNav.subscriptions") },
@@ -93,6 +96,9 @@ export function MobileNav({ role }: MobileNavProps) {
       "fixed inset-x-0 bottom-0 z-50 border-t border-slate-800 bg-slate-950/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 text-slate-100 shadow-[0_-16px_30px_-24px_rgba(15,23,42,0.8)] backdrop-blur-xl",
       fitViewportNav ? "overflow-x-hidden" : "overflow-x-auto"
     )}>
+      <span className="sr-only" aria-live="polite">
+        {t("notification.center.unreadCount", { count: unreadCount })}
+      </span>
       <div className={cn(
         "mx-auto grid max-w-6xl gap-1.5 sm:gap-2",
         fitViewportNav
@@ -108,6 +114,9 @@ export function MobileNav({ role }: MobileNavProps) {
               key={item.path}
               type="button"
               onClick={() => setLocation(item.path)}
+              aria-label={(item.testIdLabel === "alerts" || item.testIdLabel === "messages") && unreadCount > 0
+                ? `${item.label}: ${unreadCount} ${t("notification.center.unread")}`
+                : item.label}
               aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2.5 text-[10px] font-medium transition-colors sm:px-2 sm:text-[11px]",

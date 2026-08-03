@@ -23,7 +23,7 @@ export function localizeDriverNotification(
     return {
       title: t("messages.system.rewardWinnerTitle"),
       // Admin-authored winner messages are preserved as authored.
-      message: data.sentBy ? original.message : t("messages.system.rewardWinnerBody"),
+      message: data.sentBy || data.authored ? original.message : t("messages.system.rewardWinnerBody"),
     };
   }
   if (notification.type === "lottery_drawing_complete" || (notification.type === "lottery_announcement" && data.month && data.year)) {

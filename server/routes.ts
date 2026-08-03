@@ -160,6 +160,8 @@ import {
   PlatformAnalyticsQueryError,
 } from "./platformAnalytics";
 import { buildDriverAchievementProjection } from "./driverAchievements";
+import { emitNotificationBestEffort, emitRoleNotificationBestEffort, notificationService } from "./notificationService";
+import { announcementRequestSchema, isSafeNotificationDeepLink, notificationListQuerySchema } from "../shared/notifications";
 import { buildDriverCompetitionProjection, DriverCompetitionQueryError, parseDriverCompetitionQuery } from "./driverCompetition";
 import { buildNetworkIntelligence, parseNetworkIntelligenceQuery } from "./networkIntelligence";
 import {
@@ -1934,6 +1936,17 @@ function activeDeploymentCommit(): string | null {
     || process.env.RAILWAY_DEPLOYMENT_COMMIT_SHA
     || process.env.GIT_COMMIT_SHA
     || null;
+}
+
+async function runNotificationDeliveryBestEffort(sourceEntityId: string, deliver: () => Promise<void>) {
+  try {
+    await deliver();
+  } catch (error) {
+    console.error("[NOTIFICATION_WORKFLOW_DELIVERY_FAILED]", {
+      sourceEntityId,
+      errorCategory: error instanceof Error ? error.name : "UnknownError",
+    });
+  }
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -5775,6 +5788,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         source: 'owner approval',
       });
 
+      await runNotificationDeliveryBestEffort(id, async () => {
+      const verifiedDriver = await storage.getDriverById(activityDetails.driverId);
+      if (verifiedDriver) {
+        await emitNotificationBestEffort({
+          userId: verifiedDriver.userId,
+          recipientRole: 'driver',
+          templateKey: 'activity_verified',
+          title: 'Recovery activity verified',
+          message: `${activityLocation.name} verified your Material Recovery Activity.`,
+          deepLink: '/activity',
+          metadata: { facilityName: activityLocation.name, status: 'verified' },
+          sourceEntityType: 'washout_activity', sourceEntityId: id,
+          idempotencyKey: `activity:${id}:verified:driver`,
+        });
+        const projection = await buildDriverAchievementProjection(db, verifiedDriver.id);
+        const transitionTime = new Date(verifiedActivity.verifiedAt || Date.now()).getTime();
+        const newlyEarned = projection.earnedAchievements.filter((item) => item.earnedAt && Math.abs(new Date(item.earnedAt).getTime() - transitionTime) < 1000);
+        for (const achievement of newlyEarned) {
+          await emitNotificationBestEffort({
+            userId: verifiedDriver.userId, recipientRole: 'driver', templateKey: 'achievement_earned',
+            title: 'Achievement earned', message: `You earned ${achievement.name}.`, deepLink: '/dashboard',
+            metadata: { achievementName: achievement.name }, sourceEntityType: 'driver_achievement', sourceEntityId: achievement.id,
+            idempotencyKey: `achievement:${verifiedDriver.id}:${achievement.id}`,
+          });
+          if (achievement.category === 'verified_washouts') {
+            await emitNotificationBestEffort({
+              userId: verifiedDriver.userId, recipientRole: 'driver', templateKey: 'competition_milestone',
+              title: 'Competition milestone reached', message: `You reached ${achievement.name}.`, deepLink: '/driver/competition',
+              metadata: { milestoneName: achievement.name }, sourceEntityType: 'driver_competition_milestone', sourceEntityId: achievement.id,
+              idempotencyKey: `competition:${verifiedDriver.id}:${achievement.id}`,
+            });
+          }
+        }
+      }
+      await emitNotificationBestEffort({
+        userId, recipientRole: 'owner', templateKey: 'owner_review_approved', title: 'Activity approved',
+        message: `Your review for a Material Recovery Activity at ${activityLocation.name} was recorded.`,
+        deepLink: `/intelligence?facilityId=${activityLocation.id}`, metadata: { facilityName: activityLocation.name, status: 'verified' },
+        sourceEntityType: 'washout_activity', sourceEntityId: id, idempotencyKey: `activity:${id}:verified:owner`,
+      });
+      });
+
       // PD-051 and PB-001 require verification to remain an operational transition.
       // Do not create an obligation here: the current payment record cannot yet prove
       // frozen amounts and one-obligation-per-activity guarantees. In particular,
@@ -5892,6 +5947,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!activity) {
         return res.status(409).json({ message: "This activity is no longer awaiting owner review." });
       }
+      await runNotificationDeliveryBestEffort(id, async () => {
+      const rejectedDriver = await storage.getDriverById(activityDetails.driverId);
+      if (rejectedDriver) await emitNotificationBestEffort({
+        userId: rejectedDriver.userId, recipientRole: 'driver', templateKey: 'activity_rejected', title: 'Recovery activity needs attention',
+        message: `Your Material Recovery Activity at ${activityLocation.name} was rejected.`, deepLink: '/activity',
+        metadata: { facilityName: activityLocation.name, status: 'rejected' },
+        sourceEntityType: 'washout_activity', sourceEntityId: id, idempotencyKey: `activity:${id}:rejected:driver`, priority: 'high',
+      });
+      await emitNotificationBestEffort({
+        userId, recipientRole: 'owner', templateKey: 'owner_review_rejected', title: 'Activity rejected',
+        message: `Your review for a Material Recovery Activity at ${activityLocation.name} was recorded.`,
+        deepLink: `/intelligence?facilityId=${activityLocation.id}`, metadata: { facilityName: activityLocation.name, status: 'rejected' },
+        sourceEntityType: 'washout_activity', sourceEntityId: id, idempotencyKey: `activity:${id}:rejected:owner`,
+      });
+      });
       res.json(activity);
     } catch (error) {
       console.error("[OWNER_ACTIVITY_REJECTION_FAILED]", {
@@ -5920,6 +5990,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const location = await storage.getWashoutLocation(activity.locationId);
       if (!location) return res.status(404).json({ message: "Activity not found." });
       const review = await storage.createWashoutActivityAdminReview({ activityId: activity.id, driverId: driver.id, driverUserId: req.user.id, ownerId: location.ownerId, rejectionReasonSnapshot: activity.rejectionReason, driverExplanation: parsed.data.explanation });
+      await runNotificationDeliveryBestEffort(review.id, async () => {
+      await Promise.all((['admin', 'super_admin'] as const).map((recipientRole) => emitRoleNotificationBestEffort({
+        recipientRole, templateKey: 'admin_review_requested', title: 'Administrative review requested',
+        message: 'A disputed Material Recovery Activity is ready for administrative review.', deepLink: '/',
+        metadata: { facilityName: location.name, status: 'requested' }, sourceEntityType: 'washout_activity_admin_review',
+        sourceEntityId: review.id, idempotencyKey: `admin-review:${review.id}:requested:${recipientRole}`, priority: 'high',
+      })));
+      const reviewOwner = await storage.getOwnerById(location.ownerId);
+      if (reviewOwner) await emitNotificationBestEffort({
+        userId: reviewOwner.userId, recipientRole: 'owner', templateKey: 'admin_review_attention', title: 'Administrative review requested',
+        message: `A Material Recovery Activity at ${location.name} entered Administrative Review.`, deepLink: '/dashboard',
+        metadata: { facilityName: location.name, status: 'requested' }, sourceEntityType: 'washout_activity_admin_review',
+        sourceEntityId: review.id, idempotencyKey: `admin-review:${review.id}:requested:owner`, priority: 'high',
+      });
+      });
       return res.status(201).json({ id: review.id, activityId: review.activityId, requestedAt: review.requestedAt, resolution: review.resolution, message: "Administrative review requested. This review does not approve the recovery activity or create a payment entitlement." });
     } catch (error: any) {
       if (error?.code === "23505") return res.status(409).json({ message: "An administrative review is already open for this activity." });
@@ -6003,6 +6088,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!actor || (actor.role !== "admin" && actor.role !== "super_admin")) return res.status(403).json({ message: "Platform Operations access required." });
     try {
       const result = await storage.resolveWashoutActivityAdminReview({ reviewId: req.params.id, version: parsed.data.version, adminUserId: actor.id, resolution: parsed.data.resolution, rationale: parsed.data.rationale, audit: buildAdministrativeReviewAudit(req, res, "admin-administrative-review-decision") });
+      await runNotificationDeliveryBestEffort(result.review.id, async () => {
+      const [reviewDriver, reviewOwner] = await Promise.all([storage.getDriverById(result.review.driverId), storage.getOwnerById(result.review.ownerId)]);
+      if (reviewDriver) await emitNotificationBestEffort({
+        userId: reviewDriver.userId, recipientRole: 'driver', templateKey: 'admin_review_updated', title: 'Administrative review updated',
+        message: 'Platform Operations recorded a decision for your administrative review.', deepLink: '/activity',
+        metadata: { status: result.review.resolution }, sourceEntityType: 'washout_activity_admin_review', sourceEntityId: result.review.id,
+        idempotencyKey: `admin-review:${result.review.id}:decision:${result.review.version}:driver`,
+      });
+      if (reviewOwner) await emitNotificationBestEffort({
+        userId: reviewOwner.userId, recipientRole: 'owner', templateKey: 'admin_review_updated', title: 'Administrative review updated',
+        message: 'Platform Operations recorded a decision for an activity at your Recovery Facility.', deepLink: '/dashboard',
+        metadata: { status: result.review.resolution }, sourceEntityType: 'washout_activity_admin_review', sourceEntityId: result.review.id,
+        idempotencyKey: `admin-review:${result.review.id}:decision:${result.review.version}:owner`,
+      });
+      });
       return res.json({ id: result.review.id, resolution: result.review.resolution, decidedAt: result.review.decidedAt, activityStatus: result.activity?.status || "rejected" });
     } catch (error: any) {
       if (error?.code === "ADMIN_REVIEW_NOT_OPEN" || error?.code === "WASHOUT_ACTIVITY_NOT_REJECTED") return res.status(409).json({ message: "This administrative review can no longer be decided." });
@@ -10401,12 +10501,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // NOTIFICATIONS API ENDPOINTS
 
+  // Structured, bounded Notification Center read model. All mutations remain
+  // scoped to req.user.id; callers cannot select another recipient.
+  app.get('/api/notifications/center', isAuthenticated, async (req: any, res) => {
+    const parsed = notificationListQuerySchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid notification query." });
+    try {
+      return res.json(await notificationService.list(req.user.id, parsed.data.page, parsed.data.pageSize, parsed.data.category));
+    } catch (error) {
+      console.error("[NOTIFICATION_CENTER_LIST_FAILED]", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
+      return res.status(500).json({ message: "Unable to load notifications." });
+    }
+  });
+
   // GET /api/notifications - Get all notifications for current user
   app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const notifications = await storage.getNotificationsByUser(userId);
-      res.json(notifications);
+      const result = await notificationService.list(userId, 1, 50);
+      res.json(result.items);
     } catch (error: any) {
       console.error("Error fetching notifications:", error);
       res.status(500).json({ message: "Failed to fetch notifications: " + error.message });
@@ -10417,8 +10530,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/notifications/unread', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const unreadNotifications = await storage.getUnreadNotificationsByUser(userId);
-      res.json({ count: unreadNotifications.length, notifications: unreadNotifications });
+      const unreadCount = await notificationService.unreadCount(userId);
+      res.json({ count: unreadCount, notifications: [] });
     } catch (error: any) {
       console.error("Error fetching unread notifications:", error);
       res.status(500).json({ message: "Failed to fetch unread notifications: " + error.message });
@@ -10429,8 +10542,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/notifications/read-all', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      await storage.markAllNotificationsAsRead(userId);
-      res.json({ success: true });
+      const updated = await notificationService.markAllRead(userId);
+      res.json({ success: true, updated });
     } catch (error: any) {
       console.error("Error marking all notifications as read:", error);
       res.status(500).json({ message: "Failed to mark all notifications as read" });
@@ -10441,15 +10554,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const notification = await storage.markNotificationAsRead(id, req.user.id);
+      const notification = await notificationService.markRead(req.user.id, id);
       if (!notification) {
         return res.status(404).json({ message: "Notification not found" });
       }
-      res.json(notification);
+      res.json({ id: notification.id, isRead: notification.isRead, readAt: notification.readAt });
     } catch (error: any) {
       console.error("Error marking notification as read:", error);
       res.status(500).json({ message: "Failed to mark notification as read: " + error.message });
     }
+  });
+
+  app.post('/api/notifications/:id/archive', isAuthenticated, async (req: any, res) => {
+    try {
+      const archived = await notificationService.archive(req.user.id, req.params.id);
+      if (!archived) return res.status(404).json({ message: "Notification not found" });
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("[NOTIFICATION_ARCHIVE_FAILED]", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
+      return res.status(500).json({ message: "Unable to archive notification." });
+    }
+  });
+
+  app.post('/api/admin/notifications/announcements', isAuthenticated, async (req: any, res) => {
+    const actor = await storage.getUser(req.user.id);
+    if (!actor || (actor.role !== 'admin' && actor.role !== 'super_admin')) {
+      return res.status(403).json({ message: "Platform Operations access required." });
+    }
+    const parsed = announcementRequestSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid announcement." });
+    const deepLink = parsed.data.deepLink;
+    if (deepLink && !isSafeNotificationDeepLink(parsed.data.recipientRole, deepLink)) {
+      return res.status(400).json({ message: "Announcement navigation is not permitted for this role." });
+    }
+    const announcementId = randomUUID();
+    await notificationService.createForRole({
+      recipientRole: parsed.data.recipientRole,
+      templateKey: 'system_announcement',
+      title: parsed.data.title,
+      message: parsed.data.message,
+      deepLink,
+      metadata: { announcementText: parsed.data.message },
+      sourceEntityType: 'announcement',
+      sourceEntityId: announcementId,
+      idempotencyKey: `announcement:${announcementId}`,
+      priority: 'normal',
+    });
+    console.info('[ADMIN_NOTIFICATION_ANNOUNCEMENT_CREATED]', {
+      actorUserId: actor.id,
+      announcementId,
+      recipientRole: parsed.data.recipientRole,
+      templateKey: 'system_announcement',
+    });
+    return res.status(201).json({ id: announcementId, recipientRole: parsed.data.recipientRole });
   });
 
   // END NOTIFICATIONS API ENDPOINTS
@@ -17117,6 +17274,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
+
+      await runNotificationDeliveryBestEffort(result.activity.id, async () => {
+      const locationOwner = await storage.getOwnerById(location.ownerId);
+      await emitNotificationBestEffort({
+        userId, recipientRole: 'driver', templateKey: 'activity_submitted', title: 'Recovery activity submitted',
+        message: `Your Material Recovery Activity at ${location.name} is awaiting facility review.`, deepLink: '/activity',
+        metadata: { facilityName: location.name, status: 'pending' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
+        idempotencyKey: `activity:${result.activity.id}:submitted:driver`,
+      });
+      if (locationOwner) await emitNotificationBestEffort({
+        userId: locationOwner.userId, recipientRole: 'owner', templateKey: 'owner_pending_review', title: 'Activity ready for review',
+        message: `A Material Recovery Activity at ${location.name} is awaiting your review.`, deepLink: '/dashboard',
+        metadata: { facilityName: location.name, status: 'pending' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
+        idempotencyKey: `activity:${result.activity.id}:submitted:owner`, priority: 'high',
+      });
+      if (result.photos.some((photo: any) => photo.verificationStatus === 'needs_review')) {
+        await Promise.all((['admin', 'super_admin'] as const).map((recipientRole) => emitRoleNotificationBestEffort({
+          recipientRole, templateKey: 'photo_review_required', title: 'Photo review required',
+          message: 'A recovery activity photo requires administrative review.', deepLink: '/admin/photo-review',
+          metadata: { facilityName: location.name, status: 'needs_review' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
+          idempotencyKey: `activity:${result.activity.id}:photo-review:${recipientRole}`, priority: 'high',
+        })));
+      }
+      });
       
       res.json({
         activity: result.activity,

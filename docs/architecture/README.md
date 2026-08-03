@@ -40,6 +40,7 @@ This section documents the technical architecture of CreteXchange.
 | CTX-ARCH-010 | [Administration Repository Architecture](./CTX-ARCH-010-administration-repository-architecture.md) | Repository-authoritative Administration Repository boundaries, derived metadata, and synchronization constraints | Draft; implementation adoption separately governed |
 | CTX-ARCH-011 | [Administration Repository Documentation Refresh Design](./CTX-ARCH-011-administration-repository-documentation-refresh-design.md) | Controlled refresh of derived documentation inventory and freshness state | Draft; Version 1 implementation exists in repository, while architecture approval and production adoption remain separate |
 | CTX-ARCH-012 | [Platform Intelligence Layer](./CTX-ARCH-012-platform-intelligence-layer.md) | Immutable operational analytics events, canonical metrics, aggregation, and role-scoped read APIs | Approved for Phase 2 Sprint 2 foundation implementation |
+| CTX-ARCH-013 | [Notification and Communication Center](./CTX-ARCH-013-notification-and-communication-center.md) | Structured recipient notifications, safe workflow intents, localization, RBAC, read/archive state, and future channel boundary | Approved for Phase 5 Sprint 1 implementation |
 | CTX-MET-001 | [Platform Metric Registry](./CTX-MET-001-platform-metric-registry.md) | Canonical operational metric, journey, and drop-off definitions | Approved for Phase 2 Sprint 2 foundation implementation |
 
 ## Supporting Architecture Records

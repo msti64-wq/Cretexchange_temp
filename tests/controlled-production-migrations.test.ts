@@ -34,6 +34,14 @@ test("controlled production migration runner allowlists and catalog-verifies mig
   assert.match(script, /to_regclass\(\$1\)/);
 });
 
+test("controlled production migration runner allowlists and catalog-verifies migration 0039", async () => {
+  const script = await readFile(new URL("../scripts/controlled-production-migrations.ts", import.meta.url), "utf8");
+  assert.match(script, /id: "0039"/);
+  assert.match(script, /0039_extend_notifications_for_communication_center\.sql/);
+  assert.match(script, /notifications_idempotency_key_unique/);
+  assert.match(script, /notifications_schema_version_positive/);
+});
+
 test("controlled production migration runner allowlists and catalog-verifies additive terms migration 0013", async () => {
   const [script, migration] = await Promise.all([
     readFile(new URL("../scripts/controlled-production-migrations.ts", import.meta.url), "utf8"),

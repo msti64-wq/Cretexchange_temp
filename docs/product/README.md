@@ -1,5 +1,9 @@
 # Product
 
+## Current decisions
+
+- [PD-058 — Notification and Communication Boundary](./PD-058-notification-and-communication-boundary.md)
+
 ## Purpose
 
 This section documents product direction, user-facing priorities, and the decisions that shape CreteXchange.
