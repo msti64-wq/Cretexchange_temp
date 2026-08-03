@@ -26,7 +26,8 @@ test("Facility Intelligence has complete English and Spanish shared-catalog cove
     "nav", "eyebrow", "title", "description", "facilityAria", "facilitySelectorLabel", "selectFacility",
     "selectionScope", "dateRangeAria", "last30", "last90", "noFacility", "noFacilitySelected",
     "selectFacilityDescription", "invalidFacility", "invalidFacilityDescription", "facilityUnavailable",
-    "facilityUnavailableDescription", "retryFacilitiesAria", "loading", "refreshing", "error", "retryAria", "overviewAria",
+    "facilityUnavailableDescription", "retryFacilitiesAria", "loading", "loadingSelectedFacility", "loadingFacility",
+    "loadingHint", "refreshing", "error", "timeout", "retryAria", "overviewAria",
     "verifiedActivities", "submittedActivities", "rejectedActivities", "administrativeReviews", "activeDrivers",
     "repeatDrivers", "operationalTrends", "trendPeriodAria", "daily", "weekly", "monthly", "trendChartAria",
     "facilityHealth", "healthScoreAria", "indicatorsAria", "driverIntelligence", "facilityOperations",
@@ -119,6 +120,28 @@ test("Owner Intelligence never selects locations[0] and waits for a validated Fa
   assert.match(page, /facility-intelligence-selection-required/);
   assert.match(page, /facility-intelligence-invalid/);
   assert.match(page, /grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2/);
+});
+
+test("Owner Intelligence exposes a visible bounded loading experience without misleading values", async () => {
+  const [page, app, loading, query] = await Promise.all([
+    readFile(pageUrl, "utf8"),
+    readFile(new URL("../client/src/App.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../client/src/components/owner/OwnerIntelligenceLoading.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../client/src/lib/ownerFacilityIntelligenceQuery.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(app, /currentPath\.startsWith\("\/intelligence"\).*OwnerIntelligenceRouteLoading/);
+  assert.match(loading, /data-testid="facility-intelligence-loading"/);
+  assert.match(loading, /role="status" aria-live="polite"/);
+  assert.match(loading, /owner\.intelligence\.loadingSelectedFacility/);
+  assert.match(loading, /owner\.intelligence\.loadingFacility/);
+  assert.match(loading, /owner\.intelligence\.loadingHint/);
+  assert.doesNotMatch(loading, />0</);
+  assert.match(query, /OWNER_FACILITY_INTELLIGENCE_TIMEOUT_MS = 15_000/);
+  assert.match(page, /withOwnerFacilityIntelligenceTimeout/);
+  assert.match(page, /isOwnerFacilityIntelligenceTimeoutError/);
+  assert.match(page, /owner\.intelligence\.timeout/);
+  assert.match(page, /intelligence\.refetch\(\)/);
 });
 
 test("Facility Intelligence request windows are fresh and query keys are facility-scoped", () => {

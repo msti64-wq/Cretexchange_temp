@@ -1,6 +1,44 @@
 export type OwnerFacilityIntelligenceWindow = "30" | "90";
 
 const OWNER_FACILITY_INTELLIGENCE_SCOPE = "owner-facility-intelligence";
+export const OWNER_FACILITY_INTELLIGENCE_TIMEOUT_MS = 15_000;
+
+export class OwnerFacilityIntelligenceTimeoutError extends Error {
+  constructor() {
+    super("Owner Facility Intelligence request timed out");
+    this.name = "OwnerFacilityIntelligenceTimeoutError";
+  }
+}
+
+export function isOwnerFacilityIntelligenceTimeoutError(error: unknown) {
+  return error instanceof OwnerFacilityIntelligenceTimeoutError;
+}
+
+export async function withOwnerFacilityIntelligenceTimeout<T>(
+  request: (signal: AbortSignal) => Promise<T>,
+  parentSignal?: AbortSignal,
+  timeoutMs = OWNER_FACILITY_INTELLIGENCE_TIMEOUT_MS,
+) {
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromParent = () => controller.abort();
+  if (parentSignal?.aborted) abortFromParent();
+  else parentSignal?.addEventListener("abort", abortFromParent, { once: true });
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    return await request(controller.signal);
+  } catch (error) {
+    if (timedOut) throw new OwnerFacilityIntelligenceTimeoutError();
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    parentSignal?.removeEventListener("abort", abortFromParent);
+  }
+}
 
 export function ownerFacilityIntelligenceQueryPrefix(locationId: string) {
   return [OWNER_FACILITY_INTELLIGENCE_SCOPE, locationId] as const;

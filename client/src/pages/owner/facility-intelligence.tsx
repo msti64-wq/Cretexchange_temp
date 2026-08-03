@@ -5,16 +5,18 @@ import { BarChart3, CheckCircle2, TriangleAlert } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { OwnerHeader } from "@/components/OwnerHeader";
 import { MobileNav } from "@/components/MobileNav";
+import { OwnerIntelligenceLoadingPanel } from "@/components/owner/OwnerIntelligenceLoading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/lib/i18n";
 import {
   ownerFacilityIntelligenceQueryKey,
   ownerFacilityIntelligenceRequest,
+  isOwnerFacilityIntelligenceTimeoutError,
+  withOwnerFacilityIntelligenceTimeout,
   type OwnerFacilityIntelligenceWindow,
 } from "@/lib/ownerFacilityIntelligenceQuery";
 import {
@@ -92,7 +94,13 @@ export default function OwnerFacilityIntelligence() {
   const [currentPath, setLocation] = useLocation();
   const [range, setRange] = useState<OwnerFacilityIntelligenceWindow>("30");
   const [trendPeriod, setTrendPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
-  const locationsQuery = useQuery<FacilityLocation[]>({ queryKey: ["/api/owners/locations"], queryFn: async () => (await apiRequest("GET", "/api/owners/locations")).json() });
+  const locationsQuery = useQuery<FacilityLocation[]>({
+    queryKey: ["/api/owners/locations"],
+    queryFn: ({ signal }) => withOwnerFacilityIntelligenceTimeout(
+      async (requestSignal) => (await apiRequest("/api/owners/locations", { method: "GET", signal: requestSignal })).json(),
+      signal,
+    ),
+  });
   const locations = locationsQuery.data || [];
   const locationsLoading = locationsQuery.isLoading;
   const storageKey = user?.id ? ownerFacilitySelectionStorageKey(user.id) : null;
@@ -107,6 +115,7 @@ export default function OwnerFacilityIntelligence() {
     storedFacilityId,
   }), [locations, storedFacilityId, urlSelection]);
   const locationId = selection.state === "selected" ? selection.facilityId : null;
+  const selectedFacilityName = locationId ? locations.find((location) => location.id === locationId)?.name || null : null;
 
   useEffect(() => {
     if (!storageKey || locationsLoading || locationsQuery.isError || typeof window === "undefined") return;
@@ -137,7 +146,10 @@ export default function OwnerFacilityIntelligence() {
   const intelligence = useQuery<Intelligence>({
     queryKey: ownerFacilityIntelligenceQueryKey(locationId || "unselected", range),
     enabled: Boolean(locationId),
-    queryFn: async () => (await apiRequest("GET", ownerFacilityIntelligenceRequest(locationId!, range))).json(),
+    queryFn: ({ signal }) => withOwnerFacilityIntelligenceTimeout(
+      async (requestSignal) => (await apiRequest(ownerFacilityIntelligenceRequest(locationId!, range), { method: "GET", signal: requestSignal })).json(),
+      signal,
+    ),
     staleTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
@@ -157,8 +169,8 @@ export default function OwnerFacilityIntelligence() {
     {!locationsLoading && !locationsQuery.isError && selection.state === "empty" && <Card data-testid="facility-intelligence-empty"><CardContent className="p-6 text-sm text-muted-foreground">{t("owner.intelligence.noFacility")}</CardContent></Card>}
     {!locationsLoading && !locationsQuery.isError && selection.state === "required" && <Card data-testid="facility-intelligence-selection-required"><CardContent className="space-y-1 p-6 text-sm"><p className="font-semibold">{t("owner.intelligence.noFacilitySelected")}</p><p className="text-muted-foreground">{t("owner.intelligence.selectFacilityDescription")}</p></CardContent></Card>}
     {!locationsLoading && !locationsQuery.isError && selection.state === "invalid" && <Card data-testid="facility-intelligence-invalid"><CardContent className="space-y-1 p-6 text-sm"><p className="font-semibold text-destructive" role="alert">{t("owner.intelligence.invalidFacility")}</p><p className="text-muted-foreground">{t("owner.intelligence.invalidFacilityDescription")}</p></CardContent></Card>}
-    {(intelligence.isLoading || locationsLoading) && <div className="grid gap-4 sm:grid-cols-3" role="status" aria-label={t("owner.intelligence.loading")}><span className="sr-only">{t("owner.intelligence.loading")}</span>{Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} className="h-28" />)}</div>}
-    {locationId && intelligence.isError && <Card><CardContent className="space-y-3 p-6 text-sm"><p className="text-destructive" role="alert">{t("owner.intelligence.error")}</p><Button type="button" variant="outline" onClick={() => void intelligence.refetch()} aria-label={t("owner.intelligence.retryAria")}>{t("common.retry")}</Button></CardContent></Card>}
+    {(intelligence.isLoading || locationsLoading) && <OwnerIntelligenceLoadingPanel facilityName={selectedFacilityName} />}
+    {locationId && intelligence.isError && <Card><CardContent className="space-y-3 p-6 text-sm"><p className="text-destructive" role="alert">{isOwnerFacilityIntelligenceTimeoutError(intelligence.error) ? t("owner.intelligence.timeout") : t("owner.intelligence.error")}</p><Button type="button" variant="outline" onClick={() => void intelligence.refetch()} aria-label={t("owner.intelligence.retryAria")}>{t("common.retry")}</Button></CardContent></Card>}
     {data && <>
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label={t("owner.intelligence.overviewAria")}><MetricCard label={t("owner.intelligence.verifiedActivities")} value={data.overview.verifiedCount} /><MetricCard label={t("owner.intelligence.submittedActivities")} value={data.overview.submittedCount} /><MetricCard label={t("owner.intelligence.rejectedActivities")} value={data.overview.rejectedCount} /><MetricCard label={t("owner.intelligence.administrativeReviews")} value={data.overview.administrativeReviewCount} /><MetricCard label={t("owner.intelligence.activeDrivers")} value={data.overview.activeDriverCount} /><MetricCard label={t("owner.intelligence.repeatDrivers")} value={data.overview.repeatDriverCount} detail={percent(data.overview.repeatDriverPercentage)} /></section>
       <section className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]"><Card><CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between"><div><CardTitle>{t("owner.intelligence.operationalTrends")}</CardTitle><CardDescription>{t("owner.intelligence.operationalTrendsDescription")}</CardDescription></div><Select value={trendPeriod} onValueChange={(value) => setTrendPeriod(value as "daily" | "weekly" | "monthly")}><SelectTrigger className="w-32" aria-label={t("owner.intelligence.trendPeriodAria")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="daily">{t("owner.intelligence.daily")}</SelectItem><SelectItem value="weekly">{t("owner.intelligence.weekly")}</SelectItem><SelectItem value="monthly">{t("owner.intelligence.monthly")}</SelectItem></SelectContent></Select></CardHeader><CardContent>{trendData.length ? <div className="h-72" role="img" aria-label={t("owner.intelligence.trendChartAria")}><ResponsiveContainer width="100%" height="100%"><LineChart data={trendData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="bucket" hide /><YAxis allowDecimals={false} /><Tooltip /><Line type="monotone" dataKey="submittedCount" name={t("owner.intelligence.submitted")} stroke="#0ea5e9" strokeWidth={2} dot={false} /><Line type="monotone" dataKey="verifiedCount" name={t("owner.intelligence.verified")} stroke="#22c55e" strokeWidth={2} dot={false} /><Line type="monotone" dataKey="rejectedCount" name={t("owner.intelligence.rejected")} stroke="#ef4444" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div> : <p className="py-12 text-center text-sm text-muted-foreground">{t("owner.intelligence.noTrendData")}</p>}</CardContent></Card><Card><CardHeader><CardTitle>{t("owner.intelligence.facilityHealth")}</CardTitle><CardDescription>{t("owner.intelligence.facilityHealthDescription")}</CardDescription></CardHeader><CardContent><div className="flex items-center gap-4"><div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-primary text-2xl font-semibold" aria-label={t("owner.intelligence.healthScoreAria", { score: data.health.score ?? t("owner.intelligence.unavailable") })}>{data.health.score ?? "—"}</div><div><Badge variant={data.health.state === "needs_attention" ? "destructive" : "secondary"}>{healthLabel(data.health, t)}</Badge><p className="mt-2 text-sm text-muted-foreground">{t("owner.intelligence.rates", { verification: percent(data.facility.verificationRate), rejection: percent(data.facility.rejectionRate) })}</p></div></div><div className="mt-5 space-y-2" aria-label={t("owner.intelligence.indicatorsAria")}>{data.indicators.map((indicator) => <div className="flex gap-2 rounded-md border p-3 text-sm" key={indicator.code}>{indicator.severity === "attention" ? <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" aria-hidden="true" />}<span>{indicatorCopy(indicator.code)}</span></div>)}</div></CardContent></Card></section>

@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { AdminDarkWorkspace } from "@/components/AdminDarkWorkspace";
 import { OwnerWorkspace } from "@/components/OwnerWorkspace";
+import { OwnerIntelligenceRouteLoading } from "@/components/owner/OwnerIntelligenceLoading";
 import { LanguageDocumentMetadata } from "@/components/LanguageDocumentMetadata";
 import { useLanguage } from "@/lib/i18n";
 const NotFound = lazy(() => import("@/pages/not-found"));
@@ -78,9 +79,11 @@ const OwnerRegister = (props: RouteComponentProps) => <Register preselectedRole=
 
 function Router() {
   const { user, isLoading, isAuthenticated } = useAuth();
+  const [currentPath] = useLocation();
 
   // Show loading spinner only during initial load
   if (isLoading) {
+    if (currentPath.startsWith("/intelligence")) return <OwnerIntelligenceRouteLoading />;
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -244,6 +247,9 @@ function App() {
 
 function RouteFallback() {
   const { t } = useLanguage();
+  const [currentPath] = useLocation();
+
+  if (currentPath.startsWith("/intelligence")) return <OwnerIntelligenceRouteLoading />;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
