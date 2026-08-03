@@ -24,6 +24,7 @@ const analyticsUrl = new URL("../server/platformAnalytics.ts", import.meta.url);
 test("Facility Intelligence has complete English and Spanish shared-catalog coverage", () => {
   const required = [
     "nav", "eyebrow", "title", "description", "facilityAria", "facilitySelectorLabel", "selectFacility",
+    "guidanceTitle", "guidanceBody", "guidanceHelper", "currentlyViewing", "changeFacility", "currentFacilityAria",
     "selectionScope", "dateRangeAria", "last30", "last90", "noFacility", "noFacilitySelected",
     "selectFacilityDescription", "invalidFacility", "invalidFacilityDescription", "facilityUnavailable",
     "facilityUnavailableDescription", "retryFacilitiesAria", "loading", "loadingSelectedFacility", "loadingFacility",
@@ -119,7 +120,8 @@ test("Owner Intelligence never selects locations[0] and waits for a validated Fa
   assert.match(page, /setTrendPeriod\("daily"\)/);
   assert.match(page, /facility-intelligence-selection-required/);
   assert.match(page, /facility-intelligence-invalid/);
-  assert.match(page, /grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2/);
+  assert.match(page, /facility-intelligence-current-context/);
+  assert.match(page, /locations\.length > 1/);
 });
 
 test("Owner Intelligence exposes a visible bounded loading experience without misleading values", async () => {

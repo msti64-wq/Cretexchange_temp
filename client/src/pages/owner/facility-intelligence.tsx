@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { BarChart3, CheckCircle2, TriangleAlert } from "lucide-react";
+import { BarChart3, Building2, CheckCircle2, TriangleAlert } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { OwnerHeader } from "@/components/OwnerHeader";
 import { MobileNav } from "@/components/MobileNav";
@@ -156,6 +156,23 @@ export default function OwnerFacilityIntelligence() {
   });
   const data = intelligence.data;
   const trendData = data ? trendPeriod === "daily" ? data.trends.dailyActivity : trendPeriod === "weekly" ? data.trends.weeklyActivity : data.trends.monthlyActivity : [];
+  const showSelectionGuidance = !locationsLoading
+    && !locationsQuery.isError
+    && (selection.state === "required" || selection.state === "invalid");
+  const facilitySelector = (
+    <Select value={locationId || ""} onValueChange={selectFacility} disabled={locationsLoading || locationsQuery.isError || !locations.length}>
+      <SelectTrigger
+        className="h-12 w-full border-2 border-primary/60 bg-background text-left shadow-sm focus:ring-4 focus:ring-primary/20 sm:min-w-72"
+        aria-label={t("owner.intelligence.facilityAria")}
+        data-testid="facility-intelligence-selector"
+      >
+        <SelectValue placeholder={t("owner.intelligence.selectFacility")} />
+      </SelectTrigger>
+      <SelectContent>
+        {locations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
   const indicatorCopy = (code: string) => {
     const key = `owner.intelligence.indicator.${code}`;
     const translated = t(key);
@@ -164,11 +181,67 @@ export default function OwnerFacilityIntelligence() {
 
   return <div className="min-h-screen bg-background pb-24"><OwnerHeader /><main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
     <span className="sr-only" role="status" aria-live="polite">{intelligence.isFetching ? t("owner.intelligence.refreshing") : ""}</span>
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><div className="flex items-center gap-2 text-primary"><BarChart3 className="h-5 w-5" aria-hidden="true" /><span className="text-xs font-semibold uppercase tracking-[0.16em]">{t("owner.intelligence.eyebrow")}</span></div><h2 className="mt-2 text-3xl font-semibold tracking-tight">{t("owner.intelligence.title")}</h2><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t("owner.intelligence.description")}</p></div><div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2"><div className="grid gap-1.5"><span className="text-xs font-medium text-muted-foreground">{t("owner.intelligence.facilitySelectorLabel")}</span><Select value={locationId || ""} onValueChange={selectFacility} disabled={locationsLoading || locationsQuery.isError || !locations.length}><SelectTrigger className="w-full sm:w-64" aria-label={t("owner.intelligence.facilityAria")} data-testid="facility-intelligence-selector"><SelectValue placeholder={t("owner.intelligence.selectFacility")} /></SelectTrigger><SelectContent>{locations.map((location) => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select></div><div className="grid gap-1.5"><span className="text-xs font-medium text-muted-foreground">{t("owner.intelligence.dateRangeAria")}</span><Select value={range} onValueChange={(value) => setRange(value as OwnerFacilityIntelligenceWindow)} disabled={!locationId}><SelectTrigger aria-label={t("owner.intelligence.dateRangeAria")}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="30">{t("owner.intelligence.last30")}</SelectItem><SelectItem value="90">{t("owner.intelligence.last90")}</SelectItem></SelectContent></Select></div><p className="text-xs text-muted-foreground sm:col-span-2">{t("owner.intelligence.selectionScope")}</p></div></div>
+    <header>
+      <div className="flex items-center gap-2 text-primary"><BarChart3 className="h-5 w-5" aria-hidden="true" /><span className="text-xs font-semibold uppercase tracking-[0.16em]">{t("owner.intelligence.eyebrow")}</span></div>
+      <h2 className="mt-2 text-3xl font-semibold tracking-tight">{t("owner.intelligence.title")}</h2>
+      <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t("owner.intelligence.description")}</p>
+    </header>
     {locationsQuery.isError && <Card data-testid="facility-intelligence-unavailable"><CardContent className="space-y-3 p-6 text-sm"><div><p className="font-semibold text-destructive" role="alert">{t("owner.intelligence.facilityUnavailable")}</p><p className="mt-1 text-muted-foreground">{t("owner.intelligence.facilityUnavailableDescription")}</p></div><Button type="button" variant="outline" onClick={() => void locationsQuery.refetch()} aria-label={t("owner.intelligence.retryFacilitiesAria")}>{t("common.retry")}</Button></CardContent></Card>}
     {!locationsLoading && !locationsQuery.isError && selection.state === "empty" && <Card data-testid="facility-intelligence-empty"><CardContent className="p-6 text-sm text-muted-foreground">{t("owner.intelligence.noFacility")}</CardContent></Card>}
-    {!locationsLoading && !locationsQuery.isError && selection.state === "required" && <Card data-testid="facility-intelligence-selection-required"><CardContent className="space-y-1 p-6 text-sm"><p className="font-semibold">{t("owner.intelligence.noFacilitySelected")}</p><p className="text-muted-foreground">{t("owner.intelligence.selectFacilityDescription")}</p></CardContent></Card>}
-    {!locationsLoading && !locationsQuery.isError && selection.state === "invalid" && <Card data-testid="facility-intelligence-invalid"><CardContent className="space-y-1 p-6 text-sm"><p className="font-semibold text-destructive" role="alert">{t("owner.intelligence.invalidFacility")}</p><p className="text-muted-foreground">{t("owner.intelligence.invalidFacilityDescription")}</p></CardContent></Card>}
+    {showSelectionGuidance && <Card
+      className="overflow-hidden border-2 border-primary/40 bg-gradient-to-br from-primary/10 via-card to-card shadow-lg shadow-primary/10"
+      data-testid={selection.state === "invalid" ? "facility-intelligence-invalid" : "facility-intelligence-selection-required"}
+      role="region"
+      aria-labelledby="facility-selection-guidance-title"
+      aria-describedby="facility-selection-guidance-body facility-selection-guidance-helper"
+    >
+      <CardContent className="p-5 sm:p-7">
+        <div className="grid gap-5 md:grid-cols-[auto,1fr] md:items-start">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm" aria-hidden="true">
+            <Building2 className="h-6 w-6" />
+          </div>
+          <div className="space-y-5">
+            <div className="space-y-2">
+              {selection.state === "invalid" && <div role="alert"><p className="font-semibold text-destructive">{t("owner.intelligence.invalidFacility")}</p><p className="text-sm text-muted-foreground">{t("owner.intelligence.invalidFacilityDescription")}</p></div>}
+              <h3 id="facility-selection-guidance-title" className="text-xl font-semibold text-foreground">{t("owner.intelligence.guidanceTitle")}</h3>
+              <p id="facility-selection-guidance-body" className="max-w-3xl text-sm leading-6 text-muted-foreground">{t("owner.intelligence.guidanceBody")}</p>
+            </div>
+            <div className="max-w-xl space-y-2">
+              <p className="text-sm font-semibold text-foreground">{t("owner.intelligence.facilitySelectorLabel")}</p>
+              {facilitySelector}
+              <p id="facility-selection-guidance-helper" className="text-sm font-medium text-primary">{t("owner.intelligence.guidanceHelper")}</p>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>}
+    {locationId && selectedFacilityName && <section
+      className="rounded-xl border bg-card p-4 shadow-sm sm:p-5"
+      data-testid="facility-intelligence-current-context"
+      aria-label={t("owner.intelligence.currentFacilityAria", { facility: selectedFacilityName })}
+      aria-live="polite"
+    >
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{t("owner.intelligence.currentlyViewing")}</p>
+          <p className="mt-1 text-xl font-semibold text-foreground" data-testid="facility-intelligence-current-name">{selectedFacilityName}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("owner.intelligence.selectionScope")}</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {locations.length > 1 && <div className="grid gap-1.5">
+            <span className="text-xs font-semibold text-muted-foreground">{t("owner.intelligence.changeFacility")}</span>
+            {facilitySelector}
+          </div>}
+          <div className="grid gap-1.5">
+            <span className="text-xs font-semibold text-muted-foreground">{t("owner.intelligence.dateRangeAria")}</span>
+            <Select value={range} onValueChange={(value) => setRange(value as OwnerFacilityIntelligenceWindow)}>
+              <SelectTrigger className="h-12 min-w-44" aria-label={t("owner.intelligence.dateRangeAria")}><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="30">{t("owner.intelligence.last30")}</SelectItem><SelectItem value="90">{t("owner.intelligence.last90")}</SelectItem></SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+    </section>}
     {(intelligence.isLoading || locationsLoading) && <OwnerIntelligenceLoadingPanel facilityName={selectedFacilityName} />}
     {locationId && intelligence.isError && <Card><CardContent className="space-y-3 p-6 text-sm"><p className="text-destructive" role="alert">{isOwnerFacilityIntelligenceTimeoutError(intelligence.error) ? t("owner.intelligence.timeout") : t("owner.intelligence.error")}</p><Button type="button" variant="outline" onClick={() => void intelligence.refetch()} aria-label={t("owner.intelligence.retryAria")}>{t("common.retry")}</Button></CardContent></Card>}
     {data && <>
