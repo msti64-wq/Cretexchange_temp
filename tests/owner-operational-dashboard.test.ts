@@ -196,6 +196,8 @@ test("route and client enforce Owner RBAC, Facility selection, loading, retry, d
   assert.match(page, /summary\.refetch\(\)/);
   assert.match(page, /reviewLink/);
   assert.match(page, /facility\.intelligenceLink/);
+  assert.match(page, /window\.location\.search/);
+  assert.match(page, /setUrlSelection\(\{ present: true, facilityId: nextFacilityId \}\)/);
   assert.match(page, /min-h-11/);
   assert.match(page, /aria-live="polite"/);
   assert.doesNotMatch(page, /locations\[0\]/);

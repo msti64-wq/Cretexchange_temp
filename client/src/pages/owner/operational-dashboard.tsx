@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
@@ -119,7 +119,9 @@ export default function OwnerOperationalDashboard() {
   const { t, language } = useLanguage();
   const queryClient = useQueryClient();
   const [currentPath, setLocation] = useLocation();
-  const urlSelection = useMemo(() => parseOwnerFacilityUrlSelection(currentPath), [currentPath]);
+  const [urlSelection, setUrlSelection] = useState(() => parseOwnerFacilityUrlSelection(
+    `${currentPath}${typeof window !== "undefined" ? window.location.search : ""}`,
+  ));
   const facilityId = urlSelection.present ? urlSelection.facilityId : null;
   const endpoint = facilityId
     ? `/api/owners/dashboard/operational-summary?facilityId=${encodeURIComponent(facilityId)}`
@@ -138,12 +140,16 @@ export default function OwnerOperationalDashboard() {
     if (!data || !storageKey || typeof window === "undefined") return;
     if (data.selection.state === "selected" && data.selection.selectedFacilityId) {
       window.localStorage.setItem(storageKey, data.selection.selectedFacilityId);
-      if (!urlSelection.present) setLocation(`/dashboard?facilityId=${encodeURIComponent(data.selection.selectedFacilityId)}`, { replace: true });
+      if (!urlSelection.present) {
+        setUrlSelection({ present: true, facilityId: data.selection.selectedFacilityId });
+        setLocation(`/dashboard?facilityId=${encodeURIComponent(data.selection.selectedFacilityId)}`, { replace: true });
+      }
       return;
     }
     if (data.selection.state === "required" && !urlSelection.present) {
       const stored = window.localStorage.getItem(storageKey);
       if (stored && data.selection.facilities.some((facility) => facility.id === stored)) {
+        setUrlSelection({ present: true, facilityId: stored });
         setLocation(`/dashboard?facilityId=${encodeURIComponent(stored)}`, { replace: true });
       }
     }
@@ -157,6 +163,7 @@ export default function OwnerOperationalDashboard() {
   const selectFacility = (nextFacilityId: string) => {
     if (!data?.selection.facilities.some((facility) => facility.id === nextFacilityId)) return;
     if (storageKey && typeof window !== "undefined") window.localStorage.setItem(storageKey, nextFacilityId);
+    setUrlSelection({ present: true, facilityId: nextFacilityId });
     setLocation(`/dashboard?facilityId=${encodeURIComponent(nextFacilityId)}`);
   };
 
