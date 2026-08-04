@@ -1993,6 +1993,10 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
     "geofence.owner.assistanceSentHelp": "An append-only request was recorded for Admin follow-up.",
     "geofence.owner.loading": "Loading Facility boundary",
     "geofence.owner.loadFailed": "The Facility boundary could not be loaded.",
+    "geofence.driver.inside": "Inside facility boundary",
+    "geofence.driver.confirm": "Outside boundary — confirm location",
+    "geofence.driver.tooFar": "Too far from facility — review selection",
+    "geofence.driver.unavailable": "Location could not be confirmed",
     "owner.locations.uniqueDrivers": "Unique drivers",
     "owner.locations.configuredRate": "Configured rate",
 
@@ -4335,6 +4339,10 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
     "geofence.owner.assistanceSentHelp": "Se registró una solicitud inmutable para seguimiento del administrador.",
     "geofence.owner.loading": "Cargando el límite de la instalación",
     "geofence.owner.loadFailed": "No se pudo cargar el límite de la instalación.",
+    "geofence.driver.inside": "Dentro del límite de la instalación",
+    "geofence.driver.confirm": "Fuera del límite — confirma la ubicación",
+    "geofence.driver.tooFar": "Demasiado lejos de la instalación — revisa tu selección",
+    "geofence.driver.unavailable": "No se pudo confirmar la ubicación",
     "owner.locations.uniqueDrivers": "Conductores únicos",
     "owner.locations.configuredRate": "Tarifa configurada",
 

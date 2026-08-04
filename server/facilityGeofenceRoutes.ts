@@ -11,6 +11,8 @@ import {
   validateFacilityGeofenceBoundary,
   type GeoJsonPolygon,
   type Position,
+  FacilityGeofenceService,
+  projectFacilityGeofenceResultForDriver,
 } from "./facilityGeofenceService";
 import { DrizzleFacilityGeofenceRepository } from "./facilityGeofenceRepository";
 import { isGeofenceFeatureEnabled } from "./geofenceFeatureFlags";
@@ -44,6 +46,16 @@ const assistanceSchema = z.object({
   boundaryVersionId: z.string().uuid(),
   reasonCode: z.enum(["MAP_HELP", "BOUNDARY_CORRECTION_HELP", "LOCATION_DATA_HELP", "OTHER"]),
   note: z.string().trim().max(500).optional(),
+});
+const advisorySchema = z.object({
+  locationIds: z.array(z.string().uuid()).min(1).max(DEFAULT_FACILITY_GEOFENCE_CONFIG.maximumBatchLocations),
+  materialSlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  observation: z.object({
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    accuracyMeters: z.number().nonnegative(),
+    observedAt: z.string().datetime({ offset: true }),
+  }).nullable(),
 });
 
 type Repository = DrizzleFacilityGeofenceRepository;
@@ -124,6 +136,7 @@ export function registerFacilityGeofenceRoutes(
 ) {
   const storage = dependencies.storage || defaultStorage;
   const repository = dependencies.repository || new DrizzleFacilityGeofenceRepository();
+  const evaluator = new FacilityGeofenceService(repository);
 
   async function authorizeOwner(req: any, res: Response, locationId: string) {
     const user = await storage.getUser(req.user.id);
@@ -290,5 +303,39 @@ export function registerFacilityGeofenceRoutes(
       safeMetadata: parsed.data.note ? { note: parsed.data.note } : {},
     });
     res.status(202).json({ accepted: true });
+  });
+
+  app.post("/api/drivers/locations/geofence-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== "driver") return res.status(403).json({ message: "Driver access required" });
+      const enabled = await isGeofenceFeatureEnabled(storage, FEATURE_FLAGS.GEOFENCE_ADVISORY_EVALUATION, user.id, user.role);
+      if (!enabled) return res.status(404).json({ message: "Facility boundary advisory is not available" });
+      const parsed = advisorySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Facility advisory request is invalid", issues: parsed.error.issues });
+
+      const eligible = await storage.getActiveLocationsAcceptingMaterial(parsed.data.materialSlug);
+      const eligibleIds = new Set(eligible.map((location) => location.id));
+      const locationIds = Array.from(new Set(parsed.data.locationIds)).filter((locationId) => eligibleIds.has(locationId));
+      if (locationIds.length !== new Set(parsed.data.locationIds).size) {
+        return res.status(403).json({ message: "One or more Recovery Facilities are not eligible for the selected material" });
+      }
+
+      const evaluatedAt = new Date();
+      const boundaries = await evaluator.loadActiveBoundaries(locationIds, evaluatedAt);
+      const results = locationIds.map((locationId) => projectFacilityGeofenceResultForDriver(
+        evaluator.evaluateBoundary({
+          locationId,
+          boundary: boundaries.get(locationId) || null,
+          observation: parsed.data.observation,
+          purpose: "selection_advisory",
+          evaluatedAt,
+        }),
+      ));
+      res.json({ enabled: true, results });
+    } catch (error) {
+      console.error("Driver Facility advisory failed", { userId: req.user?.id, message: error instanceof Error ? error.message : "unknown" });
+      res.status(503).json({ message: "Facility boundary status could not be confirmed" });
+    }
   });
 }

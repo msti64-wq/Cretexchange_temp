@@ -1,6 +1,8 @@
 export interface Coordinates {
   latitude: number;
   longitude: number;
+  accuracyMeters: number;
+  observedAt: string;
 }
 
 export function getCurrentLocation(): Promise<Coordinates> {
@@ -15,6 +17,8 @@ export function getCurrentLocation(): Promise<Coordinates> {
         resolve({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
+          accuracyMeters: position.coords.accuracy,
+          observedAt: new Date(position.timestamp).toISOString(),
         });
       },
       (error) => {
@@ -57,6 +61,8 @@ export function watchLocation(
       callback({
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
+        accuracyMeters: position.coords.accuracy,
+        observedAt: new Date(position.timestamp).toISOString(),
       });
     },
     errorCallback,

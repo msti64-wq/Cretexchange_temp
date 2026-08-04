@@ -17,12 +17,15 @@ import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { useLanguage } from "@/lib/i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { DriverMaterialIntentSelector, driverMaterialIntentKey, type DriverMaterialIntent } from "@/components/driver/DriverMaterialIntentSelector";
+import { DriverGeofenceIndicator, type DriverGeofenceState } from "@/components/driver/DriverGeofenceIndicator";
+import type { Coordinates } from "@/lib/gps";
 
 export default function DriverLocations() {
   const [, setLocation] = useLocation();
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [currentLocation, setCurrentLocation] = useState<({ lat: number; lng: number } & Coordinates) | null>(null);
+  const [locationResolved, setLocationResolved] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"distance" | "rate">("distance");
 
@@ -31,6 +34,7 @@ export default function DriverLocations() {
   
   // Check if rubble service is enabled
   const { enabled: isRubbleServiceEnabled } = useFeatureFlag(FEATURE_FLAGS.RUBBLE_SERVICE);
+  const { enabled: isGeofenceAdvisoryEnabled } = useFeatureFlag(FEATURE_FLAGS.GEOFENCE_ADVISORY_EVALUATION);
 
   const { data: materialIntent, isLoading: isIntentLoading } = useQuery<DriverMaterialIntent>({
     queryKey: driverMaterialIntentKey,
@@ -42,20 +46,42 @@ export default function DriverLocations() {
     queryFn: async () => activeMaterialSlug ? (await apiRequest("GET", `/api/drivers/locations?materialSlug=${encodeURIComponent(activeMaterialSlug)}`)).json() : [],
     enabled: Boolean(activeMaterialSlug),
   });
+  const locationIds = Array.isArray(locations) ? locations.map((item: any) => (item.washout_locations || item).id as string) : [];
+  const { data: geofenceAdvisory } = useQuery<{ enabled: boolean; results: Array<{ locationId: string; state: DriverGeofenceState }> }>({
+    queryKey: ["/api/drivers/locations/geofence-status", activeMaterialSlug, locationIds.join(","), currentLocation?.observedAt || "unavailable"],
+    queryFn: async () => (await apiRequest("/api/drivers/locations/geofence-status", {
+      method: "POST",
+      body: JSON.stringify({
+        locationIds,
+        materialSlug: activeMaterialSlug,
+        observation: currentLocation ? {
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+          accuracyMeters: currentLocation.accuracyMeters,
+          observedAt: currentLocation.observedAt,
+        } : null,
+      }),
+    })).json(),
+    enabled: Boolean(isGeofenceAdvisoryEnabled && activeMaterialSlug && locationResolved && locationIds.length),
+    staleTime: 30_000,
+    retry: 1,
+  });
+  const geofenceByLocation = new Map((geofenceAdvisory?.results || []).map((result) => [result.locationId, result.state]));
 
   useEffect(() => {
     // Get user's current location
     const getLocation = async () => {
       try {
         const coords = await getCurrentLocation();
-        setCurrentLocation({ lat: coords.latitude, lng: coords.longitude });
+        setCurrentLocation({ lat: coords.latitude, lng: coords.longitude, ...coords });
         setLocationError(null);
       } catch (error) {
         console.error("Error getting location:", error);
         const errorMessage = error instanceof Error ? error.message : "Unable to get location";
         setLocationError(errorMessage);
-        // Fallback for development: use a default location (Denver, CO area)
-        setCurrentLocation({ lat: 39.7392, lng: -104.9903 });
+        setCurrentLocation(null);
+      } finally {
+        setLocationResolved(true);
       }
     };
 
@@ -313,6 +339,7 @@ export default function DriverLocations() {
                     </div>
                   )}
                   {item.matchedMaterial && <Badge variant="secondary" className="mb-3">{t("driver.material.accepts", { material: item.matchedMaterial.displayName })}</Badge>}
+                  {isGeofenceAdvisoryEnabled && geofenceByLocation.has(location.id) && <DriverGeofenceIndicator state={geofenceByLocation.get(location.id)!} />}
                   <p className="mb-3 text-xs text-muted-foreground">{t("driver.locations.configuredIncentiveQualification")}</p>
 
                   <div className="flex gap-2">
