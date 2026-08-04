@@ -754,3 +754,11 @@ the server.
 **Status:** Active — Focused Photo Review Retention Remediation
 
 **Implications:** Owner approval authority and existing Driver Administrative Review remain unchanged. Automated integrity signals are not fraud findings. Two-Factor Authentication remains the next mandatory major sprint after Founder acceptance.
+
+## PD-061 - Facility Geofence and Operational Exception Policy
+
+**Decision:** [PD-061](./PD-061-facility-geofence-and-operational-exception-policy.md) establishes a versioned, server-authoritative Facility radius/polygon boundary, advisory Driver states, governed yellow exceptions, PD-060-aligned red quarantine, and boundary correction without inferred polygons or passive notifications.
+
+**Status:** Active — Founder-approved product policy; no implementation authority.
+
+**Implications:** Existing unconfigured Facilities retain isolated feature-flagged legacy center-distance behavior until an authorized Owner activates a valid boundary. New enforcement, migration, runtime, rollout, and Production adoption require the separately approved sequence and Founder acceptance. Phase 5 Sprint 3 Two-Factor Authentication remains the next mandatory major sprint after geofencing completion and Founder acceptance; it has not begun.

@@ -11,6 +11,7 @@ This index establishes the reusable structure for future CreteXchange operationa
 - [CTX-RB-007 — Administrative Photo Review Runbook](./CTX-RB-007-administrative-photo-review-runbook.md) — Draft authorized activity-evidence review procedure with factual outcomes and escalation boundaries.
 - [CTX-RB-008 — Marketplace Trust & Fraud Escalation Runbook](./CTX-RB-008-marketplace-trust-and-fraud-escalation-runbook.md) — Draft neutral escalation and evidence-preservation procedure; it does not establish fraud-investigation or provider-action authority.
 - [CTX-RB-009 — Daily Operations Checklist](./CTX-RB-009-daily-operations-checklist.md) — Draft daily review guide for authorized administrators and Platform Operations personnel.
+- [CTX-RB-010 — Geofence Exception and Boundary Correction Runbook](./CTX-RB-010-geofence-exception-and-boundary-correction-runbook.md) — Approved effective governance for future geofence exceptions and versioned boundary correction; procedure remains non-operational until implementation.
 - [Assisted-Pilot Operations Runbook](../project/pilot/assisted-pilot-operations-runbook.md) — Current pilot support scenarios and operational boundaries.
 
 ## Required Runbook Structure

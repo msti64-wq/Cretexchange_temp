@@ -106,6 +106,7 @@ Research documents define proposed hypotheses, validation plans, grant readiness
   - [CTX-RB-007 - Administrative Photo Review Runbook](./operations/CTX-RB-007-administrative-photo-review-runbook.md) — Draft; factual activity-evidence review and escalation boundaries.
   - [CTX-RB-008 - Marketplace Trust & Fraud Escalation Runbook](./operations/CTX-RB-008-marketplace-trust-and-fraud-escalation-runbook.md) — Draft; neutral trust escalation and evidence preservation only.
   - [CTX-RB-009 - Daily Operations Checklist](./operations/CTX-RB-009-daily-operations-checklist.md) — Draft; daily read-only operational review and escalation boundaries.
+  - [CTX-RB-010 - Geofence Exception and Boundary Correction Runbook](./operations/CTX-RB-010-geofence-exception-and-boundary-correction-runbook.md) — Approved effective governance; procedure remains non-operational until separately authorized implementation.
 - [Architecture Library](./architecture/README.md)
 - [Product Decisions](./product/product-decisions.md)
 - [Product Data Strategy](./product/data-strategy.md)
@@ -162,6 +163,7 @@ Before implementation, documentation should exist for the governing product poli
 | [CTX-UX-006](./ux/CTX-UX-006-facility-workspace-experience.md) | Defines the Facility Workspace for location management, fair Driver review, and operational readiness. |
 | [CTX-UX-007](./ux/CTX-UX-007-platform-operations-center-experience.md) | Defines the overall Platform Operations Center workspace for marketplace health, queues, alerts, and support. |
 | [CTX-UX-008](./ux/CTX-UX-008-administrative-activity-review-experience.md) | Defines the dedicated administrative activity-investigation experience under PD-052. |
+| [CTX-UX-009](./ux/CTX-UX-009-driver-and-owner-geofence-experience.md) | Approved Driver location-status and Owner boundary-management experience; effective as governance with no implementation authority. |
 
 ## Active Product Decisions
 
@@ -175,6 +177,7 @@ Product Decisions define durable business policy and operational rules. They do 
 | [PD-053](./product/PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) | Governs canonical weekly financial-batch review, approval, exceptions, and Phase 3B non-execution. |
 | [PD-059](./product/PD-059-owner-operational-dashboard-boundary.md) | Establishes the action-first Facility Owner Operational Dashboard boundary and separation from Facility Intelligence. |
 | [PD-060](./product/PD-060-photo-review-retention-and-platform-rejection.md) | Governs retained rejected evidence, active Admin workload, dispute readiness, and platform-detected rejection routing. |
+| [PD-061](./product/PD-061-facility-geofence-and-operational-exception-policy.md) | Governs Facility boundaries, advisory Driver states, operational exceptions, and boundary correction; active as policy without implementation authority. |
 
 ## Approved Future Product Directions
 
@@ -216,9 +219,12 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 | CTX-ARCH-005 | Material Management Architecture | Defines material taxonomy, financial direction, settlement models, pricing, capacity, and extensibility. | Approved |
 | CTX-ARCH-006 | Driver Incentive and Financial Settlement Architecture | Defines the immutable incentive snapshot, owner charge, payment obligation, wallet-authoritative settlement, Stripe payout, idempotency, recovery, and financial reporting contract. | Approved; PD-045 Active; runtime remediation pending |
 | CTX-ARCH-007 | [Canonical Financial Batch Architecture](./architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md) | Defines canonical batch identity, frozen membership/totals, audit, discovery queues, legacy isolation, and Phase 3B non-execution. | Approved architecture direction; implementation pending |
-| CTX-ARCH-014 | [Facility Owner Operational Dashboard](./architecture/CTX-ARCH-014-owner-operational-dashboard.md) | Defines the bounded, action-first Owner operational workspace, Facility selection, privacy, and workflow boundaries. | Approved for Phase 5 Sprint 2 implementation |
 | CTX-ARCH-011 | [Administration Repository Documentation Refresh Design](./architecture/CTX-ARCH-011-administration-repository-documentation-refresh-design.md) | Defines the proposed controlled refresh of derived documentation inventory while preserving Git authority. | Draft; implementation not authorized |
 | CTX-ARCH-012 | [Platform Intelligence Layer](./architecture/CTX-ARCH-012-platform-intelligence-layer.md) | Defines immutable operational analytics facts, shared aggregation boundaries, and role-scoped intelligence APIs. | Approved for Phase 2 Sprint 2 foundation implementation |
+| CTX-ARCH-013 | [Notification and Communication Center](./architecture/CTX-ARCH-013-notification-and-communication-center.md) | Defines recipient-scoped, structured, localized, and idempotent notifications. | Approved for Phase 5 Sprint 1 implementation |
+| CTX-ARCH-014 | [Facility Owner Operational Dashboard](./architecture/CTX-ARCH-014-owner-operational-dashboard.md) | Defines the bounded, action-first Owner operational workspace, Facility selection, privacy, and workflow boundaries. | Approved for Phase 5 Sprint 2 implementation |
+| CTX-ARCH-015 | [Photo Review Retention and Integrity Routing](./architecture/CTX-ARCH-015-photo-review-retention-and-integrity-routing.md) | Defines retained private evidence, active/history classification, platform rejection routing, and dispute readiness. | Implemented; Founder-approved workflow preserved |
+| CTX-ARCH-016 | [Canonical Facility Geofence Architecture](./architecture/CTX-ARCH-016-canonical-facility-geofence-architecture.md) | Defines versioned radius/polygon boundaries, server-authoritative evaluation, exceptions, privacy, and rollout. | Approved and effective as architecture governance; no implementation authority |
 | CTX-MET-001 | [Platform Metric Registry](./architecture/CTX-MET-001-platform-metric-registry.md) | Defines canonical operational metrics, reusable journeys, and factual drop-off methodology. | Approved for Phase 2 Sprint 2 foundation implementation |
 
 ## Standards Library
@@ -238,6 +244,7 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 | CTX-OPS-001 | [Production Release Checklist](./operations/CTX-OPS-001-production-release-checklist.md) | Provides the required operational checklist and durable release record for every production deployment. |
 | CTX-OPS-002 | [Administration Operations Guide](./operations/CTX-OPS-002-administration-operations-guide.md) | Draft guide for safe, truthful operation of currently supported administrative capabilities and their boundaries. |
 | CTX-RB-009 | [Daily Operations Checklist](./operations/CTX-RB-009-daily-operations-checklist.md) | Draft daily checklist for authorized operational review, evidence preservation, and escalation without execution. |
+| CTX-RB-010 | [Geofence Exception and Boundary Correction Runbook](./operations/CTX-RB-010-geofence-exception-and-boundary-correction-runbook.md) | Approved effective governance for future location exceptions and versioned boundary correction; procedure remains non-operational. |
 | CTX-RB-003 | [Incident Response Runbook](./operations/CTX-RB-003-incident-response-runbook.md) | Draft response, evidence-preservation, and escalation procedure without recovery or production-change authority. |
 | CTX-RB-004 | [Database Recovery Runbook](./operations/CTX-RB-004-database-recovery-runbook.md) | Draft recovery evidence and decision boundaries; no provider-specific recovery procedure is asserted. |
 | CTX-RB-005 | [Financial Reconciliation Runbook](./operations/CTX-RB-005-financial-reconciliation-runbook.md) | Draft non-executing financial-consistency review and escalation procedure. |

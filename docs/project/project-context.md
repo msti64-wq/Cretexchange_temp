@@ -251,3 +251,9 @@ The current launch model remains unchanged: drivers locate participating facilit
 ## 22. Canonical Financial Batch Governance
 
 [CTX-ARCH-007](../architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md) is the canonical non-executing financial batch architecture, and [PD-053](../product/PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) is Active for assisted-pilot batch policy. Phase 3B implementation remains pending. Phase 3A financial execution remains disabled; no batch construction, review, or approval authorizes collection, settlement, wallet entitlement, or provider execution.
+
+## 23. Approved Facility Geofence Governance
+
+Canonical Facility geofencing remains documentation-only. The Founder has approved and made effective as governance [CTX-ARCH-016](../architecture/CTX-ARCH-016-canonical-facility-geofence-architecture.md), [PD-061](../product/PD-061-facility-geofence-and-operational-exception-policy.md), [CTX-UX-009](../ux/CTX-UX-009-driver-and-owner-geofence-experience.md), [CTX-RB-010](../operations/CTX-RB-010-geofence-exception-and-boundary-correction-runbook.md), and the [discovery and validation plan](./geofence-architecture-discovery-and-validation-plan.md). Approval does not authorize code, schema, migration, API, dependency, notification, Railway, database, or Production changes.
+
+The repository currently has only Facility point coordinates and duplicated center-distance calculations; it has no configured Facility radius, polygon, boundary version, or GPS-accuracy-aware canonical result. Existing Facilities remain on explicitly transitional legacy behavior until separately authorized implementation and activation. Phase 5 Sprint 3 Two-Factor Authentication has not started and remains the next mandatory major sprint only after geofencing completion and Founder acceptance.
