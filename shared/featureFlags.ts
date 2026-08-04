@@ -36,6 +36,14 @@ export const FEATURE_FLAGS = {
 
   // Driver Tip Payouts - optional Stripe onboarding so drivers can receive owner-funded tips
   DRIVER_STRIPE_PAYOUTS: 'driver_stripe_payouts',
+
+  // Canonical Facility geofence controls. Work Package 1 defines these flags,
+  // but does not consume them from any participant-facing route or workflow.
+  GEOFENCE_ADVISORY_EVALUATION: 'geofence_advisory_evaluation',
+  GEOFENCE_OWNER_BOUNDARY_MANAGEMENT: 'geofence_owner_boundary_management',
+  GEOFENCE_SUBMISSION_ENFORCEMENT: 'geofence_submission_enforcement',
+  GEOFENCE_NOTIFICATIONS: 'geofence_notifications',
+  GEOFENCE_LEGACY_TRANSITION: 'geofence_legacy_transition',
 } as const;
 
 export type FeatureFlagKey = typeof FEATURE_FLAGS[keyof typeof FEATURE_FLAGS];
@@ -107,6 +115,36 @@ export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
   {
     key: FEATURE_FLAGS.DRIVER_STRIPE_PAYOUTS,
     description: 'Driver Tip Payouts: Allow drivers to optionally complete Stripe onboarding so they can receive owner-funded tips. This is not required for washout completion or lottery eligibility.',
+    enabled: false,
+    allowedRoles: [],
+  },
+  {
+    key: FEATURE_FLAGS.GEOFENCE_ADVISORY_EVALUATION,
+    description: 'Enable side-effect-free canonical Facility geofence advisory evaluation. Driver UI is not included in Work Package 1.',
+    enabled: false,
+    allowedRoles: ['driver'],
+  },
+  {
+    key: FEATURE_FLAGS.GEOFENCE_OWNER_BOUNDARY_MANAGEMENT,
+    description: 'Enable governed Owner Facility boundary draft, validation, and activation workflows. Owner UI is not included in Work Package 1.',
+    enabled: false,
+    allowedRoles: ['owner'],
+  },
+  {
+    key: FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT,
+    description: 'Enable canonical geofence enforcement for governed check-in and submission workflows. Enforcement is not included in Work Package 1.',
+    enabled: false,
+    allowedRoles: ['driver'],
+  },
+  {
+    key: FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
+    description: 'Enable governed geofence notification intents through the canonical Notification Service. Notifications are not included in Work Package 1.',
+    enabled: false,
+    allowedRoles: [],
+  },
+  {
+    key: FEATURE_FLAGS.GEOFENCE_LEGACY_TRANSITION,
+    description: 'Enable separately governed transition from isolated legacy distance rules to canonical Facility boundaries. Legacy retirement is not included in Work Package 1.',
     enabled: false,
     allowedRoles: [],
   },

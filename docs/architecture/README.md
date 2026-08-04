@@ -43,7 +43,7 @@ This section documents the technical architecture of CreteXchange.
 | CTX-ARCH-013 | [Notification and Communication Center](./CTX-ARCH-013-notification-and-communication-center.md) | Structured recipient notifications, safe workflow intents, localization, RBAC, read/archive state, and future channel boundary | Approved for Phase 5 Sprint 1 implementation |
 | CTX-ARCH-014 | [Facility Owner Operational Dashboard](./CTX-ARCH-014-owner-operational-dashboard.md) | Action-first Owner work, bounded canonical summaries, Facility selection, privacy, and workflow links | Approved for Phase 5 Sprint 2 implementation |
 | CTX-ARCH-015 | [Photo Review Retention and Integrity Routing](./CTX-ARCH-015-photo-review-retention-and-integrity-routing.md) | Retained private evidence, active/history classification, platform rejection routing, and dispute readiness | Implemented; Founder-approved workflow preserved |
-| CTX-ARCH-016 | [Canonical Facility Geofence Architecture](./CTX-ARCH-016-canonical-facility-geofence-architecture.md) | Versioned radius/polygon boundaries, server-authoritative evaluation, operational exceptions, privacy, and rollout | Approved and effective as architecture governance; no implementation authority |
+| CTX-ARCH-016 | [Canonical Facility Geofence Architecture](./CTX-ARCH-016-canonical-facility-geofence-architecture.md) | Versioned radius/polygon boundaries, server-authoritative evaluation, operational exceptions, privacy, and rollout | Approved and effective; Work Package 1 implemented locally and pending Founder acceptance; not released |
 | CTX-MET-001 | [Platform Metric Registry](./CTX-MET-001-platform-metric-registry.md) | Canonical operational metric, journey, and drop-off definitions | Approved for Phase 2 Sprint 2 foundation implementation |
 
 ## Supporting Architecture Records
@@ -53,6 +53,7 @@ This section documents the technical architecture of CreteXchange.
 - [CTX-ARCH-009-REVIEW — Operations Library and Knowledge Management Architecture Review](./reviews/CTX-ARCH-009-architecture-review.md) — Independent review evidence; it is not an approval record.
 - [ADR-031 — Production Database Migration Execution Architecture](./ADR-031-production-database-migration-execution-architecture.md) — Accepted decision record supporting CTX-ARCH-008; it does not supersede architecture or release authority.
 - [ADR-032 — Pilot Billing and Driver Tip Settlement Architecture](./ADR-032-pilot-billing-and-driver-tip-settlement-architecture.md) — Draft record of superseding CEO initial-launch billing direction; it requires architecture, compliance, implementation, and release approval before financial execution.
+- [ADR-033 — Canonical Server Geofence Library](./ADR-033-canonical-server-geofence-library.md) — Proposed Work Package 1 selection of focused Turf 7.3.5 server modules; Founder acceptance and release remain pending.
 
 ## Planned Contents
 

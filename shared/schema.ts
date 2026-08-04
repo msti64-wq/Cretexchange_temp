@@ -1,5 +1,6 @@
 import { sql, relations } from "drizzle-orm";
 import {
+  foreignKey,
   index,
   uniqueIndex,
   jsonb,
@@ -326,6 +327,114 @@ export const washoutLocations = pgTable("washout_locations", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// CTX-ARCH-016: versioned Facility boundary records. The Facility point above
+// remains an address/marker; it is not an approved operational boundary.
+export const facilityGeofenceBoundaries = pgTable("facility_geofence_boundaries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  locationId: varchar("location_id").notNull().references(() => washoutLocations.id, { onDelete: "restrict" }),
+  zoneKey: varchar("zone_key").notNull().default("primary"),
+  version: integer("version").notNull(),
+  mode: varchar("mode").notNull(),
+  centerLatitude: decimal("center_latitude", { precision: 10, scale: 8 }),
+  centerLongitude: decimal("center_longitude", { precision: 11, scale: 8 }),
+  radiusMeters: decimal("radius_meters", { precision: 12, scale: 3 }),
+  geometryGeojson: jsonb("geometry_geojson"),
+  exceptionDistanceMeters: decimal("exception_distance_meters", { precision: 12, scale: 3 }).notNull(),
+  geometryChecksum: varchar("geometry_checksum", { length: 64 }).notNull(),
+  status: varchar("status").notNull().default("draft"),
+  effectiveFrom: timestamp("effective_from", { withTimezone: true }),
+  effectiveTo: timestamp("effective_to", { withTimezone: true }),
+  previousVersionId: varchar("previous_version_id"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  activatedBy: varchar("activated_by").references(() => users.id, { onDelete: "set null" }),
+  activatedAt: timestamp("activated_at", { withTimezone: true }),
+}, (table) => [
+  foreignKey({
+    columns: [table.previousVersionId],
+    foreignColumns: [table.id],
+    name: "facility_geofence_boundaries_previous_version_fk",
+  }).onDelete("restrict"),
+  uniqueIndex("facility_geofence_boundaries_location_zone_version_unique")
+    .on(table.locationId, table.zoneKey, table.version),
+  uniqueIndex("facility_geofence_boundaries_id_location_zone_unique")
+    .on(table.id, table.locationId, table.zoneKey),
+  uniqueIndex("facility_geofence_boundaries_id_location_unique")
+    .on(table.id, table.locationId),
+  uniqueIndex("facility_geofence_boundaries_one_active_zone_unique")
+    .on(table.locationId, table.zoneKey)
+    .where(sql`${table.status} = 'active'`),
+  index("facility_geofence_boundaries_active_lookup_idx")
+    .on(table.locationId, table.zoneKey, table.status, table.effectiveFrom),
+  index("facility_geofence_boundaries_previous_version_idx").on(table.previousVersionId),
+  check("facility_geofence_boundaries_zone_key_valid", sql`${table.zoneKey} ~ '^[a-z0-9][a-z0-9_-]{0,63}$'`),
+  check("facility_geofence_boundaries_version_positive", sql`${table.version} > 0`),
+  check("facility_geofence_boundaries_mode_valid", sql`${table.mode} IN ('radius', 'polygon')`),
+  check("facility_geofence_boundaries_status_valid", sql`${table.status} IN ('draft', 'active', 'superseded', 'invalidated')`),
+  check("facility_geofence_boundaries_exception_positive", sql`${table.exceptionDistanceMeters} > 0`),
+  check("facility_geofence_boundaries_checksum_valid", sql`length(${table.geometryChecksum}) = 64 AND ${table.geometryChecksum} ~ '^[0-9a-f]{64}$'`),
+  check("facility_geofence_boundaries_mode_fields_valid", sql`
+    (${table.mode} = 'radius'
+      AND ${table.centerLatitude} IS NOT NULL
+      AND ${table.centerLongitude} IS NOT NULL
+      AND ${table.radiusMeters} > 0
+      AND ${table.geometryGeojson} IS NULL)
+    OR
+    (${table.mode} = 'polygon'
+      AND ${table.centerLatitude} IS NULL
+      AND ${table.centerLongitude} IS NULL
+      AND ${table.radiusMeters} IS NULL
+      AND ${table.geometryGeojson} IS NOT NULL
+      AND jsonb_typeof(${table.geometryGeojson}) = 'object')
+  `),
+  check("facility_geofence_boundaries_center_range_valid", sql`
+    (${table.centerLatitude} IS NULL AND ${table.centerLongitude} IS NULL)
+    OR (${table.centerLatitude} BETWEEN -90 AND 90 AND ${table.centerLongitude} BETWEEN -180 AND 180)
+  `),
+  check("facility_geofence_boundaries_effective_window_valid", sql`
+    ${table.effectiveTo} IS NULL OR (${table.effectiveFrom} IS NOT NULL AND ${table.effectiveTo} > ${table.effectiveFrom})
+  `),
+  check("facility_geofence_boundaries_activation_fields_valid", sql`
+    (${table.status} = 'draft' AND ${table.activatedAt} IS NULL AND ${table.activatedBy} IS NULL AND ${table.effectiveFrom} IS NULL)
+    OR
+    (${table.status} IN ('active', 'superseded', 'invalidated') AND ${table.activatedAt} IS NOT NULL AND ${table.activatedBy} IS NOT NULL AND ${table.effectiveFrom} IS NOT NULL)
+  `),
+  check("facility_geofence_boundaries_active_open_ended", sql`${table.status} <> 'active' OR ${table.effectiveTo} IS NULL`),
+  check("facility_geofence_boundaries_closed_lifecycle_has_end", sql`${table.status} NOT IN ('superseded', 'invalidated') OR ${table.effectiveTo} IS NOT NULL`),
+  foreignKey({
+    columns: [table.previousVersionId, table.locationId, table.zoneKey],
+    foreignColumns: [table.id, table.locationId, table.zoneKey],
+    name: "facility_geofence_boundaries_previous_same_zone_fk",
+  }).onDelete("restrict"),
+]);
+
+// Append-only safe boundary history. Precise Driver observations, raw geometry,
+// credentials, contact data, storage paths, and financial data do not belong here.
+export const facilityGeofenceRevisionEvents = pgTable("facility_geofence_revision_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  locationId: varchar("location_id").notNull().references(() => washoutLocations.id, { onDelete: "restrict" }),
+  boundaryVersionId: varchar("boundary_version_id").notNull().references(() => facilityGeofenceBoundaries.id, { onDelete: "restrict" }),
+  eventType: varchar("event_type").notNull(),
+  actorUserId: varchar("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  actorRole: varchar("actor_role"),
+  reasonCode: varchar("reason_code").notNull(),
+  requestId: varchar("request_id").notNull(),
+  idempotencyKey: varchar("idempotency_key").notNull().unique(),
+  safeMetadata: jsonb("safe_metadata").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("facility_geofence_revision_events_boundary_created_idx").on(table.boundaryVersionId, table.createdAt),
+  index("facility_geofence_revision_events_location_created_idx").on(table.locationId, table.createdAt),
+  check("facility_geofence_revision_events_event_type_valid", sql`${table.eventType} IN ('draft_created', 'validated', 'activated', 'superseded', 'invalidated', 'assistance_requested', 'correction_recorded')`),
+  check("facility_geofence_revision_events_actor_role_valid", sql`${table.actorRole} IS NULL OR ${table.actorRole} IN ('owner', 'admin', 'super_admin', 'system')`),
+  check("facility_geofence_revision_events_safe_metadata_object", sql`jsonb_typeof(${table.safeMetadata}) = 'object'`),
+  foreignKey({
+    columns: [table.boundaryVersionId, table.locationId],
+    foreignColumns: [facilityGeofenceBoundaries.id, facilityGeofenceBoundaries.locationId],
+    name: "facility_geofence_revision_events_boundary_location_fk",
+  }).onDelete("restrict"),
+]);
+
 // Washout activities (unified for both washout and rubble drop-off services)
 export const washoutActivities = pgTable("washout_activities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -357,6 +466,57 @@ export const washoutActivities = pgTable("washout_activities", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Durable authoritative check-in/submission evidence. Selection advisories are
+// side-effect free and are not persisted by default.
+export const activityGeofenceEvaluations = pgTable("activity_geofence_evaluations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  activityId: varchar("activity_id").references(() => washoutActivities.id, { onDelete: "restrict" }),
+  workflowReference: varchar("workflow_reference", { length: 160 }),
+  locationId: varchar("location_id").notNull().references(() => washoutLocations.id, { onDelete: "restrict" }),
+  boundaryVersionId: varchar("boundary_version_id").references(() => facilityGeofenceBoundaries.id, { onDelete: "restrict" }),
+  boundaryVersion: integer("boundary_version"),
+  evaluationPurpose: varchar("evaluation_purpose").notNull(),
+  resultState: varchar("result_state").notNull(),
+  reasonCode: varchar("reason_code").notNull(),
+  observationLatitude: decimal("observation_latitude", { precision: 10, scale: 8 }),
+  observationLongitude: decimal("observation_longitude", { precision: 11, scale: 8 }),
+  accuracyMeters: decimal("accuracy_meters", { precision: 10, scale: 3 }),
+  observedAt: timestamp("observed_at", { withTimezone: true }),
+  evaluatedAt: timestamp("evaluated_at", { withTimezone: true }).notNull(),
+  signedDistanceMeters: decimal("signed_distance_meters", { precision: 14, scale: 3 }),
+  outsideDistanceMeters: decimal("outside_distance_meters", { precision: 14, scale: 3 }),
+  exceptionDistanceMeters: decimal("exception_distance_meters", { precision: 12, scale: 3 }),
+  exceptionAcknowledgementCode: varchar("exception_acknowledgement_code", { length: 80 }),
+  driverNote: text("driver_note"),
+  evidenceComplete: boolean("evidence_complete").notNull().default(false),
+  idempotencyKey: varchar("idempotency_key", { length: 240 }).notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("activity_geofence_evaluations_activity_created_idx").on(table.activityId, table.createdAt),
+  index("activity_geofence_evaluations_location_evaluated_idx").on(table.locationId, table.evaluatedAt),
+  index("activity_geofence_evaluations_boundary_evaluated_idx").on(table.boundaryVersionId, table.evaluatedAt),
+  check("activity_geofence_evaluations_reference_present", sql`${table.activityId} IS NOT NULL OR ${table.workflowReference} IS NOT NULL`),
+  check("activity_geofence_evaluations_boundary_reference_consistent", sql`
+    (${table.boundaryVersionId} IS NULL AND ${table.boundaryVersion} IS NULL)
+    OR (${table.boundaryVersionId} IS NOT NULL AND ${table.boundaryVersion} IS NOT NULL AND ${table.boundaryVersion} > 0)
+  `),
+  check("activity_geofence_evaluations_purpose_valid", sql`${table.evaluationPurpose} IN ('selection_advisory', 'check_in', 'submission')`),
+  check("activity_geofence_evaluations_state_valid", sql`${table.resultState} IN ('INSIDE_APPROVED_BOUNDARY', 'OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE', 'OUTSIDE_EXCEPTION_ZONE', 'LOCATION_UNAVAILABLE', 'LOCATION_ACCURACY_INSUFFICIENT', 'GEOMETRY_UNAVAILABLE', 'GEOMETRY_INVALID')`),
+  check("activity_geofence_evaluations_coordinates_consistent", sql`
+    (${table.observationLatitude} IS NULL AND ${table.observationLongitude} IS NULL)
+    OR (${table.observationLatitude} IS NOT NULL AND ${table.observationLongitude} IS NOT NULL AND ${table.observationLatitude} BETWEEN -90 AND 90 AND ${table.observationLongitude} BETWEEN -180 AND 180)
+  `),
+  check("activity_geofence_evaluations_accuracy_nonnegative", sql`${table.accuracyMeters} IS NULL OR ${table.accuracyMeters} >= 0`),
+  check("activity_geofence_evaluations_outside_distance_nonnegative", sql`${table.outsideDistanceMeters} IS NULL OR ${table.outsideDistanceMeters} >= 0`),
+  check("activity_geofence_evaluations_exception_distance_positive", sql`${table.exceptionDistanceMeters} IS NULL OR ${table.exceptionDistanceMeters} > 0`),
+  check("activity_geofence_evaluations_driver_note_bounded", sql`${table.driverNote} IS NULL OR char_length(${table.driverNote}) <= 500`),
+  foreignKey({
+    columns: [table.boundaryVersionId, table.locationId],
+    foreignColumns: [facilityGeofenceBoundaries.id, facilityGeofenceBoundaries.locationId],
+    name: "activity_geofence_evaluations_boundary_location_fk",
+  }).onDelete("restrict"),
+]);
 
 // Owner approval is an explicit, single-use operational action. Intent tokens are
 // stored only as hashes so a database read cannot be used to approve an activity.
@@ -1424,12 +1584,39 @@ export const ownersRelations = relations(owners, ({ one, many }) => ({
 export const washoutLocationsRelations = relations(washoutLocations, ({ one, many }) => ({
   owner: one(owners, { fields: [washoutLocations.ownerId], references: [owners.id] }),
   activities: many(washoutActivities),
+  geofenceBoundaries: many(facilityGeofenceBoundaries),
+  geofenceRevisionEvents: many(facilityGeofenceRevisionEvents),
+  geofenceEvaluations: many(activityGeofenceEvaluations),
+}));
+
+export const facilityGeofenceBoundariesRelations = relations(facilityGeofenceBoundaries, ({ one, many }) => ({
+  location: one(washoutLocations, { fields: [facilityGeofenceBoundaries.locationId], references: [washoutLocations.id] }),
+  previousVersion: one(facilityGeofenceBoundaries, {
+    fields: [facilityGeofenceBoundaries.previousVersionId],
+    references: [facilityGeofenceBoundaries.id],
+    relationName: "facility_geofence_boundary_versions",
+  }),
+  nextVersions: many(facilityGeofenceBoundaries, { relationName: "facility_geofence_boundary_versions" }),
+  revisionEvents: many(facilityGeofenceRevisionEvents),
+  evaluations: many(activityGeofenceEvaluations),
+}));
+
+export const facilityGeofenceRevisionEventsRelations = relations(facilityGeofenceRevisionEvents, ({ one }) => ({
+  location: one(washoutLocations, { fields: [facilityGeofenceRevisionEvents.locationId], references: [washoutLocations.id] }),
+  boundaryVersion: one(facilityGeofenceBoundaries, { fields: [facilityGeofenceRevisionEvents.boundaryVersionId], references: [facilityGeofenceBoundaries.id] }),
+  actor: one(users, { fields: [facilityGeofenceRevisionEvents.actorUserId], references: [users.id] }),
 }));
 
 export const washoutActivitiesRelations = relations(washoutActivities, ({ one }) => ({
   driver: one(drivers, { fields: [washoutActivities.driverId], references: [drivers.id] }),
   location: one(washoutLocations, { fields: [washoutActivities.locationId], references: [washoutLocations.id] }),
   payment: one(payments, { fields: [washoutActivities.id], references: [payments.activityId] }),
+}));
+
+export const activityGeofenceEvaluationsRelations = relations(activityGeofenceEvaluations, ({ one }) => ({
+  activity: one(washoutActivities, { fields: [activityGeofenceEvaluations.activityId], references: [washoutActivities.id] }),
+  location: one(washoutLocations, { fields: [activityGeofenceEvaluations.locationId], references: [washoutLocations.id] }),
+  boundaryVersion: one(facilityGeofenceBoundaries, { fields: [activityGeofenceEvaluations.boundaryVersionId], references: [facilityGeofenceBoundaries.id] }),
 }));
 
 export const ownerFundingSourcesRelations = relations(ownerFundingSources, ({ one }) => ({
@@ -1578,6 +1765,16 @@ export const insertWashoutLocationSchema = createInsertSchema(washoutLocations).
   rate: z.number().min(0, "Rate must be non-negative").transform(val => val.toString()),
 });
 
+export const insertFacilityGeofenceBoundarySchema = createInsertSchema(facilityGeofenceBoundaries).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertFacilityGeofenceRevisionEventSchema = createInsertSchema(facilityGeofenceRevisionEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertWashoutActivitySchema = createInsertSchema(washoutActivities).omit({
   id: true,
   createdAt: true,
@@ -1585,6 +1782,11 @@ export const insertWashoutActivitySchema = createInsertSchema(washoutActivities)
 }).extend({
   // Accept ISO string for checkInTime and convert to Date
   checkInTime: z.string().datetime().transform(val => new Date(val)),
+});
+
+export const insertActivityGeofenceEvaluationSchema = createInsertSchema(activityGeofenceEvaluations).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertWashoutPhotoSchema = createInsertSchema(washoutPhotos).omit({
@@ -1829,7 +2031,10 @@ export type User = typeof users.$inferSelect;
 export type Driver = typeof drivers.$inferSelect;
 export type Owner = typeof owners.$inferSelect;
 export type WashoutLocation = typeof washoutLocations.$inferSelect;
+export type FacilityGeofenceBoundary = typeof facilityGeofenceBoundaries.$inferSelect;
+export type FacilityGeofenceRevisionEvent = typeof facilityGeofenceRevisionEvents.$inferSelect;
 export type WashoutActivity = typeof washoutActivities.$inferSelect;
+export type ActivityGeofenceEvaluation = typeof activityGeofenceEvaluations.$inferSelect;
 export type WashoutActivityAdminReview = typeof washoutActivityAdminReviews.$inferSelect;
 export type WashoutPhoto = typeof washoutPhotos.$inferSelect;
 export type WashoutPhotoReviewEvent = typeof washoutPhotoReviewEvents.$inferSelect;
@@ -1848,7 +2053,10 @@ export type DebitCardRequest = typeof debitCardRequests.$inferSelect;
 export type InsertDebitCardRequest = z.infer<typeof insertDebitCardRequestSchema>;
 export type InsertOwner = z.infer<typeof insertOwnerSchema>;
 export type InsertWashoutLocation = z.infer<typeof insertWashoutLocationSchema>;
+export type InsertFacilityGeofenceBoundary = z.infer<typeof insertFacilityGeofenceBoundarySchema>;
+export type InsertFacilityGeofenceRevisionEvent = z.infer<typeof insertFacilityGeofenceRevisionEventSchema>;
 export type InsertWashoutActivity = z.infer<typeof insertWashoutActivitySchema>;
+export type InsertActivityGeofenceEvaluation = z.infer<typeof insertActivityGeofenceEvaluationSchema>;
 export type InsertWashoutPhoto = z.infer<typeof insertWashoutPhotoSchema>;
 export type InsertPayment = z.infer<typeof insertPaymentSchema> & {
   tipAmountCents?: number | null;

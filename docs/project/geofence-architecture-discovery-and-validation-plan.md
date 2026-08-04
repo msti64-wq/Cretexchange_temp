@@ -1,14 +1,14 @@
 # Facility Geofence Architecture Discovery and Validation Plan
 
-- **Version:** 1.0
-- **Status:** Approved — documentation package complete; no implementation authority
+- **Version:** 1.1
+- **Status:** Work Package 1 implemented locally; Level 3 validation complete; Founder acceptance pending; not released
 - **Owner:** CreteXchange Product and Engineering
 - **Date:** 2026-08-04
 - **Classification:** Internal
 
 ## 1. Work-package boundary
 
-This record captures the documentation-first audit and proposed sequencing for canonical Facility geofencing. No runtime, frontend, backend, API, schema, migration, dependency, Railway, database, or Production change is authorized or represented as complete.
+This record began as the documentation-first audit and sequencing for canonical Facility geofencing. The Founder later authorized Work Package 1: additive data foundation, disabled feature controls, and the canonical server geofence service. That package is implemented locally and validated but remains unstaged, uncommitted, unpushed, unmigrated in Production, undeployed, disabled, and pending Founder acceptance.
 
 The preserved Photo Review retention work is commit `8c9b9d7b947bba766d3f6f670c27b0a6603cb91f`. Phase 5 Sprint 3 Two-Factor Authentication has not started. It remains the next mandatory major sprint only after geofencing is completed and Founder-accepted.
 
@@ -33,6 +33,16 @@ The preserved Photo Review retention work is commit `8c9b9d7b947bba766d3f6f670c2
 - CTX-RB-006, CTX-RB-007, CTX-RB-008, and the Assisted-Pilot Operations Runbook
 - Development Protocol and CTX-OPS-001 for any later release
 
+### Work Package 1 implementation baseline
+
+- Starting local/GitHub/Railway Production SHA: `20ffc55d01d9416ac6d211382c6b2332a47039bc`
+- Starting worktree: clean
+- Validation level: Level 3; eventual release remains Level 4
+- Migration: `0040_add_canonical_facility_geofence_foundation.sql`, additive and not executed against Production
+- Server geometry decision: focused Turf 7.3.5 modules under [ADR-033](../architecture/ADR-033-canonical-server-geofence-library.md)
+- Feature controls: advisory, Owner boundary management, submission enforcement, notifications, and legacy transition; all disabled
+- Production status: unchanged; database connected and financial execution disabled at preflight
+
 ## 4. Current implementation findings
 
 ### Canonical operational sources
@@ -48,12 +58,12 @@ The preserved Photo Review retention work is commit `8c9b9d7b947bba766d3f6f670c2
 
 ### Missing capabilities
 
-- No Facility radius setting.
-- No polygon or operational-zone entity.
-- No boundary version/effective time.
-- No durable activity-to-boundary evaluation record.
+- No activated Production Facility radius setting.
+- No activated Production polygon or operational zone. Work Package 1 provides only not-yet-migrated versioned storage.
+- No Production boundary version/effective-time record. Work Package 1 provides only the additive contract.
+- No Production durable activity-to-boundary evaluation. Work Package 1 provides only append-only persistence and service preparation.
 - No Driver accuracy in the submitted photo/geofence contract.
-- No polygon validation or distance-to-edge library.
+- No participant-facing use of polygon validation or nearest-edge evaluation. The canonical server service now exists locally behind disabled controls.
 - No Owner boundary editor or history.
 
 ### Duplicate/conflicting logic
@@ -68,13 +78,13 @@ There is no repository four-mile constant. Any observed four-mile rejection is a
 
 ## 5. Approved development sequence
 
-The Founder has approved CTX-ARCH-016, PD-061, CTX-UX-009, CTX-RB-010, and this documentation set. No implementation package begins until the Founder separately authorizes the applicable next step. The approved sequence is:
+The Founder has approved CTX-ARCH-016, PD-061, CTX-UX-009, CTX-RB-010, and this documentation set, and separately authorized Work Package 1. The approved sequence and current state are:
 
 1. Governance-document approval
 2. Documentation-only commit
-3. Isolated migration and implementation design
-4. Founder approval of migration/implementation design
-5. Canonical server geofence service
+3. Isolated migration and implementation design — implemented locally in Work Package 1
+4. Founder approval of migration/implementation design — current acceptance gate
+5. Canonical server geofence service — implemented locally in Work Package 1; not wired or released
 6. Owner boundary-management workflow
 7. Driver advisory indicator
 8. Check-in and submission enforcement
@@ -109,9 +119,21 @@ The later migration design must be additive and cover versioned boundary rows, r
 
 ## 7. Risk and validation
 
-This design package is assigned Development Protocol Level 2 because it defines a future Driver/Owner feature-area contract. The later schema, privacy, authorization, and Production implementation escalates to Level 3, and release requires Level 4.
+The original documentation package was assigned Development Protocol Level 2. Work Package 1 is Level 3 because it changes schema definitions, adds a migration and persistent private evidence contract, and creates future authorization-sensitive server infrastructure. The eventual release remains Level 4.
 
-For this package, validation is documentation inspection, identifier uniqueness, internal-link checking, terminology/current-versus-future review, `git diff --check`, and confirmation that only documentation files changed. Runtime tests/build/deployment are intentionally omitted because runtime is prohibited and unchanged.
+Work Package 1 validation includes focused geometry/schema/feature-flag/regression tests, TypeScript, Production build, one full suite, isolated PostgreSQL migration dry-run and transaction rollback, non-destructive application-recovery verification, documentation checks, and final diff/status inspection. Production database execution and deployment remain prohibited.
+
+### Work Package 1 migration verification and recovery plan
+
+1. Verify migration `0040` checksum and exact release scope before any later authorized execution.
+2. Confirm target identity, approved recovery checkpoint, schema compatibility, and absence of pre-existing conflicting geofence flag keys.
+3. Execute the migration as one controlled transaction, separately from application startup.
+4. Verify all three tables, foreign keys, checks, unique/partial indexes, append-only triggers, activated-version immutability, and five disabled flags.
+5. Verify no boundary rows were inferred/backfilled and no existing operational/financial records changed.
+6. For application rollback, keep the additive data and set all five geofence controls false; the unchanged legacy paths remain authoritative.
+7. If transaction execution fails before commit, roll back the transaction and retain evidence. After commit, prefer disabled application rollback or separately approved forward repair. Do not destructively remove retained boundary/evaluation evidence without a new recovery authorization.
+
+The isolated validation test created only minimal prerequisite tables in a temporary local PostgreSQL cluster, applied `0040` inside `BEGIN`, verified the catalog, rolled back and confirmed the new tables were absent, reapplied the migration, exercised constraints/triggers/idempotency/version references, forced all geofence flags false, and confirmed revision/evaluation evidence remained. The temporary cluster was stopped and removed after the test. No external or Production database was contacted.
 
 ## 8. Founder decisions incorporated
 
@@ -137,3 +159,4 @@ No policy conflict remains open in this approved documentation set. Exact librar
 | 0.1 | 2026-08-04 | Initial audit, test matrix, and proposed sequencing; documentation only. |
 | 0.2 | 2026-08-04 | Incorporated Founder-approved architecture, policy, transition, migration, validation, and fourteen-step sequencing; documentation only. |
 | 1.0 | 2026-08-04 | Founder approved the final documentation package; migration design and implementation remain separately authorized. |
+| 1.1 | 2026-08-04 | Recorded the separately authorized, locally implemented Work Package 1 data foundation, disabled controls, canonical server service, ADR-033, isolated migration/recovery validation, and pending Founder acceptance. |

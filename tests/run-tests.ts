@@ -83,6 +83,8 @@ await import("./owner-access.test.ts");
 await import("./driver-achievements.test.ts");
 await import("./network-intelligence.test.ts");
 await import("./platform-terminology.test.ts");
+await import("./facility-geofence-service.test.ts");
+await import("./facility-geofence-foundation.test.ts");
 
 test("billing policy resolver treats blank and null as defaults and zero as an override", () => {
   const platform = {
