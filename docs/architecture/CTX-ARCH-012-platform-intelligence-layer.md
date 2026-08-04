@@ -12,6 +12,8 @@ The Platform Intelligence Layer is CreteXchange's single analytical source for f
 
 Each instrumented operational mutation records its event inside the same PostgreSQL transaction. A failed analytics write rolls back that originating mutation; replay is a no-op because `source_event_key` is unique. Analytics never reconstructs an operational record, approves an activity, changes a status, or initiates financial activity.
 
+The Phase 5 Sprint 2 Facility Owner Operational Dashboard remains deliberately outside this analytical read path for current queues and today's lifecycle state. CTX-ARCH-014 reads canonical operational tables and links to Facility Intelligence for historical metrics; it does not duplicate Platform Intelligence calculations.
+
 ## Event vocabulary
 
 | Event type | Authoritative source | Meaning |

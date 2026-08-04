@@ -59,3 +59,11 @@ All Notification Center endpoints require authentication and derive the recipien
 - `POST /api/admin/notifications/announcements` is Admin/Super Admin only. It accepts a governed recipient role, plain-text title/body, and optional role-allowed internal deep link. It cannot send HTML, external links, or private metadata.
 
 `GET /api/notifications` remains a bounded legacy compatibility response, and Driver `/messages` remains a UI alias. Structured response items expose presentation fields, safe metadata, read state, priority, and safe deep link. They exclude recipient user IDs, idempotency keys, internal source identifiers, authentication data, contact data, precise GPS, media/storage paths, raw analytics payloads, and financial information.
+
+# Facility Owner Operational Dashboard
+
+`GET /api/owners/dashboard/operational-summary` is an authenticated Owner-only read contract. It accepts an optional owned `facilityId` UUID. Another Owner's Facility is denied. Exactly one owned Facility auto-selects; multiple Facilities without a selection return `dataState=facility_selection_required` with `today`, `attention`, and `facilityStatus` set to `null`; no Facilities returns `dataState=no_facilities`.
+
+For a selected Facility the response provides UTC today counts, supported attention counts, at most five pending-review items, at most five recent activity items, Facility status and accepted-material labels, the authenticated Owner's unread notification count and at most five safe notification previews, and `generatedAt`. Review and navigation fields are same-origin paths whose destination endpoints retain authorization.
+
+The response excludes financial fields, contact data, precise GPS, private photo/media URLs, storage keys, raw audit records, and analytics metadata. Driver identity is reduced to first name plus last initial. Current operational status comes from canonical activity, evidence, Administrative Review, Facility configuration, readiness, terms, and Notification Service sources.

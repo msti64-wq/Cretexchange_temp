@@ -4,6 +4,10 @@
 **Owner:** V8 Laboratories
 **Classification:** Internal operational analytics; no financial, payment, private-storage, contact, GPS, or sensitive metadata is included.
 
+## Operational dashboard boundary
+
+Phase 5 Sprint 2 introduces current-state Owner operational indicators, not new Platform Intelligence metrics. Submitted/verified/rejected today, current pending review, distinct active Drivers today, and latest activity time are computed from canonical Facility-scoped lifecycle timestamps under CTX-ARCH-014. Missing/failed evidence, returned Administrative Review, readiness, configuration, terms, and unread-notification counts are action signals from their canonical operational read models. They are not trend metrics, health scores, event reconstructions, or additions to `PLATFORM_METRIC_REGISTRY`.
+
 ## Registry rules
 
 This is the authoritative registry for platform metrics. `server/platformAnalytics.ts` exports the matching `PLATFORM_METRIC_REGISTRY`; report consumers must not recreate these formulas. Events and canonical operational tables are referenced rather than copied. All timestamps are UTC; a report that displays local time must name the presentation timezone without changing the recorded calculation window.

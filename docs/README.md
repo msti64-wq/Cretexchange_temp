@@ -173,6 +173,7 @@ Product Decisions define durable business policy and operational rules. They do 
 | [PD-051](./product/PD-051-driver-activity-and-payment-lifecycle.md) | Separates operational activity verification from payment, wallet, schedule, and settlement presentation. |
 | [PD-052](./product/PD-052-marketplace-trust-administrative-activity-review-and-dispute-resolution.md) | Governs evidence-based, neutral, least-privilege administrative review and marketplace-trust policy. |
 | [PD-053](./product/PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) | Governs canonical weekly financial-batch review, approval, exceptions, and Phase 3B non-execution. |
+| [PD-059](./product/PD-059-owner-operational-dashboard-boundary.md) | Establishes the action-first Facility Owner Operational Dashboard boundary and separation from Facility Intelligence. |
 
 ## Approved Future Product Directions
 
@@ -214,6 +215,7 @@ CreteXchange documentation is organized into durable, decision-oriented sections
 | CTX-ARCH-005 | Material Management Architecture | Defines material taxonomy, financial direction, settlement models, pricing, capacity, and extensibility. | Approved |
 | CTX-ARCH-006 | Driver Incentive and Financial Settlement Architecture | Defines the immutable incentive snapshot, owner charge, payment obligation, wallet-authoritative settlement, Stripe payout, idempotency, recovery, and financial reporting contract. | Approved; PD-045 Active; runtime remediation pending |
 | CTX-ARCH-007 | [Canonical Financial Batch Architecture](./architecture/CTX-ARCH-007-canonical-financial-batch-architecture.md) | Defines canonical batch identity, frozen membership/totals, audit, discovery queues, legacy isolation, and Phase 3B non-execution. | Approved architecture direction; implementation pending |
+| CTX-ARCH-014 | [Facility Owner Operational Dashboard](./architecture/CTX-ARCH-014-owner-operational-dashboard.md) | Defines the bounded, action-first Owner operational workspace, Facility selection, privacy, and workflow boundaries. | Approved for Phase 5 Sprint 2 implementation |
 | CTX-ARCH-011 | [Administration Repository Documentation Refresh Design](./architecture/CTX-ARCH-011-administration-repository-documentation-refresh-design.md) | Defines the proposed controlled refresh of derived documentation inventory while preserving Git authority. | Draft; implementation not authorized |
 | CTX-ARCH-012 | [Platform Intelligence Layer](./architecture/CTX-ARCH-012-platform-intelligence-layer.md) | Defines immutable operational analytics facts, shared aggregation boundaries, and role-scoped intelligence APIs. | Approved for Phase 2 Sprint 2 foundation implementation |
 | CTX-MET-001 | [Platform Metric Registry](./architecture/CTX-MET-001-platform-metric-registry.md) | Defines canonical operational metrics, reusable journeys, and factual drop-off methodology. | Approved for Phase 2 Sprint 2 foundation implementation |

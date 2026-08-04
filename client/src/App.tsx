@@ -31,7 +31,8 @@ const DriverRewards = lazy(() => import("@/pages/driver/rewards"));
 const DriverCompetition = lazy(() => import("@/pages/driver/competition"));
 
 // Owner pages
-const OwnerDashboard = lazy(() => import("@/pages/owner/dashboard"));
+const OwnerDashboard = lazy(() => import("@/pages/owner/operational-dashboard"));
+const OwnerReviewDashboard = lazy(() => import("@/pages/owner/dashboard"));
 const OwnerLocations = lazy(() => import("@/pages/owner/locations"));
 const OwnerDrivers = lazy(() => import("@/pages/owner/drivers"));
 const OwnerPayments = lazy(() => import("@/pages/owner/payments"));
@@ -152,6 +153,7 @@ function Router() {
         <OwnerWorkspace>
           <Switch>
             <Route path="/" component={OwnerDashboard} />
+            <Route path="/dashboard/reviews" component={OwnerReviewDashboard} />
             <Route path="/dashboard" component={OwnerDashboard} />
             <Route path="/locations" component={OwnerLocations} />
             <Route path="/drivers" component={OwnerDrivers} />

@@ -442,6 +442,15 @@ export default function OwnerDashboard() {
 
   // Combined loading states
   const isMainLoading = isDashboardLoading;
+
+  useEffect(() => {
+    if (isAllActivitiesLoading || typeof window === "undefined") return;
+    const activityId = new URLSearchParams(window.location.search).get("activityId");
+    if (!activityId) return;
+    window.requestAnimationFrame(() => {
+      document.getElementById(`activity-${activityId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, [isAllActivitiesLoading, Array.isArray(allActivitiesData) ? allActivitiesData.length : 0]);
   
 
   if (isMainLoading) {
@@ -472,6 +481,7 @@ export default function OwnerDashboard() {
   const recentActivities = (isAuthError || isDashboardAuthError) 
     ? [] 
     : Array.isArray(activitiesData) ? activitiesData : [];
+
   const recentActivityCount = recentActivities.length;
 
   const ownerActivityDriverVisitCounts = ownerActivityRows.reduce<Record<string, number>>((acc, activity: any) => {
@@ -1275,7 +1285,7 @@ export default function OwnerDashboard() {
                   {t("owner.dashboard.updatingActivities")}
                 </div>
                 {approvalQueueActivities.map((activity: any, index: number) => (
-                <div key={activity.id} className="space-y-3 rounded-2xl border border-border bg-muted/30 p-4" data-testid={`card-recent-activity-${index}`}>
+                <div id={`activity-${activity.id}`} key={activity.id} className="space-y-3 rounded-2xl border border-border bg-muted/30 p-4" data-testid={`card-recent-activity-${index}`}>
                     {/* Previous activity content will be dimmed while fetching */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
@@ -1364,7 +1374,7 @@ export default function OwnerDashboard() {
                   const driverTipDisplay = approvalDriverTipDrafts[activity.id] ?? (resolveLocationDriverTipRateCents(activity.location?.rate ?? 0) / 100).toFixed(2);
                   const driverTipCents = normalizeDollarInputToCents(driverTipDisplay || 0);
                   return (
-                <div key={activity.id} className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm" data-testid={`card-recent-activity-${index}`}>
+                <div id={`activity-${activity.id}`} key={activity.id} className="space-y-3 rounded-2xl border border-border bg-card p-4 shadow-sm" data-testid={`card-recent-activity-${index}`}>
                   {/* Header Row - Driver and Amount */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">

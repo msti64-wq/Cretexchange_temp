@@ -71,6 +71,8 @@ Deep links are selected from role-specific route allowlists. Query parameters ar
 
 Unread count uses a count-only query. Lists are bounded to 25 by default and 50 maximum. Recipient/archived/created, recipient/read/archived, category, and unique idempotency indexes support the primary queries without N+1 reads. Notification lists load only on the Notification Center route; the lightweight unread count is independent and never blocks critical Driver content. No WebSocket or aggressive polling is introduced.
 
+The Facility Owner Operational Dashboard may reuse the authenticated Owner's count and a maximum five-item safe preview. That projection does not change read/archive state, create a second notification model, or redesign the full Notification Center.
+
 ## Auditability and privacy
 
 Creation, read, archive, type, recipient, source workflow, source reference, idempotency key, and timestamps are durable on the notification row. Admin announcement requests are logged with the actor and governed template identifier without content or private metadata. Notification rows do not replace operational audit records.

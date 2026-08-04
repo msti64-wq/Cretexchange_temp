@@ -164,6 +164,7 @@ import { emitNotificationBestEffort, emitRoleNotificationBestEffort, notificatio
 import { announcementRequestSchema, isSafeNotificationDeepLink, notificationListQuerySchema } from "../shared/notifications";
 import { buildDriverCompetitionProjection, DriverCompetitionQueryError, parseDriverCompetitionQuery } from "./driverCompetition";
 import { buildNetworkIntelligence, parseNetworkIntelligenceQuery } from "./networkIntelligence";
+import { buildOwnerOperationalSummary, OwnerOperationalDashboardError } from "./ownerOperationalDashboard";
 import {
   buildBillingAuditReport,
   billingAuditReportToCsv,
@@ -4810,6 +4811,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Owner endpoints
+  app.get('/api/owners/dashboard/operational-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== "owner") {
+        return res.status(403).json({ message: "Facility Owner access required." });
+      }
+      const owner = await storage.getOwner(user.id);
+      if (!owner) return res.status(404).json({ message: "Owner not found" });
+
+      const requestedFacilityId = typeof req.query?.facilityId === "string"
+        ? req.query.facilityId.trim()
+        : null;
+      if (requestedFacilityId && !z.string().uuid().safeParse(requestedFacilityId).success) {
+        return res.status(400).json({ message: "A valid Recovery Facility selection is required." });
+      }
+
+      const [termsState] = await Promise.all([
+        getTermsStateForUser({ id: user.id, role: "owner" }),
+      ]);
+      const accessState = resolveOwnerLocationAccessState(owner, user);
+      const summary = await buildOwnerOperationalSummary({
+        database: db,
+        notificationService,
+        ownerId: owner.id,
+        ownerUserId: user.id,
+        requestedFacilityId,
+        ownerApproved: owner.isApproved === true,
+        accessState,
+        termsAcceptanceRequired: termsState.requiresAcceptance,
+      });
+      res.setHeader("Cache-Control", "private, no-store");
+      return res.json(summary);
+    } catch (error) {
+      if (error instanceof OwnerOperationalDashboardError) {
+        return res.status(error.status).json({ message: error.message });
+      }
+      console.error("[OWNER_OPERATIONAL_DASHBOARD_FAILED]", {
+        userId: req.user?.id,
+        errorCategory: error instanceof Error ? error.name : "UnknownError",
+      });
+      return res.status(500).json({ message: "Unable to load the Facility operational dashboard." });
+    }
+  });
+
   app.get('/api/owners/dashboard', isAuthenticated, async (req: any, res) => {
     let dashboardPhase = "start";
     let ownerIdForLog: string | null = null;
