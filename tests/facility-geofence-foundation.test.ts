@@ -87,22 +87,28 @@ test("legacy one-mile/three-mile photo verification outcomes are unchanged", () 
   assert.equal(evaluatePhotoVerification({ ...facility, gpsLatitude: 0, gpsLongitude: 0.05 }).status, "failed");
 });
 
-test("legacy rubble gates remain duplicated at 500 feet and do not call the canonical service", async () => {
-  const routes = await source(new URL("../server/routes.ts", import.meta.url));
+test("legacy rubble gates remain duplicated at 500 feet while canonical enforcement is separately flagged", async () => {
+  const [routes, submissionPolicy] = await Promise.all([
+    source(new URL("../server/routes.ts", import.meta.url)),
+    source(new URL("../server/geofenceSubmissionPolicy.ts", import.meta.url)),
+  ]);
   const matches = routes.match(/const MAX_DISTANCE_MILES = 0\.095; \/\/ 500 feet/g) ?? [];
   assert.equal(matches.length, 2);
-  assert.doesNotMatch(routes, /facilityGeofenceService|GEOFENCE_SUBMISSION_ENFORCEMENT/);
+  assert.match(routes, /GEOFENCE_SUBMISSION_ENFORCEMENT/);
+  assert.match(submissionPolicy, /NO_ACTIVE_PRIMARY_BOUNDARY/);
 });
 
-test("Work Package 1 has no geofence notification, financial, reward, competition, or UI wiring", async () => {
+test("vertical-slice wiring is feature-gated and remains financially isolated", async () => {
   const [notificationTemplates, routes, app] = await Promise.all([
     source(new URL("../shared/notifications.ts", import.meta.url)),
     source(new URL("../server/routes.ts", import.meta.url)),
     source(new URL("../client/src/App.tsx", import.meta.url)),
   ]);
-  assert.doesNotMatch(notificationTemplates, /geofence/i);
-  assert.doesNotMatch(routes, /activityGeofenceEvaluations|facilityGeofenceBoundaries/);
-  assert.doesNotMatch(app, /geofence/i);
+  assert.match(notificationTemplates, /owner_geofence_exception_review/);
+  assert.match(routes, /GEOFENCE_SUBMISSION_ENFORCEMENT/);
+  assert.match(routes, /GEOFENCE_NOTIFICATIONS/);
+  assert.match(app, /facility-geofence/);
+  assert.doesNotMatch(routes.slice(routes.indexOf("submissionGeofenceEvidenceSchema"), routes.indexOf("function setBillingNoCacheHeaders")), /payment|wallet|stripe|reward|competition/i);
 
   const migration = await source(migrationPath);
   assert.doesNotMatch(migration, /(?:INSERT INTO|UPDATE|ALTER TABLE)\s+(?:payments|wallet_transactions|driver_lottery_entries|notifications)/i);

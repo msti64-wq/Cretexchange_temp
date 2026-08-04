@@ -110,6 +110,30 @@ export class DrizzleFacilityGeofenceRepository implements FacilityGeofenceReposi
     return boundary;
   }
 
+  async getLatestActivityEvaluation(activityId: string): Promise<ActivityGeofenceEvaluation | undefined> {
+    const [evaluation] = await db
+      .select()
+      .from(activityGeofenceEvaluations)
+      .where(eq(activityGeofenceEvaluations.activityId, activityId))
+      .orderBy(desc(activityGeofenceEvaluations.createdAt))
+      .limit(1);
+    return evaluation;
+  }
+
+  async listLatestActivityEvaluations(activityIds: string[]): Promise<Map<string, ActivityGeofenceEvaluation>> {
+    if (activityIds.length === 0) return new Map();
+    const rows = await db
+      .select()
+      .from(activityGeofenceEvaluations)
+      .where(inArray(activityGeofenceEvaluations.activityId, activityIds))
+      .orderBy(desc(activityGeofenceEvaluations.createdAt));
+    const result = new Map<string, ActivityGeofenceEvaluation>();
+    for (const row of rows) {
+      if (row.activityId && !result.has(row.activityId)) result.set(row.activityId, row);
+    }
+    return result;
+  }
+
   async createDraft(input: {
     boundary: Omit<InsertFacilityGeofenceBoundary, "version">;
     revision: Omit<InsertFacilityGeofenceRevisionEvent, "boundaryVersionId">;

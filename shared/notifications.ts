@@ -17,6 +17,11 @@ export const notificationTemplateDefinitions = {
   admin_review_attention: { category: "administrative", roles: ["owner"] },
   admin_review_updated: { category: "administrative", roles: ["driver", "owner"] },
   photo_review_required: { category: "administrative", roles: ["admin", "super_admin"] },
+  geofence_exception_submitted: { category: "operational", roles: ["driver"] },
+  owner_geofence_exception_review: { category: "operational", roles: ["owner"] },
+  admin_geofence_exception_attention: { category: "administrative", roles: ["admin", "super_admin"] },
+  owner_geofence_assistance_recorded: { category: "operational", roles: ["owner"] },
+  admin_geofence_assistance_requested: { category: "administrative", roles: ["admin", "super_admin"] },
   achievement_earned: { category: "achievement", roles: ["driver"] },
   competition_milestone: { category: "competition", roles: ["driver"] },
   system_announcement: { category: "announcement", roles: notificationRoles },
@@ -36,7 +41,7 @@ export function sanitizeNotificationMetadata(input: unknown): Record<string, str
 
 const safePaths: Record<NotificationRole, RegExp[]> = {
   driver: [/^\/$/, /^\/dashboard$/, /^\/activity(?:\?.*)?$/, /^\/rewards$/, /^\/driver\/competition$/, /^\/messages$/, /^\/profile$/],
-  owner: [/^\/$/, /^\/dashboard$/, /^\/intelligence(?:\?facilityId=[0-9a-f-]{36})?$/, /^\/notifications$/],
+  owner: [/^\/$/, /^\/dashboard$/, /^\/intelligence(?:\?facilityId=[0-9a-f-]{36})?$/, /^\/locations\/[0-9a-f-]{36}\/geofence$/, /^\/notifications$/],
   admin: [/^\/$/, /^\/notifications$/, /^\/admin\/photo-review$/, /^\/network-intelligence$/, /^\/reports$/, /^\/admin\/administration-repository$/],
   super_admin: [/^\/$/, /^\/notifications$/, /^\/admin\/photo-review$/, /^\/network-intelligence$/, /^\/reports$/, /^\/admin\/administration-repository$/],
 };

@@ -91,6 +91,10 @@ import {
 } from "../shared/paymentAccounting";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
 import { registerFacilityGeofenceRoutes } from "./facilityGeofenceRoutes";
+import { FacilityGeofenceService, type FacilityGeofenceResult } from "./facilityGeofenceService";
+import { DrizzleFacilityGeofenceRepository } from "./facilityGeofenceRepository";
+import { isGeofenceFeatureEnabled } from "./geofenceFeatureFlags";
+import { GEOFENCE_EXCEPTION_REASON_CODES, resolveGeofenceSubmissionDecision } from "./geofenceSubmissionPolicy";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
 import { buildCanonicalObligationCreationReason, createDatabaseFinancialObligationRepository, createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole, previewFinancialObligationForVerifiedActivity } from "./financialObligations";
 import { getFinancialSchemaCapabilities } from "./financialSchemaCapabilities";
@@ -196,6 +200,22 @@ const SUPPORTED_PHOTO_CONTENT_TYPES = new Set([
   "image/heic",
   "image/heif",
 ]);
+const submissionGeofenceRepository = new DrizzleFacilityGeofenceRepository();
+const submissionGeofenceService = new FacilityGeofenceService(submissionGeofenceRepository);
+const submissionGeofenceEvidenceSchema = z.object({
+  submissionReference: z.string().uuid(),
+  observation: z.object({
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    accuracyMeters: z.number().nonnegative(),
+    observedAt: z.string().datetime({ offset: true }),
+  }),
+  acknowledgement: z.object({
+    confirmed: z.literal(true),
+    reasonCode: z.enum(GEOFENCE_EXCEPTION_REASON_CODES),
+    note: z.string().trim().max(500).optional(),
+  }).optional(),
+});
 
 function setBillingNoCacheHeaders(res: any) {
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -5644,6 +5664,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const activities = await storage.getActivitiesByOwner(owner.id, start, end) as Array<WashoutActivity & { photoCount: number }>;
+      const ownerGeofenceEnabled = await isGeofenceFeatureEnabled(
+        storage,
+        FEATURE_FLAGS.GEOFENCE_OWNER_BOUNDARY_MANAGEMENT,
+        userId,
+        "owner",
+      );
+      const geofenceEvaluations = ownerGeofenceEnabled
+        ? await submissionGeofenceRepository.listLatestActivityEvaluations(activities.map((activity) => activity.id))
+        : new Map();
+      const activitiesWithGeofenceContext = activities.map((activity) => {
+        const evaluation = geofenceEvaluations.get(activity.id);
+        return {
+          ...activity,
+          geofenceContext: evaluation ? {
+            state: evaluation.resultState,
+            reasonCode: evaluation.reasonCode,
+            boundaryVersion: evaluation.boundaryVersion,
+            acknowledgementCode: evaluation.exceptionAcknowledgementCode,
+            driverNote: evaluation.driverNote,
+            evidenceComplete: evaluation.evidenceComplete,
+          } : null,
+        };
+      });
       
       console.log('📊 Activities query result:', {
         ownerId: owner.id,
@@ -5658,7 +5701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .map(a => ({ id: a.id, photoCount: a.photoCount }))
       });
 
-      res.json(activities);
+      res.json(activitiesWithGeofenceContext);
     } catch (error) {
       console.error("Error fetching activities:", error);
       res.status(500).json({ message: "Failed to fetch activities" });
@@ -17082,6 +17125,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      let geofenceResult: FacilityGeofenceResult | null = null;
+      let geofenceEvaluationEvidence = null;
+      let geofenceYellow = false;
+      let geofenceRed = false;
+      const geofenceEnforcementEnabled = await isGeofenceFeatureEnabled(
+        storage,
+        FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT,
+        userId,
+        "driver",
+      );
+      if (geofenceEnforcementEnabled) {
+        const parsedGeofence = submissionGeofenceEvidenceSchema.safeParse(req.body?.geofenceEvidence);
+        if (!parsedGeofence.success) {
+          return res.status(422).json({
+            code: "GEOFENCE_EVIDENCE_REQUIRED",
+            message: "Current reliable location evidence is required before checkout.",
+            recovery: "retry_location",
+          });
+        }
+        geofenceResult = await submissionGeofenceService.evaluateLocation({
+          locationId: activityResult.data.locationId,
+          observation: parsedGeofence.data.observation,
+          purpose: "submission",
+        });
+        const geofenceDecision = resolveGeofenceSubmissionDecision({
+          result: geofenceResult,
+          acknowledgement: parsedGeofence.data.acknowledgement,
+          hasRequiredEvidence: photoData.length > 0,
+        });
+        if (geofenceDecision.action !== "legacy") {
+          if (geofenceDecision.action === "recover") {
+            return res.status(422).json({
+              code: geofenceDecision.code,
+              reasonCode: geofenceDecision.reasonCode,
+              message: geofenceDecision.code === "GEOFENCE_EXCEPTION_ACKNOWLEDGEMENT_REQUIRED"
+                ? "Confirm the boundary exception and select a reason before checkout."
+                : "Location could not be confirmed. Retry location before checkout.",
+              recovery: geofenceDecision.code === "GEOFENCE_EXCEPTION_ACKNOWLEDGEMENT_REQUIRED" ? "confirm_boundary_exception" : "retry_location",
+              allowedReasons: geofenceDecision.code === "GEOFENCE_EXCEPTION_ACKNOWLEDGEMENT_REQUIRED" ? GEOFENCE_EXCEPTION_REASON_CODES : undefined,
+            });
+          }
+          geofenceYellow = geofenceDecision.action === "exception_review";
+          geofenceRed = geofenceDecision.action === "quarantine";
+          geofenceEvaluationEvidence = submissionGeofenceService.prepareActivityEvaluation({
+            result: geofenceResult,
+            purpose: "submission",
+            workflowReference: parsedGeofence.data.submissionReference,
+            idempotencyKey: `geofence:${parsedGeofence.data.submissionReference}:submission`,
+            exceptionAcknowledgementCode: parsedGeofence.data.acknowledgement?.reasonCode || null,
+            driverNote: parsedGeofence.data.acknowledgement?.note || null,
+            evidenceComplete: true,
+          }).evidence;
+        }
+      }
+
       const locationLatitude = location.latitude != null ? Number(location.latitude) : null;
       const locationLongitude = location.longitude != null ? Number(location.longitude) : null;
 
@@ -17236,8 +17334,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         photos.push(photoRow);
       }
 
-      const platformIntegrityDetected = photos.some((photo) => photo.verificationStatus !== "verified");
-      const platformIntegrityReason = photos
+      const governedPhotos = geofenceRed
+        ? photos.map((photo) => ({
+            ...photo,
+            verificationStatus: "needs_review",
+            verificationReason: [photo.verificationReason, "Location evidence is outside the governed Facility exception zone."].filter(Boolean).join(" "),
+          }))
+        : photos;
+      const platformIntegrityDetected = geofenceRed || governedPhotos.some((photo) => photo.verificationStatus !== "verified");
+      const platformIntegrityReason = geofenceRed
+        ? "Location evidence is outside the governed Facility exception zone and requires Platform review."
+        : governedPhotos
         .filter((photo) => photo.verificationStatus !== "verified")
         .map((photo) => photo.verificationReason)
         .filter((reason): reason is string => Boolean(reason))
@@ -17264,7 +17371,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         result = await storage.createWashoutActivityWithPhotos(
           activityToCreate,
-          photos
+          governedPhotos,
+          geofenceEvaluationEvidence,
         );
       } catch (error) {
         const dbError = summarizeDatabaseError(error, {
@@ -17356,6 +17464,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      const geofenceNotificationsEnabled = await isGeofenceFeatureEnabled(
+        storage,
+        FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
+        userId,
+        "driver",
+      );
       await runNotificationDeliveryBestEffort(result.activity.id, async () => {
       if (platformIntegrityDetected) {
         await emitNotificationBestEffort({
@@ -17369,6 +17483,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: 'A Material Recovery Activity was withheld from Facility review because its evidence requires administrative review.', deepLink: '/admin/photo-review',
           metadata: { facilityName: location.name, status: 'needs_review' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
           idempotencyKey: `activity:${result.activity.id}:photo-review:${recipientRole}`, priority: 'high',
+        })));
+      } else if (geofenceYellow && geofenceNotificationsEnabled) {
+        const locationOwner = await storage.getOwnerById(location.ownerId);
+        await emitNotificationBestEffort({
+          userId, recipientRole: 'driver', templateKey: 'geofence_exception_submitted', title: 'Boundary exception submitted',
+          message: `Your Material Recovery Activity at ${location.name} was submitted with your boundary confirmation and is awaiting Facility review.`, deepLink: '/activity',
+          metadata: { facilityName: location.name, status: 'pending' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
+          idempotencyKey: `activity:${result.activity.id}:geofence-exception:driver`,
+        });
+        if (locationOwner) await emitNotificationBestEffort({
+          userId: locationOwner.userId, recipientRole: 'owner', templateKey: 'owner_geofence_exception_review', title: 'Activity and boundary confirmation ready for review',
+          message: `A Material Recovery Activity at ${location.name} includes a Driver boundary confirmation and is awaiting your review.`, deepLink: '/dashboard',
+          metadata: { facilityName: location.name, status: 'pending' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
+          idempotencyKey: `activity:${result.activity.id}:geofence-exception:owner`, priority: 'high',
+        });
+        await Promise.all((['admin', 'super_admin'] as const).map((recipientRole) => emitRoleNotificationBestEffort({
+          recipientRole, templateKey: 'admin_geofence_exception_attention', title: 'Facility boundary exception recorded',
+          message: 'A complete Material Recovery Activity entered ordinary Facility review with a governed boundary exception.', deepLink: '/notifications',
+          metadata: { facilityName: location.name, status: 'pending' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
+          idempotencyKey: `activity:${result.activity.id}:geofence-exception:${recipientRole}`,
         })));
       } else {
         const locationOwner = await storage.getOwnerById(location.ownerId);
@@ -17389,7 +17523,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         activity: result.activity,
-        photoCount: result.photos.length
+        photoCount: result.photos.length,
+        geofence: geofenceResult ? {
+          state: geofenceResult.state,
+          boundaryVersionId: geofenceResult.boundaryVersionId,
+          exceptionAccepted: geofenceYellow,
+        } : null,
       });
     } catch (error) {
       const dbError = summarizeDatabaseError(error, {

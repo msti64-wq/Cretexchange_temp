@@ -27,11 +27,20 @@ function harness(options: { locationOwnerId?: string; userRole?: string; feature
       checkFeatureFlag: async () => options.featureEnabled !== false,
       getOwner: async () => ({ id: "owner-1", userId: "user-1" }),
       getWashoutLocation: async () => location,
+      getWashoutActivity: async () => ({ id: "activity-1", locationId: location.id }),
+      getDriver: async () => undefined,
+      getActiveLocationsAcceptingMaterial: async () => [],
     } as any,
     repository: {
       listBoundaryVersions: async () => { repositoryReads += 1; return [radius]; },
       listRevisionEvents: async () => [],
       getBoundaryVersion: async () => radius,
+      getLatestActivityEvaluation: async () => ({
+        activityId: "activity-1", locationId: location.id, boundaryVersionId: radius.id, boundaryVersion: 1,
+        resultState: "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE", reasonCode: "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE",
+        exceptionAcknowledgementCode: "FACILITY_PERSONNEL_DIRECTED", driverNote: "Directed here", evidenceComplete: true,
+        evaluatedAt: new Date("2026-08-01T01:00:00Z"), observationLatitude: "30.2", observationLongitude: "-97.8", accuracyMeters: "5",
+      }),
       createDraft: async () => ({ ...radius, status: "draft", activatedAt: null, activatedBy: null, effectiveFrom: null }),
       activateDraft: async () => radius,
       appendRevisionEvent: async () => ({ id: "event-1" }),
@@ -93,4 +102,22 @@ test("activation requires explicit confirmation", async () => {
   const res = response();
   await h.posts.get("/api/owners/locations/:locationId/geofence/versions/:boundaryVersionId/activate")!({ user: { id: "user-1" }, params: { locationId: h.location.id, boundaryVersionId: h.radius.id }, header: () => null, body: { reasonCode: "OWNER_CONFIRMED" } }, res);
   assert.equal(res.statusCode, 400);
+});
+
+test("temporary context is denied before evaluation access for another Owner", async () => {
+  const h = harness({ locationOwnerId: "another-owner" });
+  const res = response();
+  await h.posts.get("/api/owners/activities/:activityId/geofence/temporary-context")!({ user: { id: "user-1" }, params: { activityId: "activity-1" }, header: () => null, body: { confirmationAcknowledged: true, note: "Temporary delivery routing" } }, res);
+  assert.equal(res.statusCode, 404);
+});
+
+test("Admin context is role-protected and privacy-reduced", async () => {
+  const h = harness({ userRole: "admin" });
+  const res = response();
+  await h.gets.get("/api/admin/geofence/activities/:activityId/context")!({ user: { id: "admin-user" }, params: { activityId: "activity-1" } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.state, "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE");
+  for (const forbidden of ["observationLatitude", "observationLongitude", "accuracyMeters", "outsideDistanceMeters", "geometry"]) {
+    assert.equal(forbidden in res.body, false, forbidden);
+  }
 });

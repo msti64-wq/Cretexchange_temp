@@ -16,6 +16,7 @@ import {
 } from "./facilityGeofenceService";
 import { DrizzleFacilityGeofenceRepository } from "./facilityGeofenceRepository";
 import { isGeofenceFeatureEnabled } from "./geofenceFeatureFlags";
+import { emitNotificationBestEffort, emitRoleNotificationBestEffort } from "./notificationService";
 
 const pointSchema = z.tuple([
   z.number().min(-180).max(180),
@@ -47,6 +48,10 @@ const assistanceSchema = z.object({
   reasonCode: z.enum(["MAP_HELP", "BOUNDARY_CORRECTION_HELP", "LOCATION_DATA_HELP", "OTHER"]),
   note: z.string().trim().max(500).optional(),
 });
+const temporaryContextSchema = z.object({
+  confirmationAcknowledged: z.literal(true),
+  note: z.string().trim().min(3).max(500),
+});
 const advisorySchema = z.object({
   locationIds: z.array(z.string().uuid()).min(1).max(DEFAULT_FACILITY_GEOFENCE_CONFIG.maximumBatchLocations),
   materialSlug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
@@ -56,6 +61,14 @@ const advisorySchema = z.object({
     accuracyMeters: z.number().nonnegative(),
     observedAt: z.string().datetime({ offset: true }),
   }).nullable(),
+});
+const submissionPreflightSchema = z.object({
+  observation: z.object({
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    accuracyMeters: z.number().nonnegative(),
+    observedAt: z.string().datetime({ offset: true }),
+  }),
 });
 
 type Repository = DrizzleFacilityGeofenceRepository;
@@ -302,6 +315,32 @@ export function registerFacilityGeofenceRoutes(
       idempotencyKey: `${id}:assistance:${boundary.id}`,
       safeMetadata: parsed.data.note ? { note: parsed.data.note } : {},
     });
+    const notificationsEnabled = await isGeofenceFeatureEnabled(storage, FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS, access.user.id, access.user.role);
+    if (notificationsEnabled) {
+      await emitNotificationBestEffort({
+        userId: access.user.id,
+        recipientRole: "owner",
+        templateKey: "owner_geofence_assistance_recorded",
+        title: "Facility boundary assistance requested",
+        message: `Your assistance request for ${access.location.name} was recorded for Platform Operations.`,
+        deepLink: `/locations/${access.location.id}/geofence`,
+        metadata: { facilityName: access.location.name, status: "assistance_requested" },
+        sourceEntityType: "facility_geofence_boundary",
+        sourceEntityId: boundary.id,
+        idempotencyKey: `${id}:assistance:owner`,
+      });
+      await Promise.all((["admin", "super_admin"] as const).map((recipientRole) => emitRoleNotificationBestEffort({
+        recipientRole,
+        templateKey: "admin_geofence_assistance_requested",
+        title: "Facility boundary assistance requested",
+        message: `A Facility Owner requested boundary assistance for ${access.location.name}.`,
+        deepLink: "/notifications",
+        metadata: { facilityName: access.location.name, status: "assistance_requested" },
+        sourceEntityType: "facility_geofence_boundary",
+        sourceEntityId: boundary.id,
+        idempotencyKey: `${id}:assistance:${recipientRole}`,
+      })));
+    }
     res.status(202).json({ accepted: true });
   });
 
@@ -315,7 +354,7 @@ export function registerFacilityGeofenceRoutes(
       if (!parsed.success) return res.status(400).json({ message: "Facility advisory request is invalid", issues: parsed.error.issues });
 
       const eligible = await storage.getActiveLocationsAcceptingMaterial(parsed.data.materialSlug);
-      const eligibleIds = new Set(eligible.map((location) => location.id));
+      const eligibleIds = new Set(eligible.map((location: { id: string }) => location.id));
       const locationIds = Array.from(new Set(parsed.data.locationIds)).filter((locationId) => eligibleIds.has(locationId));
       if (locationIds.length !== new Set(parsed.data.locationIds).size) {
         return res.status(403).json({ message: "One or more Recovery Facilities are not eligible for the selected material" });
@@ -336,6 +375,81 @@ export function registerFacilityGeofenceRoutes(
     } catch (error) {
       console.error("Driver Facility advisory failed", { userId: req.user?.id, message: error instanceof Error ? error.message : "unknown" });
       res.status(503).json({ message: "Facility boundary status could not be confirmed" });
+    }
+  });
+
+  app.post("/api/drivers/locations/:locationId/geofence-check", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== "driver") return res.status(403).json({ message: "Driver access required" });
+      const enabled = await isGeofenceFeatureEnabled(storage, FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT, user.id, user.role);
+      if (!enabled) return res.status(404).json({ message: "Facility boundary enforcement is not available" });
+      const parsed = submissionPreflightSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Current location evidence is invalid" });
+      const driver = await storage.getDriver(user.id);
+      if (!driver?.activeMaterialSlug) return res.status(409).json({ message: "Select a material before checkout" });
+      const eligible = await storage.getActiveLocationsAcceptingMaterial(driver.activeMaterialSlug);
+      if (!eligible.some((location: { id: string }) => location.id === req.params.locationId)) return res.status(403).json({ message: "Recovery Facility is not eligible for the selected material" });
+      const result = await evaluator.evaluateLocation({ locationId: req.params.locationId, observation: parsed.data.observation, purpose: "check_in" });
+      res.json(projectFacilityGeofenceResultForDriver(result));
+    } catch (error) {
+      console.error("Driver Facility boundary preflight failed", { locationId: req.params.locationId, message: error instanceof Error ? error.message : "unknown" });
+      res.status(503).json({ message: "Location could not be confirmed" });
+    }
+  });
+
+  app.post("/api/owners/activities/:activityId/geofence/temporary-context", isAuthenticated, async (req: any, res) => {
+    try {
+      const activity = await storage.getWashoutActivity(req.params.activityId);
+      if (!activity) return res.status(404).json({ message: "Material Recovery Activity not found" });
+      const access = await authorizeOwner(req, res, activity.locationId);
+      if (!access) return;
+      const parsed = temporaryContextSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Temporary context confirmation and note are required" });
+      const evaluation = await repository.getLatestActivityEvaluation(activity.id);
+      if (!evaluation || evaluation.resultState !== "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE" || !evaluation.boundaryVersionId) {
+        return res.status(409).json({ message: "This activity does not have a governed boundary exception" });
+      }
+      const id = requestId(req);
+      await repository.appendRevisionEvent({
+        locationId: activity.locationId,
+        boundaryVersionId: evaluation.boundaryVersionId,
+        eventType: "correction_recorded",
+        actorUserId: access.user.id,
+        actorRole: "owner",
+        reasonCode: "TEMPORARY_EXCEPTION_CONTEXT",
+        requestId: id,
+        idempotencyKey: `${id}:temporary-context:${activity.id}`,
+        safeMetadata: { activityId: activity.id, note: parsed.data.note },
+      });
+      res.status(201).json({ recorded: true });
+    } catch (error) {
+      console.error("Owner temporary boundary context failed", { activityId: req.params.activityId, message: error instanceof Error ? error.message : "unknown" });
+      res.status(500).json({ message: "Unable to record temporary boundary context" });
+    }
+  });
+
+  app.get("/api/admin/geofence/activities/:activityId/context", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || !["admin", "super_admin"].includes(user.role)) return res.status(403).json({ message: "Admin access required" });
+      const enabled = await isGeofenceFeatureEnabled(storage, FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS, user.id, user.role);
+      if (!enabled) return res.status(404).json({ message: "Facility boundary context is not available" });
+      const evaluation = await repository.getLatestActivityEvaluation(req.params.activityId);
+      if (!evaluation) return res.status(404).json({ message: "Facility boundary context not found" });
+      res.json({
+        activityId: req.params.activityId,
+        state: evaluation.resultState,
+        reasonCode: evaluation.reasonCode,
+        boundaryVersion: evaluation.boundaryVersion,
+        acknowledgementCode: evaluation.exceptionAcknowledgementCode,
+        driverNote: evaluation.driverNote,
+        evidenceComplete: evaluation.evidenceComplete,
+        evaluatedAt: evaluation.evaluatedAt,
+      });
+    } catch (error) {
+      console.error("Admin geofence context failed", { activityId: req.params.activityId, message: error instanceof Error ? error.message : "unknown" });
+      res.status(500).json({ message: "Unable to load Facility boundary context" });
     }
   });
 }

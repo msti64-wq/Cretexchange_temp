@@ -29,6 +29,7 @@ import { ownerFacilityIntelligenceQueryPrefix } from "@/lib/ownerFacilityIntelli
 import { normalizeDollarInputToCents } from "@shared/money";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { resolveWashoutOperationalStatus } from "@/lib/washoutOperationalStatus";
 
 function OwnerDashboardSkeleton() {
@@ -98,6 +99,34 @@ function OwnerAdministrativeReviewStatus({ activity }: { activity: any }) {
     <p className="mt-1">{new Date(review.requestedAt).toLocaleDateString()}</p>
     {review.rationale && <p className="mt-1">{t("adminReview.participantRationale")}: {review.rationale}</p>}
     {review.returnedToOwnerReview && <p className="mt-1 font-medium text-foreground">{t("adminReview.ownerReturnedGuidance")}</p>}
+  </div>;
+}
+
+function OwnerGeofenceExceptionContext({ activity }: { activity: any }) {
+  const { t } = useLanguage();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [note, setNote] = useState("");
+  const [recorded, setRecorded] = useState(false);
+  const context = activity.geofenceContext;
+  const recordTemporary = useMutation({
+    mutationFn: async () => apiRequest(`/api/owners/activities/${activity.id}/geofence/temporary-context`, {
+      method: "POST",
+      body: JSON.stringify({ confirmationAcknowledged: true, note: note.trim() }),
+    }),
+    onSuccess: () => {
+      setRecorded(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/owners/activities"] });
+      toast({ title: t("geofence.owner.temporaryRecorded"), description: t("geofence.owner.temporaryRecordedHelp") });
+    },
+  });
+  if (!context || context.state !== "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE") return null;
+  return <div className="mt-3 space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" data-testid={`owner-geofence-context-${activity.id}`}>
+    <p className="font-semibold">{t("geofence.owner.exceptionReview")}</p>
+    <p>{t("geofence.owner.exceptionReviewHelp", { version: context.boundaryVersion || "—" })}</p>
+    {context.acknowledgementCode && <p><strong>{t("geofence.driver.reason")}:</strong> {t(`geofence.reason.${context.acknowledgementCode}`)}</p>}
+    {context.driverNote && <p><strong>{t("geofence.driver.note")}:</strong> {context.driverNote}</p>}
+    {!recorded ? <div className="space-y-2"><Textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder={t("geofence.owner.temporaryPlaceholder")} /><Button type="button" size="sm" variant="outline" disabled={note.trim().length < 3 || recordTemporary.isPending} onClick={() => recordTemporary.mutate()}>{t("geofence.owner.markTemporary")}</Button></div> : <p className="font-medium text-emerald-800">{t("geofence.owner.temporaryRecorded")}</p>}
   </div>;
 }
 
@@ -1429,6 +1458,7 @@ export default function OwnerDashboard() {
                       </div>
                     )}
                     <OwnerAdministrativeReviewStatus activity={activity} />
+                    <OwnerGeofenceExceptionContext activity={activity} />
                   </div>
                   
                   {/* Actions Row - Status and Buttons */}

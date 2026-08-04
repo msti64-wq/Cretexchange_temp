@@ -4,6 +4,7 @@ import {
   owners,
   washoutLocations,
   washoutActivities,
+  activityGeofenceEvaluations,
   washoutActivityAdminReviews,
   ownerActivityApprovalIntents,
   washoutActivityReviewEvents,
@@ -89,6 +90,7 @@ import {
   type InsertWashoutLocation,
   type InsertWashoutActivity,
   type InsertWashoutPhoto,
+  type InsertActivityGeofenceEvaluation,
   type InsertPayment,
   type InsertNotification,
   type InsertTermsVersion,
@@ -334,7 +336,8 @@ export interface IStorage {
   // Transactional operation: create activity with photos atomically
   createWashoutActivityWithPhotos(
     activity: InsertWashoutActivity, 
-    photos: Omit<InsertWashoutPhoto, 'activityId'>[]
+    photos: Omit<InsertWashoutPhoto, 'activityId'>[],
+    geofenceEvaluation?: InsertActivityGeofenceEvaluation | null,
   ): Promise<{ activity: WashoutActivity; photos: WashoutPhoto[] }>;
 
   // Payment operations
@@ -1985,7 +1988,8 @@ export class DatabaseStorage implements IStorage {
   // Transactional operation: create activity with photos atomically
   async createWashoutActivityWithPhotos(
     activity: InsertWashoutActivity, 
-    photos: Omit<InsertWashoutPhoto, 'activityId'>[]
+    photos: Omit<InsertWashoutPhoto, 'activityId'>[],
+    geofenceEvaluation?: InsertActivityGeofenceEvaluation | null,
   ): Promise<{ activity: WashoutActivity; photos: WashoutPhoto[] }> {
     return await db.transaction(async (tx) => {
       // Create the activity first
@@ -2015,6 +2019,14 @@ export class DatabaseStorage implements IStorage {
           table: "washout_photos",
         }));
         throw error;
+      }
+
+      if (geofenceEvaluation) {
+        await tx.insert(activityGeofenceEvaluations).values({
+          ...geofenceEvaluation,
+          activityId: newActivity.id,
+          workflowReference: null,
+        });
       }
       const platformIntegrityRejection = newActivity.status === "rejected" && !newActivity.rejectedBy;
       if (platformIntegrityRejection) {

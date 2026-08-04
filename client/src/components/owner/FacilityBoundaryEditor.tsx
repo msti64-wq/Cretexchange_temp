@@ -41,9 +41,9 @@ function loadGoogleMaps(onReady: () => void, onError: () => void) {
 export function FacilityBoundaryEditor(props: Props) {
   const { t } = useLanguage();
   const mapElement = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const overlayRef = useRef<google.maps.Circle | google.maps.Polygon | null>(null);
-  const listenersRef = useRef<google.maps.MapsEventListener[]>([]);
+  const mapRef = useRef<any>(null);
+  const overlayRef = useRef<any>(null);
+  const listenersRef = useRef<any[]>([]);
   const propsRef = useRef(props);
   propsRef.current = props;
   const [mapUnavailable, setMapUnavailable] = useState(false);
@@ -59,7 +59,7 @@ export function FacilityBoundaryEditor(props: Props) {
         streetViewControl: false,
         fullscreenControl: true,
         mapTypeControl: true,
-      });
+      } as any);
       setMapUnavailable(false);
     }, () => active && setMapUnavailable(true));
     return () => {
@@ -77,7 +77,7 @@ export function FacilityBoundaryEditor(props: Props) {
     overlayRef.current?.setMap(null);
 
     if (props.mode === "radius") {
-      const circle = new google.maps.Circle({
+      const circle = new (google.maps as any).Circle({
         map,
         center: { lat: props.center[1], lng: props.center[0] },
         radius: props.radiusMeters,
@@ -100,7 +100,7 @@ export function FacilityBoundaryEditor(props: Props) {
       return;
     }
 
-    const polygon = new google.maps.Polygon({
+    const polygon = new (google.maps as any).Polygon({
       map,
       paths: props.polygon.map(([lng, lat]) => ({ lng, lat })),
       editable: true,
@@ -113,7 +113,7 @@ export function FacilityBoundaryEditor(props: Props) {
     overlayRef.current = polygon;
     const sync = () => {
       const points: BoundaryPoint[] = [];
-      polygon.getPath().forEach((point) => points.push([point.lng(), point.lat()]));
+      polygon.getPath().forEach((point: any) => points.push([point.lng(), point.lat()]));
       propsRef.current.onPolygonChange(points);
     };
     listenersRef.current.push(polygon.getPath().addListener("set_at", sync));

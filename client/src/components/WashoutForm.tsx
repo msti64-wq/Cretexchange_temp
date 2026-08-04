@@ -15,6 +15,10 @@ import { useLanguage } from "@/lib/i18n";
 import { resolveDriverCheckInButtonState, resolveGpsPreflightStatus, resolvePhotoUploadRecoveryState, type GpsPreflightStatus } from "@/lib/pilotOnboarding";
 import { presentDriverOperationalError } from "@/lib/driverOperationalErrorPresentation";
 import type { DriverOperationalErrorPresentation } from "@/lib/driverOperationalErrorPresentation";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { FEATURE_FLAGS } from "@shared/featureFlags";
+import { DriverGeofenceIndicator, type DriverGeofenceState } from "@/components/driver/DriverGeofenceIndicator";
+import type { Coordinates } from "@/lib/gps";
 
 const MAX_PHOTO_UPLOAD_BYTES = 15 * 1024 * 1024;
 const SUPPORTED_PHOTO_CONTENT_TYPES = new Set([
@@ -57,7 +61,13 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<GpsPreflightStatus>("required");
-  const [gpsLocation, setGpsLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsLocation, setGpsLocation] = useState<({ lat: number; lng: number } & Coordinates) | null>(null);
+  const [geofenceState, setGeofenceState] = useState<DriverGeofenceState | null>(null);
+  const [geofenceReason, setGeofenceReason] = useState("");
+  const [geofenceAcknowledged, setGeofenceAcknowledged] = useState(false);
+  const [geofenceNote, setGeofenceNote] = useState("");
+  const submissionReference = useRef(globalThis.crypto?.randomUUID?.() || `submission-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const { enabled: geofenceEnforcementEnabled } = useFeatureFlag(FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT);
   const [gpsWarning, setGpsWarning] = useState<string | null>(null);
   const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);
   const [failedPhotoFiles, setFailedPhotoFiles] = useState<File[]>([]);
@@ -79,7 +89,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
     setGpsStatus(isRetry ? "retrying" : "checking");
     try {
       const coords = await getCurrentLocation();
-      const nextLocation = { lat: coords.latitude, lng: coords.longitude };
+      const nextLocation = { lat: coords.latitude, lng: coords.longitude, ...coords };
       setGpsLocation(nextLocation);
       setGpsStatus("ready");
       setGpsWarning(null);
@@ -100,6 +110,28 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   useEffect(() => {
     void ensureGpsLocation();
   }, []);
+
+  useEffect(() => {
+    if (!geofenceEnforcementEnabled || !gpsLocation) {
+      setGeofenceState(null);
+      return;
+    }
+    let active = true;
+    void apiRequest(`/api/drivers/locations/${location.id}/geofence-check`, {
+      method: "POST",
+      body: JSON.stringify({ observation: {
+        latitude: gpsLocation.latitude,
+        longitude: gpsLocation.longitude,
+        accuracyMeters: gpsLocation.accuracyMeters,
+        observedAt: gpsLocation.observedAt,
+      } }),
+    }).then((response) => response.json()).then((result) => {
+      if (active) setGeofenceState(result.state);
+    }).catch(() => {
+      if (active) setGeofenceState("LOCATION_UNAVAILABLE");
+    });
+    return () => { active = false; };
+  }, [geofenceEnforcementEnabled, gpsLocation?.observedAt, location.id]);
 
   const checkInMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -397,9 +429,21 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       return;
     }
 
+    if (geofenceEnforcementEnabled && geofenceState === "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE" && (!geofenceAcknowledged || !geofenceReason)) {
+      toast({ title: t("geofence.driver.acknowledgementRequired"), description: t("geofence.driver.acknowledgementRequiredHelp"), variant: "destructive" });
+      return;
+    }
+
+    if (geofenceEnforcementEnabled && geofenceState && ["LOCATION_UNAVAILABLE", "LOCATION_ACCURACY_INSUFFICIENT", "GEOMETRY_INVALID"].includes(geofenceState)) {
+      toast({ title: t("geofence.driver.unavailable"), description: t("geofence.driver.retryLocation"), variant: "destructive" });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      const submissionGps = geofenceEnforcementEnabled ? await getCurrentLocation() : gpsLocation;
+      if (geofenceEnforcementEnabled) setGpsLocation({ lat: submissionGps.latitude, lng: submissionGps.longitude, ...submissionGps });
       await checkInMutation.mutateAsync({
         activityData: {
           locationId: location.id,
@@ -411,6 +455,20 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
           status: 'pending', // Add required status field
         },
         photoData: photoData,
+        geofenceEvidence: geofenceEnforcementEnabled ? {
+          submissionReference: submissionReference.current,
+          observation: {
+            latitude: submissionGps.latitude,
+            longitude: submissionGps.longitude,
+            accuracyMeters: submissionGps.accuracyMeters,
+            observedAt: submissionGps.observedAt,
+          },
+          acknowledgement: geofenceState === "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE" ? {
+            confirmed: geofenceAcknowledged,
+            reasonCode: geofenceReason,
+            note: geofenceNote.trim() || undefined,
+          } : undefined,
+        } : undefined,
       });
     } finally {
       setIsSubmitting(false);
@@ -503,6 +561,25 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
             </div>
           )}
 
+          {geofenceEnforcementEnabled && geofenceState && <DriverGeofenceIndicator state={geofenceState} />}
+          {geofenceEnforcementEnabled && geofenceState === "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE" && (
+            <fieldset className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950">
+              <legend className="px-1 font-medium">{t("geofence.driver.confirmException")}</legend>
+              <Label htmlFor="geofence-reason">{t("geofence.driver.reason")}</Label>
+              <select id="geofence-reason" className="h-10 w-full rounded-md border bg-white px-3" value={geofenceReason} onChange={(event) => setGeofenceReason(event.target.value)} required>
+                <option value="">{t("geofence.driver.chooseReason")}</option>
+                <option value="FACILITY_PERSONNEL_DIRECTED">{t("geofence.driver.reason.personnel")}</option>
+                <option value="APPROVED_AREA_INACCESSIBLE">{t("geofence.driver.reason.inaccessible")}</option>
+                <option value="FACILITY_BOUNDARY_INCORRECT">{t("geofence.driver.reason.boundary")}</option>
+                <option value="GPS_LOCATION_INACCURATE">{t("geofence.driver.reason.gps")}</option>
+                <option value="OTHER">{t("geofence.driver.reason.other")}</option>
+              </select>
+              <Label htmlFor="geofence-note">{t("geofence.driver.note")}</Label>
+              <Textarea id="geofence-note" value={geofenceNote} onChange={(event) => setGeofenceNote(event.target.value)} maxLength={500} placeholder={t("geofence.driver.notePlaceholder")} />
+              <label className="flex gap-2 text-sm"><input type="checkbox" checked={geofenceAcknowledged} onChange={(event) => setGeofenceAcknowledged(event.target.checked)} />{t("geofence.driver.confirmAccuracy")}</label>
+            </fieldset>
+          )}
+
           {/* Photo Upload */}
           <div className="space-y-2">
             <Label htmlFor="photo-input" className="flex items-center">
@@ -586,7 +663,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
           <Button
             type="submit"
             className="w-full"
-            disabled={!checkInButton.enabled}
+            disabled={!checkInButton.enabled || (geofenceEnforcementEnabled && Boolean(geofenceState && ["LOCATION_UNAVAILABLE", "LOCATION_ACCURACY_INSUFFICIENT", "GEOMETRY_INVALID"].includes(geofenceState)))}
             data-testid="button-complete-checkin"
           >
             {isSubmitting ? t("driver.washout.processing") :
