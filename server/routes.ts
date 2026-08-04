@@ -241,14 +241,21 @@ const prizeCatalogStatusSchema = z.object({
 });
 
 const adminPhotoReviewListSchema = z.object({
-  state: z.enum(["pending", "approved", "rejected", "all"]).default("pending"),
-  driverId: z.string().trim().min(1).max(120).optional(),
-  facilityId: z.string().trim().min(1).max(120).optional(),
+  view: z.enum(["needs_review", "rejected_by_owner", "escalated_disputed", "completed", "all"]).optional(),
+  state: z.enum(["pending", "approved", "rejected", "all"]).optional(),
+  driverId: z.string().uuid().optional(),
+  facilityId: z.string().uuid().optional(),
+  activityStatus: z.enum(["pending", "verified", "rejected"]).optional(),
+  escalationState: z.enum(["none", "open", "resolved", "any"]).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
+  sort: z.enum(["newest", "oldest"]).default("newest"),
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(20),
-});
+}).transform(({ state, view, ...filter }) => ({
+  ...filter,
+  view: view || (state === "approved" ? "completed" : state === "rejected" ? "rejected_by_owner" : state === "all" ? "all" : "needs_review"),
+}));
 
 const adminPhotoReviewDecisionSchema = z.object({
   decision: z.enum(["approve", "reject"]),
@@ -6178,43 +6185,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       photoTakenAt: item.photo.photoTakenAt,
       uploadedAt: item.photo.uploadedAt,
       contentType: item.photo.contentType,
+      evidencePath: `/api/admin/photo-review/${encodeURIComponent(item.photo.id)}/evidence`,
     },
     submission: {
       id: item.activity.id,
       status: item.activity.status,
       checkInTime: item.activity.checkInTime,
-      submittedAt: item.activity.createdAt,
+      submittedAt: item.activity.submittedAt,
       rejectionReason: item.activity.rejectionReason,
+      rejectedAt: item.activity.rejectedAt,
     },
     driver: {
-      id: item.driver?.id || null,
-      firstName: item.driverUser?.firstName || null,
-      lastName: item.driverUser?.lastName || null,
-      truckNumber: item.driver?.truckNumber || null,
+      id: item.driver.id,
+      displayName: item.driver.displayName,
     },
     facility: {
       id: item.location.id,
       name: item.location.name,
       city: item.location.city,
       state: item.location.state,
-      ownerName: item.owner?.companyName || [item.ownerUser?.firstName, item.ownerUser?.lastName].filter(Boolean).join(" ") || null,
     },
+    material: item.material,
+    activeAdminAction: item.activeAdminAction,
+    escalationState: item.escalationState,
     administrativeReview: item.administrativeReview ? {
       id: item.administrativeReview.id,
       requestedAt: item.administrativeReview.requestedAt,
       resolution: item.administrativeReview.resolution,
       decidedAt: item.administrativeReview.decidedAt,
-      rationale: item.administrativeReview.adminRationale,
+      rationale: item.administrativeReview.rationale,
     } : null,
+    administrativeReviews: item.administrativeReviews,
     history: item.history.map((event: typeof item.history[number]) => ({
       id: event.id,
-      actorUserId: event.actorUserId,
-      previousStatus: event.previousVerificationStatus,
-      newStatus: event.newVerificationStatus,
+      previousStatus: event.previousStatus,
+      newStatus: event.newStatus,
       reason: event.reason,
-      actionSource: event.actionSource,
       createdAt: event.createdAt,
     })),
+    activityHistory: item.activityHistory,
   });
   app.get('/api/admin/photo-review', isAuthenticated, async (req: any, res) => {
     const actor = await requireAdminPhotoReviewActor(req, res);
@@ -6227,11 +6236,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.listAdminPhotoReviewItems(parsed.data);
       return res.json({
         items: result.items.map(projectAdminPhotoReviewItem),
+        summary: { activeCount: result.activeCount },
         pagination: { page: parsed.data.page, pageSize: parsed.data.pageSize, total: result.total, hasMore: parsed.data.page * parsed.data.pageSize < result.total },
       });
     } catch (error) {
       console.error("[ADMIN_PHOTO_REVIEW_LIST_FAILED]", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
       return res.status(500).json({ message: "Photo review queue is unavailable." });
+    }
+  });
+  app.get('/api/admin/photo-review/:photoId/evidence', isAuthenticated, async (req: any, res) => {
+    const actor = await requireAdminPhotoReviewActor(req, res);
+    if (!actor) return;
+    try {
+      const photo = await storage.getPhotoById(req.params.photoId);
+      if (!photo) return res.status(404).json({ message: "Photo evidence not found." });
+      const readSelection = getPhotoReadProviderSelection();
+      if (readSelection.provider === "s3") {
+        const privateDir = new ObjectStorageService().getPrivateObjectDir();
+        const signedUrl = await signObjectURL({
+          bucketName: readSelection.bucket,
+          objectName: `${privateDir}/photos/${photo.storageKey}`,
+          method: "GET",
+          ttlSec: 300,
+        });
+        return res.redirect(302, signedUrl);
+      }
+      return res.redirect(302, `/api/objects/photos/${encodeURIComponent(photo.storageKey)}`);
+    } catch (error) {
+      console.error("[ADMIN_PHOTO_EVIDENCE_FAILED]", { errorCategory: error instanceof Error ? error.name : "UnknownError" });
+      return res.status(error instanceof ObjectNotFoundError ? 404 : 500).json({ message: "Photo evidence is unavailable." });
     }
   });
   app.post('/api/admin/photo-review/:photoId/decision', isAuthenticated, async (req: any, res) => {
@@ -16779,7 +16812,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const user = await storage.getUser(userId);
       const owner = await storage.getOwner(userId);
-      const isOwner = !!owner && location.ownerId === owner.id;
+      const isPlatformIntegrityRejection = activity.status === "rejected" && !activity.rejectedBy;
+      const isOwner = !!owner && location.ownerId === owner.id && !isPlatformIntegrityRejection;
       const driver = await storage.getDriver(userId);
       const isDriver = !!driver && activity.driverId === driver.id;
       const isAdmin = user?.role === "admin" || user?.role === "super_admin";
@@ -17101,31 +17135,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        if (photo.gpsLatitude == null || photo.gpsLongitude == null) {
-          return res.status(400).json({
-            message: "Please enable GPS and retake the photo so it can be verified.",
-          });
-        }
-
-        const uploadedAt = photo.uploadedAt ? new Date(photo.uploadedAt) : new Date();
-        const photoTakenAt = photo.photoTakenAt
-          ? new Date(photo.photoTakenAt)
-          : uploadedAt;
+        const rawUploadedAt = photo.uploadedAt ? new Date(photo.uploadedAt) : new Date();
+        const rawPhotoTakenAt = photo.photoTakenAt ? new Date(photo.photoTakenAt) : rawUploadedAt;
+        const timestampsValid = Number.isFinite(rawPhotoTakenAt.getTime()) && Number.isFinite(rawUploadedAt.getTime());
+        const uploadedAt = timestampsValid ? rawUploadedAt : new Date();
+        const photoTakenAt = timestampsValid ? rawPhotoTakenAt : uploadedAt;
         const gpsLatitude = photo.gpsLatitude != null ? Number(photo.gpsLatitude) : null;
         const gpsLongitude = photo.gpsLongitude != null ? Number(photo.gpsLongitude) : null;
         const imageFingerprint = typeof photo.imageFingerprint === "string" && photo.imageFingerprint.trim()
           ? photo.imageFingerprint.trim().toLowerCase()
           : null;
-        if (!Number.isFinite(photoTakenAt.getTime()) || !Number.isFinite(uploadedAt.getTime())) {
-          return res.status(400).json({
-            message: "Photo timestamps are invalid. Please re-upload the photo.",
-          });
-        }
-
-        const freshness = evaluatePhotoFreshness({
-          photoTakenAt,
-          uploadedAt,
-        });
+        const freshness: ReturnType<typeof evaluatePhotoFreshness> = timestampsValid
+          ? evaluatePhotoFreshness({ photoTakenAt, uploadedAt })
+          : { status: "rejected", reason: "Photo timestamp data could not be validated.", ageHours: null };
 
         console.info("Create-with-photos photo freshness result:", {
           endpoint: "/api/activities/create-with-photos",
@@ -17137,12 +17159,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ageHours: freshness.ageHours,
           reason: freshness.reason,
         });
-
-        if (freshness.status === "rejected") {
-          return res.status(400).json({
-            message: freshness.reason,
-          });
-        }
 
         const verification = evaluatePhotoVerification({
           gpsLatitude,
@@ -17170,12 +17186,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        const freshnessReason =
-          freshness.status === "review"
-            ? freshness.reason
-            : null;
+        const freshnessReason = freshness.status === "fresh" ? null : freshness.reason;
         const hasDuplicateSignal = duplicateMatches.length > 0 || !imageFingerprint || duplicateLookupFailed || freshness.status === "review";
         const verificationReason = [duplicateReason, freshnessReason, verification.reason].filter(Boolean).join(" ").trim();
+        const verificationStatus = freshness.status === "rejected"
+          ? "needs_review"
+          : hasDuplicateSignal
+            ? "needs_review"
+            : verification.status;
         console.info("Create-with-photos photo verification result:", {
           endpoint: "/api/activities/create-with-photos",
           userId,
@@ -17184,7 +17202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           storageKey: photo.storageKey,
           gpsLatitude,
           gpsLongitude,
-          verificationStatus: hasDuplicateSignal ? "needs_review" : verification.status,
+          verificationStatus,
           verificationDistanceMiles: verification.distanceMiles,
           duplicateMatchCount: duplicateMatches.length,
           duplicateLookupFailed,
@@ -17208,13 +17226,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           duplicateMatchedUploadedAt: duplicateMatches[0]?.priorUploadedAt ? new Date(duplicateMatches[0].priorUploadedAt) : null,
           duplicateSimilarityScore: duplicateMatches[0]?.confidence ?? null,
           duplicateHashDistance: duplicateMatches[0]?.hashDistance ?? null,
-          verificationStatus: hasDuplicateSignal ? "needs_review" : verification.status,
+          verificationStatus,
           verificationDistanceMiles: verification.distanceMiles == null ? null : verification.distanceMiles.toFixed(3),
           verificationReason,
         };
 
         photos.push(photoRow);
       }
+
+      const platformIntegrityDetected = photos.some((photo) => photo.verificationStatus !== "verified");
+      const platformIntegrityReason = photos
+        .filter((photo) => photo.verificationStatus !== "verified")
+        .map((photo) => photo.verificationReason)
+        .filter((reason): reason is string => Boolean(reason))
+        .join(" ")
+        .slice(0, 1_000) || "Submitted evidence requires administrative integrity review.";
+      const activityToCreate = platformIntegrityDetected ? {
+        ...activityResult.data,
+        status: "rejected" as const,
+        rejectionReason: platformIntegrityReason,
+        rejectedBy: null,
+        rejectedAt: new Date(),
+      } : activityResult.data;
 
       // Create activity with photos atomically
       console.info("Create-with-photos DB insert starting:", {
@@ -17228,7 +17261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let result;
       try {
         result = await storage.createWashoutActivityWithPhotos(
-          activityResult.data,
+          activityToCreate,
           photos
         );
       } catch (error) {
@@ -17286,7 +17319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const aclPolicy: ObjectAclPolicy = {
           owner: userId,
           visibility: "private",
-          aclRules: [
+          aclRules: platformIntegrityDetected ? [] : [
             {
               group: {
                 type: ObjectAccessGroupType.LOCATION_OWNER,
@@ -17322,26 +17355,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await runNotificationDeliveryBestEffort(result.activity.id, async () => {
-      const locationOwner = await storage.getOwnerById(location.ownerId);
-      await emitNotificationBestEffort({
-        userId, recipientRole: 'driver', templateKey: 'activity_submitted', title: 'Recovery activity submitted',
-        message: `Your Material Recovery Activity at ${location.name} is awaiting facility review.`, deepLink: '/activity',
-        metadata: { facilityName: location.name, status: 'pending' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
-        idempotencyKey: `activity:${result.activity.id}:submitted:driver`,
-      });
-      if (locationOwner) await emitNotificationBestEffort({
-        userId: locationOwner.userId, recipientRole: 'owner', templateKey: 'owner_pending_review', title: 'Activity ready for review',
-        message: `A Material Recovery Activity at ${location.name} is awaiting your review.`, deepLink: '/dashboard',
-        metadata: { facilityName: location.name, status: 'pending' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
-        idempotencyKey: `activity:${result.activity.id}:submitted:owner`, priority: 'high',
-      });
-      if (result.photos.some((photo: any) => photo.verificationStatus === 'needs_review')) {
+      if (platformIntegrityDetected) {
+        await emitNotificationBestEffort({
+          userId, recipientRole: 'driver', templateKey: 'activity_integrity_review', title: 'Activity evidence needs review',
+          message: `Your Material Recovery Activity at ${location.name} could not be sent for Facility review because its evidence requires Platform review.`, deepLink: '/activity',
+          metadata: { facilityName: location.name, status: 'rejected' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
+          idempotencyKey: `activity:${result.activity.id}:integrity-review:driver`, priority: 'high',
+        });
         await Promise.all((['admin', 'super_admin'] as const).map((recipientRole) => emitRoleNotificationBestEffort({
           recipientRole, templateKey: 'photo_review_required', title: 'Photo review required',
-          message: 'A recovery activity photo requires administrative review.', deepLink: '/admin/photo-review',
+          message: 'A Material Recovery Activity was withheld from Facility review because its evidence requires administrative review.', deepLink: '/admin/photo-review',
           metadata: { facilityName: location.name, status: 'needs_review' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
           idempotencyKey: `activity:${result.activity.id}:photo-review:${recipientRole}`, priority: 'high',
         })));
+      } else {
+        const locationOwner = await storage.getOwnerById(location.ownerId);
+        await emitNotificationBestEffort({
+          userId, recipientRole: 'driver', templateKey: 'activity_submitted', title: 'Recovery activity submitted',
+          message: `Your Material Recovery Activity at ${location.name} is awaiting facility review.`, deepLink: '/activity',
+          metadata: { facilityName: location.name, status: 'pending' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
+          idempotencyKey: `activity:${result.activity.id}:submitted:driver`,
+        });
+        if (locationOwner) await emitNotificationBestEffort({
+          userId: locationOwner.userId, recipientRole: 'owner', templateKey: 'owner_pending_review', title: 'Activity ready for review',
+          message: `A Material Recovery Activity at ${location.name} is awaiting your review.`, deepLink: '/dashboard',
+          metadata: { facilityName: location.name, status: 'pending' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
+          idempotencyKey: `activity:${result.activity.id}:submitted:owner`, priority: 'high',
+        });
       }
       });
       

@@ -10,6 +10,7 @@ process.env.DATABASE_URL = "postgres://user:pass@127.0.0.1:1/cretexchange_test";
 const schema = readFileSync(new URL("../shared/schema.ts", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../migrations/0037_add_washout_photo_review_audit.sql", import.meta.url), "utf8");
 const storage = readFileSync(new URL("../server/storage.ts", import.meta.url), "utf8");
+const retention = readFileSync(new URL("../server/adminPhotoReviewRetention.ts", import.meta.url), "utf8");
 const routes = readFileSync(new URL("../server/routes.ts", import.meta.url), "utf8");
 const page = readFileSync(new URL("../client/src/pages/admin/photo-review.tsx", import.meta.url), "utf8");
 const app = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
@@ -37,7 +38,7 @@ test("photo evidence decisions use an optimistic, transactional photo-only updat
 });
 
 test("the protected Admin queue is paginated, least-privilege, and does not expose object keys or GPS", () => {
-  const list = routes.slice(routes.indexOf("app.get('/api/admin/photo-review'"), routes.indexOf("app.post('/api/admin/photo-review/:photoId/decision'"));
+  const list = routes.slice(routes.indexOf("app.get('/api/admin/photo-review'"), routes.indexOf("app.get('/api/admin/photo-review/:photoId/evidence'"));
   const decision = routes.slice(routes.indexOf("app.post('/api/admin/photo-review/:photoId/decision'"), routes.indexOf("// Financial obligation creation", routes.indexOf("app.post('/api/admin/photo-review/:photoId/decision'")));
   assert.match(list, /requireAdminPhotoReviewActor/);
   assert.match(list, /pagination:/);
@@ -52,10 +53,13 @@ test("the protected Admin queue is paginated, least-privilege, and does not expo
 
 test("the Admin Photo Review UI uses the existing authorized photo endpoint, practical filters, and evidence-only actions", () => {
   assert.match(page, /\/api\/admin\/photo-review/);
-  assert.match(page, /\/api\/photos\/activity\/\$\{selected!\.submission\.id\}/);
+  assert.match(page, /selected\.photo\.evidencePath/);
+  assert.doesNotMatch(page, /\/api\/photos\/activity/);
   assert.match(page, /AuthenticatedImage/);
   assert.match(page, /pageSize: "20"/);
-  assert.match(page, /value=\{state\}/);
+  assert.match(page, /role="tablist"/);
+  assert.match(page, /value=\{activityStatus\}/);
+  assert.match(page, /value=\{escalationState\}/);
   assert.match(page, /value=\{driverId\}/);
   assert.match(page, /value=\{facilityId\}/);
   assert.match(page, /value=\{from\}/);
@@ -65,6 +69,33 @@ test("the Admin Photo Review UI uses the existing authorized photo endpoint, pra
   assert.match(page, /t\("photoReview\.confirmation"\)/);
   assert.match(app, /\/admin\/photo-review/);
   assert.match(nav, /label: t\("adminNav\.photoReview"\)/);
+});
+
+test("retained evidence views distinguish routine Owner rejection from active or disputed review", async () => {
+  const { isActiveAdminPhotoReview } = await import("../server/adminPhotoReviewRetention");
+  assert.equal(isActiveAdminPhotoReview({ activityStatus: "rejected", rejectedBy: "owner-user", photoStatus: "verified", hasOpenAdministrativeReview: false }), false);
+  assert.equal(isActiveAdminPhotoReview({ activityStatus: "rejected", rejectedBy: "owner-user", photoStatus: "failed", hasOpenAdministrativeReview: false }), false);
+  assert.equal(isActiveAdminPhotoReview({ activityStatus: "rejected", rejectedBy: "owner-user", photoStatus: "verified", hasOpenAdministrativeReview: true }), true);
+  assert.equal(isActiveAdminPhotoReview({ activityStatus: "rejected", rejectedBy: null, photoStatus: "needs_review", hasOpenAdministrativeReview: false }), true);
+  assert.equal(isActiveAdminPhotoReview({ activityStatus: "rejected", rejectedBy: null, photoStatus: "failed", hasOpenAdministrativeReview: false }), false);
+  assert.match(retention, /a\.status = 'rejected' and a\.rejected_by is not null/);
+  assert.match(retention, /washout_activity_admin_reviews/);
+  assert.match(retention, /limit \$\{filter\.pageSize\} offset \$\{offset\}/);
+});
+
+test("platform-detected evidence failures are retained outside Owner review and use governed notifications", () => {
+  const route = routes.slice(routes.indexOf("app.post('/api/activities/create-with-photos'"), routes.indexOf("app.get('/api/objects/photos/:key'"));
+  assert.match(route, /platformIntegrityDetected/);
+  assert.match(route, /status: "rejected" as const/);
+  assert.match(route, /rejectedBy: null/);
+  assert.match(route, /templateKey: 'activity_integrity_review'/);
+  assert.match(route, /templateKey: 'photo_review_required'/);
+  assert.match(route, /if \(platformIntegrityDetected\)[\s\S]*?else \{[\s\S]*?templateKey: 'owner_pending_review'/);
+  assert.match(route, /aclRules: platformIntegrityDetected \? \[\] : \[/);
+  assert.match(routes, /isPlatformIntegrityRejection = activity\.status === "rejected" && !activity\.rejectedBy/);
+  assert.doesNotMatch(route, /fraudulent driver|driver fraud/i);
+  assert.match(storage, /platform-evidence-validation/);
+  assert.match(storage, /activity:\$\{newActivity\.id\}:platform-integrity-rejected/);
 });
 
 test("Photo Review workflow strings exist in English and Spanish", () => {
@@ -109,12 +140,12 @@ test("Photo Review list enforces Admin RBAC and returns bounded projected result
     (storage as any).getUser = async (id: string) => id === "admin-user" ? { id, role: "admin" } : { id, role: "driver" };
     (storage as any).listAdminPhotoReviewItems = async () => {
       listCalls += 1;
-      return { total: 1, items: [{
+      return { total: 1, activeCount: 1, items: [{
         photo: { id: "photo-1", activityId: "activity-1", verificationStatus: "needs_review", verificationReason: "Timestamp requires review", photoTakenAt: new Date(), uploadedAt: new Date(), contentType: "image/jpeg" },
-        activity: { id: "activity-1", status: "pending", checkInTime: new Date(), createdAt: new Date(), rejectionReason: null },
-        location: { id: "facility-1", name: "Pilot Facility", city: "Austin", state: "TX", ownerId: "owner-1" },
-        driver: { id: "driver-1", userId: "driver-user", truckNumber: "17" }, driverUser: { firstName: "Driver", lastName: "One" },
-        owner: { id: "owner-1", companyName: "Pilot Facility", userId: "owner-user" }, ownerUser: { firstName: "Owner", lastName: "One" }, administrativeReview: null, history: [],
+        activity: { id: "activity-1", status: "pending", checkInTime: new Date(), submittedAt: new Date(), rejectionReason: null, rejectedAt: null },
+        location: { id: "facility-1", name: "Pilot Facility", city: "Austin", state: "TX" },
+        driver: { id: "driver-1", displayName: "Driver O." }, material: "Concrete Washout", activeAdminAction: true, escalationState: "none",
+        administrativeReview: null, administrativeReviews: [], history: [], activityHistory: [],
       }] };
     };
     const denied = response();
@@ -127,8 +158,38 @@ test("Photo Review list enforces Admin RBAC and returns bounded projected result
     assert.equal((allowed.body as any).items[0].photo.id, "photo-1");
     assert.equal("storageKey" in (allowed.body as any).items[0].photo, false);
     assert.equal((allowed.body as any).pagination.pageSize, 20);
+    assert.equal((allowed.body as any).summary.activeCount, 1);
   } finally {
     (storage as any).getUser = originalUser;
     (storage as any).listAdminPhotoReviewItems = originalList;
+  }
+});
+
+test("private Photo Review evidence is separately authorized for Admin roles", { concurrency: false }, async () => {
+  const { storage } = await import("../server/storage");
+  const { registerRoutes } = await import("../server/routes");
+  const { app, gets } = routeRegistry();
+  await registerRoutes(app as never);
+  const route = gets.get("/api/admin/photo-review/:photoId/evidence");
+  assert.equal(typeof route, "function");
+  const originalUser = (storage as any).getUser;
+  const originalPhoto = (storage as any).getPhotoById;
+  try {
+    (storage as any).getUser = async (id: string) => ({ id, role: id.startsWith("admin") ? "admin" : id.startsWith("super") ? "super_admin" : id.startsWith("owner") ? "owner" : "driver" });
+    (storage as any).getPhotoById = async () => undefined;
+    for (const id of ["driver-user", "owner-user"]) {
+      const denied = response();
+      await route!({ user: { id }, params: { photoId: "photo-1" } }, denied);
+      assert.equal(denied.statusCode, 403);
+    }
+    for (const id of ["admin-user", "super-user"]) {
+      const allowed = response();
+      await route!({ user: { id }, params: { photoId: "missing" } }, allowed);
+      assert.equal(allowed.statusCode, 404);
+    }
+    assert.match(routes, /app\.get\('\/api\/admin\/photo-review\/:photoId\/evidence', isAuthenticated/);
+  } finally {
+    (storage as any).getUser = originalUser;
+    (storage as any).getPhotoById = originalPhoto;
   }
 });

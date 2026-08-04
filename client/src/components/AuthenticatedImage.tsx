@@ -25,12 +25,12 @@ export function AuthenticatedImage({ src, alt, className, "data-testid": testId,
         setErrorMessage(null);
         
         // For server-side photos that require authentication
-        if (src.startsWith('/objects/photos/')) {
+        if (src.startsWith('/objects/photos/') || src.startsWith('/api/admin/photo-review/')) {
           // Extract the photo key from the path (e.g., '/objects/photos/photo-123.jpg' -> 'photo-123.jpg')
-          const photoKey = src.replace('/objects/photos/', '');
+          const photoKey = src.startsWith('/objects/photos/') ? src.replace('/objects/photos/', '') : null;
           console.log('🔍 AuthenticatedImage: Processing photo key:', { src, photoKey });
           
-          const proxyUrl = `/api/objects/photos/${encodeURIComponent(photoKey)}`;
+          const proxyUrl = photoKey ? `/api/objects/photos/${encodeURIComponent(photoKey)}` : src;
           console.log('🌐 AuthenticatedImage: Fetching authenticated image:', proxyUrl);
 
           const token = localStorage.getItem("authToken");

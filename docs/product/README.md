@@ -4,6 +4,7 @@
 
 - [PD-058 — Notification and Communication Boundary](./PD-058-notification-and-communication-boundary.md)
 - [PD-059 — Facility Owner Operational Dashboard Boundary](./PD-059-owner-operational-dashboard-boundary.md)
+- [PD-060 — Photo Review Retention and Platform-Detected Rejection](./PD-060-photo-review-retention-and-platform-rejection.md)
 
 ## Purpose
 

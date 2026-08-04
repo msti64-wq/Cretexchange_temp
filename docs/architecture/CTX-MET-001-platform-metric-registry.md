@@ -35,6 +35,8 @@ This is the authoritative registry for platform metrics. `server/platformAnalyti
 
 Completion is the actual canonical `activity.verified` terminal fact; no synthetic completion event is created. Administrative Review is optional because it applies only to a rejected activity that enters facilitation.
 
+A platform integrity rejection is recorded only as `activity.rejected`; it does not emit submitted-success, repeat-participation, Facility-adoption, verification, achievement, competition, reward, settlement, or financial events. Its evidence archive is the canonical activity/photo/audit record, not Platform Intelligence.
+
 ## Drop-off methodology
 
 For each bounded reporting window, the intelligence layer groups recorded events by the journey entity key and uses the earliest event that satisfies each stage. It returns:

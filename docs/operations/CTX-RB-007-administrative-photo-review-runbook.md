@@ -100,4 +100,15 @@ Keep activity-review records separate from financial settlement records and reta
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 0.2 | 2026-08-04 | Added retained/history views, platform-integrity routing, active-count rules, and dispute boundary. |
 | 0.1 | 2026-07-23 | Initial Draft. |
+
+## 13. Retention and Queue Classification
+
+- **Needs Review:** only a governed platform evidence failure or an open Administrative Review that needs Admin action.
+- **Rejected by Owner:** every retained photo on an Owner-rejected activity; read-only unless separately escalated.
+- **Escalated/Disputed:** activity evidence with an Administrative Review request, open or resolved.
+- **Completed:** supported verified or completed evidence history.
+- **All History:** bounded, authorized discovery across retained evidence.
+
+Routine Owner rejection does not create an Admin notification or increment the active count. Platform evidence rejection bypasses the Owner queue, uses neutral Driver language, creates idempotent Admin notifications, and preserves a factual append-only audit event. Never treat an automated signal as a fraud finding. Repeated failures require the separately governed account-integrity policy described by PD-060.

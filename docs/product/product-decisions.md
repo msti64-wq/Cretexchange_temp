@@ -746,3 +746,11 @@ the server.
 **Status:** Active — Phase 5 Sprint 1
 
 **Implications:** Canonical workflows emit safe, idempotent notification intents after successful transitions. Notifications use governed localization metadata, bounded recipient-only APIs, and RBAC-safe links. Email, SMS, push, chat, marketing, financial notifications, payment reminders, and Platform Intelligence notification metrics remain out of scope.
+
+## PD-060 - Photo Review Retention and Platform-Detected Rejection
+
+**Decision:** [PD-060](./PD-060-photo-review-retention-and-platform-rejection.md) makes canonical rejected evidence privately discoverable without turning routine Owner rejection into automatic Admin work. Governed platform evidence failures bypass Owner review, create neutral Driver and Admin notifications, append audit history, and remain excluded from success, incentive, and financial outcomes.
+
+**Status:** Active — Focused Photo Review Retention Remediation
+
+**Implications:** Owner approval authority and existing Driver Administrative Review remain unchanged. Automated integrity signals are not fraud findings. Two-Factor Authentication remains the next mandatory major sprint after Founder acceptance.

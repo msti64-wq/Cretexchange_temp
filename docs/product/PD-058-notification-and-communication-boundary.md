@@ -18,6 +18,7 @@ CreteXchange will use one recipient-scoped, structured Notification domain for a
 - Opening the center does not mark all notifications read.
 - No email, SMS, push, chat, marketing, financial notification, or payment reminder is authorized in this phase.
 - Platform Intelligence remains separate and receives no notification-count metric.
+- Routine Owner rejection notifies the Driver but does not create Admin work; a governed platform evidence failure notifies the Driver neutrally and creates idempotent Admin Photo Review attention without notifying the Owner.
 
 ## Rationale
 

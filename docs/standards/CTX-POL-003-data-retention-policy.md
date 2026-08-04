@@ -39,6 +39,7 @@ This policy does not set retention periods, legal requirements, provider require
 4. Documentation records must preserve source identity, status, history, and supersession/archival context in accordance with [CTX-GOV-001](./CTX-GOV-001-documentation-governance-standard.md) and the applicable governance source.
 5. Financial-review evidence must preserve the distinction between review, approval, execution, payment, payout, wallet activity, and settlement. This policy does not authorize financial correction or execution.
 6. Retention or disposal decisions must be evidence-based, attributable, and recorded without exposing secrets, credentials, full payment details, bank details, or unnecessary personal information.
+7. Owner-rejected and platform-rejected activity evidence remains canonical, private, discoverable to authorized Admins, and append-only for dispute, audit, integrity-pattern, and investigation purposes. Historical retention does not itself create active Admin workload or establish a fraud finding.
 
 ## 5. Roles, Responsibilities, and Authority
 

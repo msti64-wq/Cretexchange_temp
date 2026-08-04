@@ -17,6 +17,7 @@ test("notification taxonomy is stable, role-scoped, and non-financial", () => {
   assert.deepEqual(notificationCategories, ["operational", "achievement", "competition", "administrative", "system", "announcement"]);
   assert.deepEqual(notificationTemplateDefinitions.activity_submitted.roles, ["driver"]);
   assert.deepEqual(notificationTemplateDefinitions.owner_pending_review.roles, ["owner"]);
+  assert.deepEqual(notificationTemplateDefinitions.activity_integrity_review.roles, ["driver"]);
   assert.throws(() => assertTemplateForRole("owner_pending_review", "driver"));
   assert.equal(JSON.stringify(notificationTemplateDefinitions).match(/payment|wallet|stripe|payout|amount/i), null);
 });
@@ -90,7 +91,7 @@ test("routes preserve legacy reads and protect governed Admin announcements", as
 
 test("canonical lifecycle hooks cover Driver, Owner, Admin, achievement, competition, and photo review", async () => {
   const routes = await source("server/routes.ts");
-  for (const template of ["activity_submitted", "activity_verified", "activity_rejected", "owner_pending_review", "owner_review_approved", "owner_review_rejected", "admin_review_requested", "admin_review_attention", "admin_review_updated", "achievement_earned", "competition_milestone", "photo_review_required"]) {
+  for (const template of ["activity_submitted", "activity_integrity_review", "activity_verified", "activity_rejected", "owner_pending_review", "owner_review_approved", "owner_review_rejected", "admin_review_requested", "admin_review_attention", "admin_review_updated", "achievement_earned", "competition_milestone", "photo_review_required"]) {
     assert.match(routes, new RegExp(`templateKey: '${template}'`), `${template} producer missing`);
   }
   assert.match(routes, /buildDriverAchievementProjection\(db, verifiedDriver\.id\)/);

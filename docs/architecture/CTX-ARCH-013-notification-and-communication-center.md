@@ -44,9 +44,10 @@ Canonical transitions emit notification intents only after the transition succee
 | Newly earned achievement | Best effort from the canonical achievement projection after a qualifying transition | One notification per recipient and achievement definition. |
 | Competition milestone | Best effort only for existing governed verified-activity milestones | One notification per recipient and milestone; no speculative rank movement. |
 | Photo Review attention | Best effort after an activity with review-required evidence is committed | One notification per Admin recipient and activity. |
+| Platform evidence rejection | Best effort after the quarantined activity/evidence commit | Neutral Driver notice and one Admin notice per recipient/activity; no Owner notice. |
 | Governed announcement | Transactional per recipient; idempotent fan-out | Admin/Super Admin authorization and governed template allowlist are mandatory. |
 
-No Facility operational reminder or Admin operational-warning producer is added because no additional canonical reminder or warning condition is currently approved. Those types remain deferred rather than inferred from analytics or mutable UI state.
+Routine Owner rejection is retained history and does not produce an Admin notice. A governed platform evidence failure or explicit dispute/escalation does. No other Facility reminder or Admin warning is inferred from analytics or mutable UI state.
 
 A notification failure is logged with only safe identifiers and never rolls back or blocks Driver submission, Owner review, or Administrative Review. The stable idempotency key is the recovery mechanism; a later retry may create the missing row without duplication.
 

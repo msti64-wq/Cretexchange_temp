@@ -67,3 +67,9 @@ All Notification Center endpoints require authentication and derive the recipien
 For a selected Facility the response provides UTC today counts, supported attention counts, at most five pending-review items, at most five recent activity items, Facility status and accepted-material labels, the authenticated Owner's unread notification count and at most five safe notification previews, and `generatedAt`. Review and navigation fields are same-origin paths whose destination endpoints retain authorization.
 
 The response excludes financial fields, contact data, precise GPS, private photo/media URLs, storage keys, raw audit records, and analytics metadata. Driver identity is reduced to first name plus last initial. Current operational status comes from canonical activity, evidence, Administrative Review, Facility configuration, readiness, terms, and Notification Service sources.
+
+# Admin Photo Review Retention
+
+`GET /api/admin/photo-review` is Admin/Super Admin only. It accepts `view=needs_review|rejected_by_owner|escalated_disputed|completed|all`, optional `driverId`, `facilityId`, `activityStatus`, `escalationState`, inclusive `from`/`to` dates, `sort=newest|oldest`, and bounded `page`/`pageSize` (maximum 50). The response includes a filtered page, pagination, and `summary.activeCount`, where the count represents actionable evidence only—not retained routine rejection history.
+
+Rows expose a safe activity reference, Facility, privacy-reduced Driver name, material, lifecycle/evidence states, rejection reason/time, escalation state, bounded audit history, and an opaque `evidencePath`. They exclude object keys, signed URLs, precise GPS, contact data, financial fields, credentials, and raw analytics. `GET /api/admin/photo-review/:photoId/evidence` reauthorizes Admin/Super Admin access and serves one private preview; anonymous access receives 401 and Driver/Owner access receives 403.

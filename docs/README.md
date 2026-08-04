@@ -174,6 +174,7 @@ Product Decisions define durable business policy and operational rules. They do 
 | [PD-052](./product/PD-052-marketplace-trust-administrative-activity-review-and-dispute-resolution.md) | Governs evidence-based, neutral, least-privilege administrative review and marketplace-trust policy. |
 | [PD-053](./product/PD-053-canonical-financial-batch-lifecycle-and-approval-policy.md) | Governs canonical weekly financial-batch review, approval, exceptions, and Phase 3B non-execution. |
 | [PD-059](./product/PD-059-owner-operational-dashboard-boundary.md) | Establishes the action-first Facility Owner Operational Dashboard boundary and separation from Facility Intelligence. |
+| [PD-060](./product/PD-060-photo-review-retention-and-platform-rejection.md) | Governs retained rejected evidence, active Admin workload, dispute readiness, and platform-detected rejection routing. |
 
 ## Approved Future Product Directions
 

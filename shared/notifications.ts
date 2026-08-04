@@ -9,6 +9,7 @@ export const notificationTemplateDefinitions = {
   activity_submitted: { category: "operational", roles: ["driver"] },
   activity_verified: { category: "operational", roles: ["driver"] },
   activity_rejected: { category: "operational", roles: ["driver"] },
+  activity_integrity_review: { category: "operational", roles: ["driver"] },
   owner_pending_review: { category: "operational", roles: ["owner"] },
   owner_review_approved: { category: "operational", roles: ["owner"] },
   owner_review_rejected: { category: "operational", roles: ["owner"] },

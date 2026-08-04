@@ -155,31 +155,13 @@ import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
 import type { PhotoFingerprintCandidate } from "@shared/photoFingerprint";
 import { recordPlatformAnalyticsEvent } from "./platformAnalytics";
+import {
+  listAdminPhotoReviewRetentionItems,
+  type AdminPhotoReviewFilter,
+  type AdminPhotoReviewItem,
+} from "./adminPhotoReviewRetention";
 
 type IdentityDocument = typeof identityDocuments.$inferSelect;
-
-export type AdminPhotoReviewFilter = {
-  state: "pending" | "approved" | "rejected" | "all";
-  photoId?: string;
-  driverId?: string;
-  facilityId?: string;
-  from?: Date;
-  to?: Date;
-  page: number;
-  pageSize: number;
-};
-
-export type AdminPhotoReviewItem = {
-  photo: WashoutPhoto;
-  activity: WashoutActivity;
-  location: WashoutLocation;
-  driver: Driver | null;
-  driverUser: User | null;
-  owner: Owner | null;
-  ownerUser: User | null;
-  administrativeReview: WashoutActivityAdminReview | null;
-  history: WashoutPhotoReviewEvent[];
-};
 
 export interface IStorage {
   // User operations - local authentication
@@ -338,7 +320,7 @@ export interface IStorage {
   createWashoutPhoto(photo: InsertWashoutPhoto): Promise<WashoutPhoto>;
   getPhotosByActivity(activityId: string): Promise<WashoutPhoto[]>;
   getPhotoById(photoId: string): Promise<WashoutPhoto | undefined>;
-  listAdminPhotoReviewItems(filter: AdminPhotoReviewFilter): Promise<{ items: AdminPhotoReviewItem[]; total: number }>;
+  listAdminPhotoReviewItems(filter: AdminPhotoReviewFilter): Promise<{ items: AdminPhotoReviewItem[]; total: number; activeCount: number }>;
   resolveWashoutPhotoReview(input: {
     photoId: string;
     expectedStatus: "warning" | "needs_review";
@@ -1887,37 +1869,8 @@ export class DatabaseStorage implements IStorage {
     return photo;
   }
 
-  async listAdminPhotoReviewItems(filter: AdminPhotoReviewFilter): Promise<{ items: AdminPhotoReviewItem[]; total: number }> {
-    const conditions = [];
-    if (filter.state === "pending") conditions.push(inArray(washoutPhotos.verificationStatus, ["needs_review", "warning"]));
-    if (filter.state === "approved") conditions.push(eq(washoutPhotos.verificationStatus, "verified"));
-    if (filter.state === "rejected") conditions.push(eq(washoutPhotos.verificationStatus, "failed"));
-    if (filter.photoId) conditions.push(eq(washoutPhotos.id, filter.photoId));
-    if (filter.driverId) conditions.push(eq(washoutPhotos.driverId, filter.driverId));
-    if (filter.facilityId) conditions.push(eq(washoutPhotos.locationId, filter.facilityId));
-    if (filter.from) conditions.push(gte(washoutPhotos.uploadedAt, filter.from));
-    if (filter.to) conditions.push(lte(washoutPhotos.uploadedAt, filter.to));
-    const predicate = conditions.length ? and(...conditions) : undefined;
-    const [{ total }] = await db.select({ total: count() }).from(washoutPhotos).where(predicate);
-    const photos = await db.select().from(washoutPhotos).where(predicate)
-      .orderBy(desc(washoutPhotos.uploadedAt)).limit(filter.pageSize).offset((filter.page - 1) * filter.pageSize);
-    const items = (await Promise.all(photos.map(async (photo) => {
-      const [activity, location, driver] = await Promise.all([
-        this.getWashoutActivity(photo.activityId),
-        this.getWashoutLocation(photo.locationId),
-        this.getDriverById(photo.driverId),
-      ]);
-      if (!activity || !location) return null;
-      const [driverUser, owner, history, administrativeReview] = await Promise.all([
-        driver ? this.getUser(driver.userId) : Promise.resolve(undefined),
-        this.getOwnerById(location.ownerId),
-        db.select().from(washoutPhotoReviewEvents).where(eq(washoutPhotoReviewEvents.photoId, photo.id)).orderBy(desc(washoutPhotoReviewEvents.createdAt)),
-        this.getWashoutActivityAdminReview(activity.id),
-      ]);
-      const ownerUser = owner ? await this.getUser(owner.userId) : undefined;
-      return { photo, activity, location, driver: driver || null, driverUser: driverUser || null, owner: owner || null, ownerUser: ownerUser || null, administrativeReview: administrativeReview || null, history } satisfies AdminPhotoReviewItem;
-    }))).filter((item): item is AdminPhotoReviewItem => item !== null);
-    return { items, total: Number(total) };
+  async listAdminPhotoReviewItems(filter: AdminPhotoReviewFilter): Promise<{ items: AdminPhotoReviewItem[]; total: number; activeCount: number }> {
+    return listAdminPhotoReviewRetentionItems(db, filter);
   }
 
   async resolveWashoutPhotoReview(input: {
@@ -1953,7 +1906,7 @@ export class DatabaseStorage implements IStorage {
       });
       return updated;
     });
-    const result = await this.listAdminPhotoReviewItems({ state: "all", page: 1, pageSize: 1, photoId: photo.id });
+    const result = await this.listAdminPhotoReviewItems({ view: "all", sort: "newest", page: 1, pageSize: 1, photoId: photo.id });
     const resolved = result.items.find((item) => item.photo.id === photo.id);
     if (!resolved) {
       const error = new Error("Photo review projection is unavailable") as Error & { code?: string };
@@ -2063,47 +2016,68 @@ export class DatabaseStorage implements IStorage {
         }));
         throw error;
       }
-      await recordPlatformAnalyticsEvent(tx, {
-        eventType: "activity.checked_in", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
-        sourceEventKey: `activity:${newActivity.id}:checked-in`, occurredAt: newActivity.checkInTime,
-        activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
-      });
-      for (const photo of newPhotos) {
+      const platformIntegrityRejection = newActivity.status === "rejected" && !newActivity.rejectedBy;
+      if (platformIntegrityRejection) {
+        const now = newActivity.rejectedAt || new Date();
+        await tx.insert(washoutActivityReviewEvents).values({
+          activityId: newActivity.id,
+          previousStatus: "submission_validation",
+          newStatus: "rejected",
+          actorUserId: null,
+          ownerId: null,
+          requestId: `platform-integrity:${newActivity.id}`,
+          authSessionFingerprint: "platform-validation",
+          actionSource: "platform-evidence-validation",
+          confirmationAcknowledged: false,
+        });
         await recordPlatformAnalyticsEvent(tx, {
-          eventType: "photo.uploaded", sourceRecordType: "washout_photo", sourceRecordId: photo.id,
-          sourceEventKey: `photo:${photo.id}:uploaded`, occurredAt: photo.uploadedAt || newActivity.createdAt || new Date(),
+          eventType: "activity.rejected", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
+          sourceEventKey: `activity:${newActivity.id}:platform-integrity-rejected`, occurredAt: now,
           activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
         });
-      }
-      await recordPlatformAnalyticsEvent(tx, {
-        eventType: "activity.submitted", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
-        sourceEventKey: `activity:${newActivity.id}:submitted`, occurredAt: newActivity.createdAt || new Date(),
-        activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
-      });
-      const [driverSubmissionCount] = await tx.select({ total: sql<number>`count(*)` }).from(platformAnalyticsEvents)
-        .where(and(eq(platformAnalyticsEvents.eventType, "activity.submitted"), eq(platformAnalyticsEvents.driverId, newActivity.driverId)));
-      if (Number(driverSubmissionCount?.total || 0) >= 2) {
+      } else {
         await recordPlatformAnalyticsEvent(tx, {
-          eventType: "activity.repeat_submitted", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
-          sourceEventKey: `activity:${newActivity.id}:repeat-submitted`, occurredAt: newActivity.createdAt || new Date(),
+          eventType: "activity.checked_in", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
+          sourceEventKey: `activity:${newActivity.id}:checked-in`, occurredAt: newActivity.checkInTime,
           activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
         });
-      }
-      const [locationSubmissionCounts] = await tx.select({ total: sql<number>`count(*)`, drivers: sql<number>`count(distinct ${platformAnalyticsEvents.driverId})` }).from(platformAnalyticsEvents)
-        .where(and(eq(platformAnalyticsEvents.eventType, "activity.submitted"), eq(platformAnalyticsEvents.locationId, newActivity.locationId)));
-      if (Number(locationSubmissionCounts?.drivers || 0) === 1) {
+        for (const photo of newPhotos) {
+          await recordPlatformAnalyticsEvent(tx, {
+            eventType: "photo.uploaded", sourceRecordType: "washout_photo", sourceRecordId: photo.id,
+            sourceEventKey: `photo:${photo.id}:uploaded`, occurredAt: photo.uploadedAt || newActivity.createdAt || new Date(),
+            activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
+          });
+        }
         await recordPlatformAnalyticsEvent(tx, {
-          eventType: "facility.first_driver", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
-          sourceEventKey: `facility:${newActivity.locationId}:first-driver`, occurredAt: newActivity.createdAt || new Date(),
+          eventType: "activity.submitted", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
+          sourceEventKey: `activity:${newActivity.id}:submitted`, occurredAt: newActivity.createdAt || new Date(),
           activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
         });
-      }
-      if (Number(locationSubmissionCounts?.total || 0) >= 2) {
-        await recordPlatformAnalyticsEvent(tx, {
-          eventType: "facility.recurring_usage", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
-          sourceEventKey: `facility:${newActivity.locationId}:recurring-usage`, occurredAt: newActivity.createdAt || new Date(),
-          activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
-        });
+        const [driverSubmissionCount] = await tx.select({ total: sql<number>`count(*)` }).from(platformAnalyticsEvents)
+          .where(and(eq(platformAnalyticsEvents.eventType, "activity.submitted"), eq(platformAnalyticsEvents.driverId, newActivity.driverId)));
+        if (Number(driverSubmissionCount?.total || 0) >= 2) {
+          await recordPlatformAnalyticsEvent(tx, {
+            eventType: "activity.repeat_submitted", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
+            sourceEventKey: `activity:${newActivity.id}:repeat-submitted`, occurredAt: newActivity.createdAt || new Date(),
+            activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
+          });
+        }
+        const [locationSubmissionCounts] = await tx.select({ total: sql<number>`count(*)`, drivers: sql<number>`count(distinct ${platformAnalyticsEvents.driverId})` }).from(platformAnalyticsEvents)
+          .where(and(eq(platformAnalyticsEvents.eventType, "activity.submitted"), eq(platformAnalyticsEvents.locationId, newActivity.locationId)));
+        if (Number(locationSubmissionCounts?.drivers || 0) === 1) {
+          await recordPlatformAnalyticsEvent(tx, {
+            eventType: "facility.first_driver", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
+            sourceEventKey: `facility:${newActivity.locationId}:first-driver`, occurredAt: newActivity.createdAt || new Date(),
+            activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
+          });
+        }
+        if (Number(locationSubmissionCounts?.total || 0) >= 2) {
+          await recordPlatformAnalyticsEvent(tx, {
+            eventType: "facility.recurring_usage", sourceRecordType: "washout_activity", sourceRecordId: newActivity.id,
+            sourceEventKey: `facility:${newActivity.locationId}:recurring-usage`, occurredAt: newActivity.createdAt || new Date(),
+            activityId: newActivity.id, driverId: newActivity.driverId, locationId: newActivity.locationId,
+          });
+        }
       }
       
       return {

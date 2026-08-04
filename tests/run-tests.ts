@@ -3636,8 +3636,10 @@ test("create-with-photos rejects invalid status with 400", async () => {
   );
 });
 
-test("create-with-photos rejects missing gps metadata with 400", async () => {
+test("create-with-photos quarantines missing GPS evidence before Owner review", async () => {
   const { app, posts } = createRouteRegistry();
+  let capturedActivity: Record<string, unknown> | null = null;
+  let capturedPhotos: Array<Record<string, unknown>> = [];
 
   await withPatchedStorage(
     {
@@ -3647,8 +3649,10 @@ test("create-with-photos rejects missing gps metadata with 400", async () => {
           ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
           : undefined,
       getRecentWashoutPhotoDuplicateCandidates: async () => [],
-      createWashoutActivityWithPhotos: async () => {
-        throw new Error("should not be called");
+      createWashoutActivityWithPhotos: async (activity: Record<string, unknown>, photos: Array<Record<string, unknown>>) => {
+        capturedActivity = activity;
+        capturedPhotos = photos;
+        return { activity: { id: "integrity_activity_1", ...activity }, photos: photos.map((photo, index) => ({ id: `integrity_photo_${index + 1}`, ...photo })) };
       },
     },
     async () => {
@@ -3688,11 +3692,12 @@ test("create-with-photos rejects missing gps metadata with 400", async () => {
           res,
         );
 
-        assert.equal(res.statusCode, 400);
-        assert.match(
-          String((res.body as { message?: string }).message || ""),
-          /enable GPS/i,
-        );
+        assert.equal(res.statusCode, 200);
+        assert.equal(capturedActivity?.status, "rejected");
+        assert.equal(capturedActivity?.rejectedBy, null);
+        assert.match(String(capturedActivity?.rejectionReason || ""), /GPS unavailable/i);
+        assert.equal(capturedPhotos.length, 1);
+        assert.equal(capturedPhotos[0].verificationStatus, "needs_review");
       } finally {
         if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
         else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;
@@ -3988,8 +3993,10 @@ test("create-with-photos marks moderately stale photos for review", async () => 
   ObjectStorageService.prototype.trySetObjectEntityAclPolicy = originalTrySetObjectEntityAclPolicy;
 });
 
-test("create-with-photos rejects stale photo metadata", async () => {
+test("create-with-photos quarantines stale photo evidence before Owner review", async () => {
   const { app, posts } = createRouteRegistry();
+  let capturedActivity: Record<string, unknown> | null = null;
+  let capturedPhotos: Array<Record<string, unknown>> = [];
   const originalTrySetObjectEntityAclPolicy = ObjectStorageService.prototype.trySetObjectEntityAclPolicy;
   ObjectStorageService.prototype.trySetObjectEntityAclPolicy = (async function (
     this: unknown,
@@ -4006,8 +4013,10 @@ test("create-with-photos rejects stale photo metadata", async () => {
           ? { id: "location_1", ownerId: "owner_row_1", latitude: "40.000000", longitude: "-100.000000" }
           : undefined,
       getRecentWashoutPhotoDuplicateCandidates: async () => [],
-      createWashoutActivityWithPhotos: async () => {
-        throw new Error("should not be called");
+      createWashoutActivityWithPhotos: async (activity: Record<string, unknown>, photos: Array<Record<string, unknown>>) => {
+        capturedActivity = activity;
+        capturedPhotos = photos;
+        return { activity: { id: "integrity_activity_stale", ...activity }, photos: photos.map((photo, index) => ({ id: `integrity_photo_stale_${index + 1}`, ...photo })) };
       },
     },
     async () => {
@@ -4047,11 +4056,12 @@ test("create-with-photos rejects stale photo metadata", async () => {
           res,
         );
 
-        assert.equal(res.statusCode, 400);
-        assert.match(
-          String((res.body as { message?: string }).message || ""),
-          /Please take a new photo at the recovery facility before completing check-in\./,
-        );
+        assert.equal(res.statusCode, 200);
+        assert.equal(capturedActivity?.status, "rejected");
+        assert.equal(capturedActivity?.rejectedBy, null);
+        assert.match(String(capturedActivity?.rejectionReason || ""), /take a new photo/i);
+        assert.equal(capturedPhotos.length, 1);
+        assert.equal(capturedPhotos[0].verificationStatus, "needs_review");
       } finally {
         if (originalPrivateObjectDir === undefined) delete process.env.PRIVATE_OBJECT_DIR;
         else process.env.PRIVATE_OBJECT_DIR = originalPrivateObjectDir;

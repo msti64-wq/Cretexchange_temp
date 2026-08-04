@@ -42,6 +42,7 @@ This section documents the technical architecture of CreteXchange.
 | CTX-ARCH-012 | [Platform Intelligence Layer](./CTX-ARCH-012-platform-intelligence-layer.md) | Immutable operational analytics events, canonical metrics, aggregation, and role-scoped read APIs | Approved for Phase 2 Sprint 2 foundation implementation |
 | CTX-ARCH-013 | [Notification and Communication Center](./CTX-ARCH-013-notification-and-communication-center.md) | Structured recipient notifications, safe workflow intents, localization, RBAC, read/archive state, and future channel boundary | Approved for Phase 5 Sprint 1 implementation |
 | CTX-ARCH-014 | [Facility Owner Operational Dashboard](./CTX-ARCH-014-owner-operational-dashboard.md) | Action-first Owner work, bounded canonical summaries, Facility selection, privacy, and workflow links | Approved for Phase 5 Sprint 2 implementation |
+| CTX-ARCH-015 | [Photo Review Retention and Integrity Routing](./CTX-ARCH-015-photo-review-retention-and-integrity-routing.md) | Retained private evidence, active/history classification, platform rejection routing, and dispute readiness | Implemented; Founder Production acceptance pending |
 | CTX-MET-001 | [Platform Metric Registry](./CTX-MET-001-platform-metric-registry.md) | Canonical operational metric, journey, and drop-off definitions | Approved for Phase 2 Sprint 2 foundation implementation |
 
 ## Supporting Architecture Records
