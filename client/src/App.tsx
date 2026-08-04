@@ -44,6 +44,7 @@ const OwnerNotifications = lazy(() => import("@/pages/owner/notifications"));
 const AdminNotifications = lazy(() => import("@/pages/admin/notifications"));
 const OwnerReports = lazy(() => import("@/pages/owner/reports"));
 const OwnerFacilityIntelligence = lazy(() => import("@/pages/owner/facility-intelligence"));
+const OwnerFacilityGeofence = lazy(() => import("@/pages/owner/facility-geofence"));
 
 // Admin pages
 const AdminDashboard = lazy(() => import("@/pages/admin/dashboard"));
@@ -156,6 +157,7 @@ function Router() {
             <Route path="/dashboard/reviews" component={OwnerReviewDashboard} />
             <Route path="/dashboard" component={OwnerDashboard} />
             <Route path="/locations" component={OwnerLocations} />
+            <Route path="/locations/:locationId/geofence" component={OwnerFacilityGeofence} />
             <Route path="/drivers" component={OwnerDrivers} />
             <Route path="/payments" component={OwnerPayments} />
             <Route path="/wallet" component={OwnerWallet} />

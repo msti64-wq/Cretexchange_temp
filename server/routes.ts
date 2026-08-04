@@ -90,6 +90,7 @@ import {
   getPaymentPlatformFeeCents,
 } from "../shared/paymentAccounting";
 import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
+import { registerFacilityGeofenceRoutes } from "./facilityGeofenceRoutes";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
 import { buildCanonicalObligationCreationReason, createDatabaseFinancialObligationRepository, createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole, previewFinancialObligationForVerifiedActivity } from "./financialObligations";
 import { getFinancialSchemaCapabilities } from "./financialSchemaCapabilities";
@@ -2376,6 +2377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth middleware
   await setupAuth(app);
+  registerFacilityGeofenceRoutes(app);
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {

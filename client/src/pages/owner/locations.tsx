@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useCallback } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { useToast } from "@/hooks/use-toast";
 import { MobileNav } from "@/components/MobileNav";
 import { StatCard } from "@/components/StatCard";
-import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings, DollarSign, Pencil, Check, X, Activity } from "lucide-react";
+import { Building2, Plus, MapPin, Eye, EyeOff, Trash2, CheckCircle, XCircle, Settings, DollarSign, Pencil, Check, X, Activity, Radius } from "lucide-react";
 import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { formatCentsToDollars, formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -22,11 +23,15 @@ import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/lib/i18n";
 import { FacilityMaterialsManager } from "@/components/owner/FacilityMaterialsManager";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { FEATURE_FLAGS } from "@shared/featureFlags";
 
 export default function OwnerLocations() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { t } = useLanguage();
+  const [, navigate] = useLocation();
+  const { enabled: geofenceManagementEnabled } = useFeatureFlag(FEATURE_FLAGS.GEOFENCE_OWNER_BOUNDARY_MANAGEMENT);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [locationToDelete, setLocationToDelete] = useState<any>(null);
   const [locationToEdit, setLocationToEdit] = useState<any>(null);
@@ -1131,6 +1136,12 @@ export default function OwnerLocations() {
                             {t("common.edit")}
                           </Button>
                           <FacilityMaterialsManager location={location} />
+                          {geofenceManagementEnabled && (
+                            <Button size="sm" variant="ghost" onClick={() => navigate(`/locations/${location.id}/geofence`)} data-testid={`button-manage-boundary-${index}`}>
+                              <Radius className="mr-1 h-4 w-4" />
+                              {t("geofence.owner.manageBoundary")}
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="ghost"

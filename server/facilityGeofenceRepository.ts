@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, isNull, lte, or } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lte, max, or } from "drizzle-orm";
 import {
   activityGeofenceEvaluations,
   facilityGeofenceBoundaries,
@@ -8,6 +8,7 @@ import {
   type FacilityGeofenceRevisionEvent,
   type InsertActivityGeofenceEvaluation,
   type InsertFacilityGeofenceRevisionEvent,
+  type InsertFacilityGeofenceBoundary,
 } from "@shared/schema";
 import { db } from "./db";
 import type {
@@ -79,5 +80,134 @@ export class DrizzleFacilityGeofenceRepository implements FacilityGeofenceReposi
       .limit(1);
     if (!existing) throw new Error("Canonical geofence revision idempotency lookup failed");
     return existing;
+  }
+
+  async listBoundaryVersions(locationId: string): Promise<FacilityGeofenceBoundary[]> {
+    return db
+      .select()
+      .from(facilityGeofenceBoundaries)
+      .where(and(
+        eq(facilityGeofenceBoundaries.locationId, locationId),
+        eq(facilityGeofenceBoundaries.zoneKey, "primary"),
+      ))
+      .orderBy(desc(facilityGeofenceBoundaries.version));
+  }
+
+  async listRevisionEvents(locationId: string): Promise<FacilityGeofenceRevisionEvent[]> {
+    return db
+      .select()
+      .from(facilityGeofenceRevisionEvents)
+      .where(eq(facilityGeofenceRevisionEvents.locationId, locationId))
+      .orderBy(desc(facilityGeofenceRevisionEvents.createdAt));
+  }
+
+  async getBoundaryVersion(boundaryVersionId: string): Promise<FacilityGeofenceBoundary | undefined> {
+    const [boundary] = await db
+      .select()
+      .from(facilityGeofenceBoundaries)
+      .where(eq(facilityGeofenceBoundaries.id, boundaryVersionId))
+      .limit(1);
+    return boundary;
+  }
+
+  async createDraft(input: {
+    boundary: Omit<InsertFacilityGeofenceBoundary, "version">;
+    revision: Omit<InsertFacilityGeofenceRevisionEvent, "boundaryVersionId">;
+  }): Promise<FacilityGeofenceBoundary> {
+    return db.transaction(async (tx) => {
+      const [latest] = await tx
+        .select({ version: max(facilityGeofenceBoundaries.version) })
+        .from(facilityGeofenceBoundaries)
+        .where(and(
+          eq(facilityGeofenceBoundaries.locationId, input.boundary.locationId),
+          eq(facilityGeofenceBoundaries.zoneKey, input.boundary.zoneKey || "primary"),
+        ));
+      const version = Number(latest?.version || 0) + 1;
+      const [created] = await tx
+        .insert(facilityGeofenceBoundaries)
+        .values({ ...input.boundary, version })
+        .returning();
+      await tx.insert(facilityGeofenceRevisionEvents).values({
+        ...input.revision,
+        boundaryVersionId: created.id,
+      });
+      return created;
+    });
+  }
+
+  async activateDraft(input: {
+    boundaryVersionId: string;
+    locationId: string;
+    actorUserId: string;
+    requestId: string;
+    reasonCode: string;
+  }): Promise<FacilityGeofenceBoundary> {
+    return db.transaction(async (tx) => {
+      const [draft] = await tx
+        .select()
+        .from(facilityGeofenceBoundaries)
+        .where(and(
+          eq(facilityGeofenceBoundaries.id, input.boundaryVersionId),
+          eq(facilityGeofenceBoundaries.locationId, input.locationId),
+          eq(facilityGeofenceBoundaries.zoneKey, "primary"),
+          eq(facilityGeofenceBoundaries.status, "draft"),
+        ))
+        .limit(1);
+      if (!draft) throw new Error("GEOFENCE_DRAFT_NOT_FOUND");
+
+      const now = new Date();
+      const [previous] = await tx
+        .select()
+        .from(facilityGeofenceBoundaries)
+        .where(and(
+          eq(facilityGeofenceBoundaries.locationId, input.locationId),
+          eq(facilityGeofenceBoundaries.zoneKey, "primary"),
+          eq(facilityGeofenceBoundaries.status, "active"),
+        ))
+        .limit(1);
+
+      if (previous) {
+        await tx
+          .update(facilityGeofenceBoundaries)
+          .set({ status: "superseded", effectiveTo: now })
+          .where(eq(facilityGeofenceBoundaries.id, previous.id));
+        await tx.insert(facilityGeofenceRevisionEvents).values({
+          locationId: input.locationId,
+          boundaryVersionId: previous.id,
+          eventType: "superseded",
+          actorUserId: input.actorUserId,
+          actorRole: "owner",
+          reasonCode: input.reasonCode,
+          requestId: input.requestId,
+          idempotencyKey: `${input.requestId}:superseded:${previous.id}`,
+          safeMetadata: { replacementVersion: draft.version },
+        });
+      }
+
+      const [activated] = await tx
+        .update(facilityGeofenceBoundaries)
+        .set({
+          status: "active",
+          effectiveFrom: now,
+          effectiveTo: null,
+          activatedAt: now,
+          activatedBy: input.actorUserId,
+          previousVersionId: previous?.id || null,
+        })
+        .where(eq(facilityGeofenceBoundaries.id, draft.id))
+        .returning();
+      await tx.insert(facilityGeofenceRevisionEvents).values({
+        locationId: input.locationId,
+        boundaryVersionId: activated.id,
+        eventType: "activated",
+        actorUserId: input.actorUserId,
+        actorRole: "owner",
+        reasonCode: input.reasonCode,
+        requestId: input.requestId,
+        idempotencyKey: `${input.requestId}:activated:${activated.id}`,
+        safeMetadata: { version: activated.version, mode: activated.mode },
+      });
+      return activated;
+    });
   }
 }
