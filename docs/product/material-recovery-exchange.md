@@ -142,29 +142,31 @@ Material recovery data can support:
 - owner performance
 - admin marketing insights
 
-## 9. Implementation Phases
+## 9. Material Recovery Exchange Capability Stages
 
-### Phase 1
+These historical capability stages are local to this product concept and are not program phase identifiers. In particular, Capability Stage 6 below does not conflict with or redefine the Founder-approved **Phase 6 — Material Quantity and Recovery Economics** governed by [PD-062](./PD-062-material-quantity-measurement-and-facility-recovery-offers-future-direction.md).
+
+### Capability Stage 1
 
 Documentation and product definition.
 
-### Phase 2
+### Capability Stage 2
 
 Driver operating mode and sticky job type UI foundation.
 
-### Phase 3
+### Capability Stage 3
 
 Owner material acceptance configuration.
 
-### Phase 4
+### Capability Stage 4
 
 Driver material selection and location filtering.
 
-### Phase 5
+### Capability Stage 5
 
 Material recovery reward logic.
 
-### Phase 6
+### Capability Stage 6
 
 Analytics and admin intelligence.
 

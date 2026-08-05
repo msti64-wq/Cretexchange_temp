@@ -186,6 +186,7 @@ Future directions are not current implementation or approved sprint scope. They 
 | Decision | Direction summary |
 | --- | --- |
 | [PD-056](./product/PD-056-driver-achievement-rewards-and-leaderboard-future-direction.md) | Defines the future direction for a separate Driver Achievement Center, auditable reward-ledger model, and privacy-preserving opt-in shared leaderboard; it is not authorized for the Pilot Release. |
+| [PD-062](./product/PD-062-material-quantity-measurement-and-facility-recovery-offers-future-direction.md) | Defines future Phase 6 quantity/measurement records, Facility Material Recovery Offers, and separately governed settlement readiness; it authorizes no current implementation or financial execution. |
 
 ## Archived References
 

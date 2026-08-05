@@ -69,6 +69,28 @@ See [Sprint 2.2 — MVP Operational Readiness](./sprints/sprint-2.2.md).
 
 The following are cautious, nonbinding directions. They require separately approved scope, architecture review, and validation before implementation.
 
+### Founder-Approved Future Sequence
+
+**Status:** Approved future direction; not current implementation authority
+
+1. Complete geofencing, validation, documentation, and Founder acceptance.
+2. Phase 5 Sprint 3 — Two-Factor Authentication.
+3. Phase 5 Sprint 4 — Internal Participant Communications, which remains planned future direction until separately governed.
+4. Phase 6 Sprint 1 — Material Quantity and Measurement Foundation.
+5. Phase 6 Sprint 2 — Facility Material Recovery Offers.
+6. Phase 6 Sprint 3 — Recovery Offer Settlement and Pilot Readiness.
+7. Later external communication channels, including SMS, email, push, webhooks, and related adapters.
+
+### Phase 6 — Material Quantity and Recovery Economics
+
+**Status:** Approved future product direction — not authorized for implementation
+
+- **Sprint 1 — Material Quantity and Measurement Foundation:** establish an auditable, nonfinancial operational record for material, quantity, unit, method, source, evidence, confidence, Driver submission, separate Owner confirmation, corrections, reporting, capacity, and targets.
+- **Sprint 2 — Facility Material Recovery Offers:** define Facility- and material-specific offers, supported rate bases, eligibility, evidence, quantity, capacity, timing, immutable acceptance snapshots, and separation from tips and platform fees.
+- **Sprint 3 — Recovery Offer Settlement and Pilot Readiness:** connect eligible verified quantity and accepted offers to a separately governed obligation, wallet, reversal, dispute, reconciliation, and controlled-release lifecycle.
+
+[PD-062](../product/PD-062-material-quantity-measurement-and-facility-recovery-offers-future-direction.md) governs this future direction. No Phase 6 entry authorizes schema, migration, API, financial, provider, or Production work.
+
 ### Financial Architecture Implementation
 
 **Status:** Planned

@@ -762,3 +762,13 @@ the server.
 **Status:** Active — Founder-approved product policy; no implementation authority.
 
 **Implications:** Existing unconfigured Facilities retain isolated feature-flagged legacy center-distance behavior until an authorized Owner activates a valid boundary. New enforcement, migration, runtime, rollout, and Production adoption require the separately approved sequence and Founder acceptance. Phase 5 Sprint 3 Two-Factor Authentication remains the next mandatory major sprint after geofencing completion and Founder acceptance; it has not begun.
+
+## PD-062 - Material Quantity, Measurement, and Facility Recovery Offers — Future Direction
+
+**Decision:** [PD-062](./PD-062-material-quantity-measurement-and-facility-recovery-offers-future-direction.md) approves Phase 6 — Material Quantity and Recovery Economics as future direction: Sprint 1 establishes nonfinancial quantity and measurement records, Sprint 2 defines Facility Material Recovery Offers, and Sprint 3 governs later settlement and pilot readiness.
+
+**Status:** Approved Future Product Direction — Not Authorized for Current Implementation
+
+**Implications:** The Driver's original quantity and the Owner's confirmed quantity must remain separately auditable; estimates remain identified; an accepted offer requires an immutable snapshot; and offers, tips, platform fees, operational verification, and financial execution remain distinct. This decision makes no current schema, migration, API, payment, wallet, Stripe, settlement, financial, or Production change.
+
+**Related Documents:** [Sprint Roadmap](../project/sprint-roadmap.md), [Epic Roadmap](../project/epic-roadmap.md), [CTX-ARCH-005](../architecture/material-management-architecture.md), [CTX-ARCH-006](../architecture/driver-incentive-and-financial-settlement-architecture.md), [PD-045](#pd-045---canonical-driver-settlement-rail), [PD-051](./PD-051-driver-activity-and-payment-lifecycle.md), and [PD-054](./PD-054-canonical-financial-visibility-and-obligation-workflow.md).

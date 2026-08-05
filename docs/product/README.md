@@ -7,6 +7,11 @@
 - [PD-060 — Photo Review Retention and Platform-Detected Rejection](./PD-060-photo-review-retention-and-platform-rejection.md)
 - [PD-061 — Facility Geofence and Operational Exception Policy](./PD-061-facility-geofence-and-operational-exception-policy.md) — Active Founder-approved policy; effective as governance with no implementation authority.
 
+## Approved future directions
+
+- [PD-056 — Driver Achievement, Authenticated Competition, and Future Rewards](./PD-056-driver-achievement-rewards-and-leaderboard-future-direction.md)
+- [PD-062 — Material Quantity, Measurement, and Facility Recovery Offers](./PD-062-material-quantity-measurement-and-facility-recovery-offers-future-direction.md) — Founder-approved future Phase 6 direction; no current implementation or Production authority.
+
 ## Purpose
 
 This section documents product direction, user-facing priorities, and the decisions that shape CreteXchange.

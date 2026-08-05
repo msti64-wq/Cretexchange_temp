@@ -70,11 +70,17 @@ See [Sprint 2.2](./sprints/sprint-2.2.md). This epic prioritizes successful firs
 
 **Status:** Future
 
+- auditable material quantity and measurement foundation
+- separate Driver-submitted and Owner-confirmed quantities
+- Facility Material Recovery Offers with immutable accepted snapshots
+- separately governed offer settlement and pilot readiness
 - Recovered-material listings
 - Sellers, buyers, inventory, and availability
 - Matching and discovery
 - Reservation or transaction workflows
 - Logistics coordination and marketplace trust
+
+The quantity, Recovery Offer, and settlement sequence is governed as approved future direction by [PD-062](../product/PD-062-material-quantity-measurement-and-facility-recovery-offers-future-direction.md). It does not authorize current operational or financial implementation.
 
 ## Epic 7 — Enterprise and Contractor Platform
 
