@@ -1,6 +1,6 @@
 # Canonical Facility Geofence — Level 4 Validation Closeout
 
-- **Status:** Engineering checkpoint complete; controlled visual acceptance and Founder release approval pending
+- **Status:** Founder Production visual acceptance passed; remaining feature-control activations require separate Founder authorization
 - **Date:** 2026-08-05
 - **Branch:** `feature/canonical-facility-geofence`
 - **Starting SHA:** `33d356acee69dac6d3218a4e6788f18d8dfb454f`
@@ -8,6 +8,8 @@
 - **Production/main isolation baseline:** `20ffc55d01d9416ac6d211382c6b2332a47039bc`
 - **Migration:** `0040_add_canonical_facility_geofence_foundation.sql`
 - **Migration SHA-256:** `cc1686086b3c713b1567a35a9cada82d2690746f4d3527358023d2a97fc57bcd`
+- **Founder-accepted Production SHA:** `b8a81226d64b1c01fba98ee6423e73d5d516bacf`
+- **Founder-accepted Railway deployment:** `e27c2d1a-4499-41fc-a78a-1daa76ca6f82`
 
 ## Validation results
 
@@ -46,23 +48,39 @@ The disposable database contained one synthetic boundary, revision, and evaluati
 - Request, location, polygon-vertex, and evaluation batches are bounded; immutable geometry uses the bounded cache; Owner version/history queries are capped; latest evaluations use one set-based query.
 - No new financial execution surface was introduced or activated.
 
-## Controlled visual acceptance blocker
+## Founder Production visual acceptance
 
-No controlled non-Production environment was available with seeded Owner, Driver, and Admin identities, migration `0040`, and the five feature controls available for controlled activation. Production identities were expressly prohibited as substitutes. Therefore real-browser map interaction, physical mobile behavior, assistive-technology operation, and end-to-end English/Spanish visual acceptance have not been claimed. This is the remaining release condition, not an automated-test failure.
+**PASS — August 5, 2026.** The Founder completed visual acceptance at the controlled Production Facility against Production SHA `b8a81226d64b1c01fba98ee6423e73d5d516bacf` and Railway deployment `e27c2d1a-4499-41fc-a78a-1daa76ca6f82`.
+
+The Founder verified:
+
+- satellite imagery rendered correctly;
+- radius editing worked as expected;
+- polygon drawing worked as expected;
+- the map rendered again after refresh; and
+- no Maps constructor, missing-callback, API-activation, Places, or asynchronous-loading errors appeared.
+
+This acceptance closes the Google Maps loader/readiness visual gate and accepts the currently enabled Owner boundary-management experience. It does not activate or accept submission enforcement, geofence notifications, or legacy transition.
+
+The five Production controls remained staged as follows at acceptance:
+
+| Feature control | State |
+| --- | --- |
+| Owner boundary management | Enabled |
+| Driver advisory evaluation | Enabled |
+| Submission enforcement | Disabled |
+| Geofence notifications | Disabled |
+| Legacy transition | Disabled |
 
 ## Release disposition
 
-**Recommendation: GO WITH CONDITIONS.** The feature branch is suitable for Founder review and controlled release preparation. It is not authorized for Production activation until the visual blocker is cleared and the Founder separately authorizes each release action.
+**Recommendation: GO WITH SEPARATE ACTIVATION GATES.** The Owner boundary-management and Driver advisory release stage is Founder-accepted in Production. Financial execution remains isolated. No authority is granted here to activate submission enforcement, geofence notifications, or legacy transition, and no authority is granted to begin Phase 5 Sprint 3 — Two-Factor Authentication.
 
-Exact governed release sequence:
+Remaining governed geofence sequence:
 
-1. Founder reviews this checkpoint and authorizes the merge/release candidate.
-2. Merge the approved feature branch to `main` through the governed process.
-3. Record the exact target SHA and create the approved database recovery checkpoint.
-4. Apply migration `0040` to Production as a separately controlled transaction.
-5. Verify schema, constraints, no inferred backfill, retained evidence behavior, and all five controls disabled.
-6. Deploy the exact approved `main` SHA and verify `/api/version`, health, database, terms, and disabled financial execution.
-7. Activate controls only through separately authorized, staged pilot gates; keep legacy transition disabled until its own acceptance gate.
-8. Complete controlled Owner, Driver, and Admin browser walkthroughs in English and Spanish across desktop, physical mobile, keyboard, screen reader, and structured map fallback.
-9. Verify green/yellow/red routing and notification behavior with controlled pilot records and no financial/reward side effects.
-10. Obtain explicit Founder Production acceptance before closing the release or beginning Two-Factor Authentication.
+1. Separately authorize and execute a controlled submission-enforcement pilot; validate green ordinary submission, complete and incomplete yellow exceptions, red quarantine, privacy/RBAC, operational metrics, and no financial, reward, achievement, competition, or settlement effects.
+2. Separately authorize geofence notifications; validate localized Owner, Driver, Admin, and Super Admin routing, idempotency, privacy, delivery-failure isolation, the combined yellow Owner notice, and the red no-Owner rule.
+3. Complete controlled Owner, Driver, and Admin end-to-end acceptance in English and Spanish, including physical mobile, desktop, keyboard, screen reader, and structured map fallback for the newly activated paths.
+4. Separately authorize legacy transition only after affected Facilities are configured, tested, and Founder-accepted; converge remaining legacy center-distance paths without inferred geometry or destructive evidence changes.
+5. Complete geofence operational closeout and obtain explicit Founder acceptance for all activated controls.
+6. Only after geofencing is closed, request separate authorization for Phase 5 Sprint 3 — Two-Factor Authentication.
