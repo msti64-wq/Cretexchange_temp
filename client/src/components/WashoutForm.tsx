@@ -68,11 +68,14 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<GpsPreflightStatus>("required");
   const [gpsLocation, setGpsLocation] = useState<({ lat: number; lng: number } & Coordinates) | null>(null);
+  const [geofenceAdvisoryState, setGeofenceAdvisoryState] = useState<DriverGeofenceState | null>(null);
+  const [geofenceAdvisoryLoading, setGeofenceAdvisoryLoading] = useState(false);
   const [geofenceState, setGeofenceState] = useState<DriverGeofenceState | null>(null);
   const [geofenceReason, setGeofenceReason] = useState("");
   const [geofenceAcknowledged, setGeofenceAcknowledged] = useState(false);
   const [geofenceNote, setGeofenceNote] = useState("");
   const submissionReference = useRef(createSubmissionReference());
+  const { enabled: geofenceAdvisoryEnabled } = useFeatureFlag(FEATURE_FLAGS.GEOFENCE_ADVISORY_EVALUATION);
   const { enabled: geofenceEnforcementEnabled } = useFeatureFlag(FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT);
   const [gpsWarning, setGpsWarning] = useState<string | null>(null);
   const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);
@@ -87,11 +90,12 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
     isProcessing: isProcessingPhotos,
   });
 
-  const ensureGpsLocation = async ({ isRetry = false }: { isRetry?: boolean } = {}) => {
-    if (gpsLocation) {
+  const ensureGpsLocation = async ({ isRetry = false, forceRefresh = false }: { isRetry?: boolean; forceRefresh?: boolean } = {}) => {
+    if (gpsLocation && !forceRefresh) {
       return gpsLocation;
     }
 
+    if (forceRefresh) setGpsLocation(null);
     setGpsStatus(isRetry ? "retrying" : "checking");
     try {
       const coords = await getCurrentLocation();
@@ -102,6 +106,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       return nextLocation;
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
+      setGpsLocation(null);
       setGpsStatus(resolveGpsPreflightStatus(error));
       setGpsWarning(/denied/i.test(message) ? t("pilot.gps.permissionDenied") : t("pilot.gps.unavailable"));
       toast({
@@ -116,6 +121,34 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   useEffect(() => {
     void ensureGpsLocation();
   }, []);
+
+  useEffect(() => {
+    if (!geofenceAdvisoryEnabled) {
+      setGeofenceAdvisoryState(null);
+      setGeofenceAdvisoryLoading(false);
+      return;
+    }
+    if (!["ready", "permission_denied", "unavailable"].includes(gpsStatus)) return;
+
+    let active = true;
+    setGeofenceAdvisoryLoading(true);
+    void apiRequest(`/api/drivers/locations/${location.id}/geofence-advisory`, {
+      method: "POST",
+      body: JSON.stringify({ observation: gpsLocation ? {
+        latitude: gpsLocation.latitude,
+        longitude: gpsLocation.longitude,
+        accuracyMeters: gpsLocation.accuracyMeters,
+        observedAt: gpsLocation.observedAt,
+      } : null }),
+    }).then((response) => response.json()).then((result) => {
+      if (active) setGeofenceAdvisoryState(result.state);
+    }).catch(() => {
+      if (active) setGeofenceAdvisoryState("LOCATION_UNAVAILABLE");
+    }).finally(() => {
+      if (active) setGeofenceAdvisoryLoading(false);
+    });
+    return () => { active = false; };
+  }, [geofenceAdvisoryEnabled, gpsStatus, gpsLocation?.observedAt, location.id]);
 
   useEffect(() => {
     if (!geofenceEnforcementEnabled || !gpsLocation) {
@@ -316,7 +349,11 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   };
 
   const retryGps = async () => {
-    const browserLocation = await ensureGpsLocation({ isRetry: true });
+    if (geofenceAdvisoryEnabled) {
+      setGeofenceAdvisoryState(null);
+      setGeofenceAdvisoryLoading(true);
+    }
+    const browserLocation = await ensureGpsLocation({ isRetry: true, forceRefresh: true });
     if (browserLocation && pendingPhotoFiles.length > 0) {
       await uploadPhotos(pendingPhotoFiles, browserLocation);
         }
@@ -567,7 +604,24 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
             </div>
           )}
 
-          {geofenceEnforcementEnabled && geofenceState && <DriverGeofenceIndicator state={geofenceState} />}
+          {geofenceAdvisoryEnabled && geofenceAdvisoryLoading && (
+            <div className="flex min-h-11 items-center rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800" role="status" aria-label={t("geofence.driver.checking")} data-testid="driver-checkin-geofence-loading">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
+              <span>{t("geofence.driver.checking")}</span>
+            </div>
+          )}
+          {geofenceAdvisoryEnabled && !geofenceAdvisoryLoading && geofenceAdvisoryState && (
+            <div data-testid="driver-checkin-geofence-advisory">
+              <DriverGeofenceIndicator state={geofenceAdvisoryState} />
+              {["LOCATION_UNAVAILABLE", "LOCATION_ACCURACY_INSUFFICIENT", "GEOMETRY_UNAVAILABLE", "GEOMETRY_INVALID"].includes(geofenceAdvisoryState) && (
+                <Button type="button" variant="outline" size="sm" className="mb-3 min-h-11" onClick={() => void retryGps()} disabled={gpsStatus === "retrying"} data-testid="button-retry-geofence-gps">
+                  <MapPin className="mr-2 h-4 w-4" />
+                  {t("geofence.driver.retryGps")}
+                </Button>
+              )}
+            </div>
+          )}
+          {geofenceEnforcementEnabled && !geofenceAdvisoryEnabled && geofenceState && <DriverGeofenceIndicator state={geofenceState} />}
           {geofenceEnforcementEnabled && geofenceState === "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE" && (
             <fieldset className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950">
               <legend className="px-1 font-medium">{t("geofence.driver.confirmException")}</legend>

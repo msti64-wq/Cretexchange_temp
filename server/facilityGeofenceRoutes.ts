@@ -62,6 +62,9 @@ const advisorySchema = z.object({
     observedAt: z.string().datetime({ offset: true }),
   }).nullable(),
 });
+const singleAdvisorySchema = z.object({
+  observation: advisorySchema.shape.observation,
+});
 const submissionPreflightSchema = z.object({
   observation: z.object({
     latitude: z.number().min(-90).max(90),
@@ -374,6 +377,34 @@ export function registerFacilityGeofenceRoutes(
       res.json({ enabled: true, results });
     } catch (error) {
       console.error("Driver Facility advisory failed", { userId: req.user?.id, message: error instanceof Error ? error.message : "unknown" });
+      res.status(503).json({ message: "Facility boundary status could not be confirmed" });
+    }
+  });
+
+  app.post("/api/drivers/locations/:locationId/geofence-advisory", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.id);
+      if (!user || user.role !== "driver") return res.status(403).json({ message: "Driver access required" });
+      const enabled = await isGeofenceFeatureEnabled(storage, FEATURE_FLAGS.GEOFENCE_ADVISORY_EVALUATION, user.id, user.role);
+      if (!enabled) return res.status(404).json({ message: "Facility boundary advisory is not available" });
+      const parsed = singleAdvisorySchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: "Facility advisory request is invalid", issues: parsed.error.issues });
+
+      const driver = await storage.getDriver(user.id);
+      if (!driver?.activeMaterialSlug) return res.status(409).json({ message: "Select a material before checking in" });
+      const eligible = await storage.getActiveLocationsAcceptingMaterial(driver.activeMaterialSlug);
+      if (!eligible.some((location: { id: string }) => location.id === req.params.locationId)) {
+        return res.status(403).json({ message: "Recovery Facility is not eligible for the selected material" });
+      }
+
+      const result = await evaluator.evaluateLocation({
+        locationId: req.params.locationId,
+        observation: parsed.data.observation,
+        purpose: "selection_advisory",
+      });
+      res.json(projectFacilityGeofenceResultForDriver(result));
+    } catch (error) {
+      console.error("Driver check-in Facility advisory failed", { locationId: req.params.locationId, message: error instanceof Error ? error.message : "unknown" });
       res.status(503).json({ message: "Facility boundary status could not be confirmed" });
     }
   });

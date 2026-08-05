@@ -27,6 +27,7 @@ export default function DriverLocations() {
   const [currentLocation, setCurrentLocation] = useState<({ lat: number; lng: number } & Coordinates) | null>(null);
   const [locationResolved, setLocationResolved] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationRefreshing, setLocationRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState<"distance" | "rate">("distance");
 
   // Check if enhanced location creation (Google Maps) is enabled
@@ -47,7 +48,7 @@ export default function DriverLocations() {
     enabled: Boolean(activeMaterialSlug),
   });
   const locationIds = Array.isArray(locations) ? locations.map((item: any) => (item.washout_locations || item).id as string) : [];
-  const { data: geofenceAdvisory } = useQuery<{ enabled: boolean; results: Array<{ locationId: string; state: DriverGeofenceState }> }>({
+  const { data: geofenceAdvisory, isFetching: geofenceAdvisoryLoading, isError: geofenceAdvisoryError } = useQuery<{ enabled: boolean; results: Array<{ locationId: string; state: DriverGeofenceState }> }>({
     queryKey: ["/api/drivers/locations/geofence-status", activeMaterialSlug, locationIds.join(","), currentLocation?.observedAt || "unavailable"],
     queryFn: async () => (await apiRequest("/api/drivers/locations/geofence-status", {
       method: "POST",
@@ -68,24 +69,25 @@ export default function DriverLocations() {
   });
   const geofenceByLocation = new Map((geofenceAdvisory?.results || []).map((result) => [result.locationId, result.state]));
 
-  useEffect(() => {
-    // Get user's current location
-    const getLocation = async () => {
-      try {
-        const coords = await getCurrentLocation();
-        setCurrentLocation({ lat: coords.latitude, lng: coords.longitude, ...coords });
-        setLocationError(null);
-      } catch (error) {
-        console.error("Error getting location:", error);
-        const errorMessage = error instanceof Error ? error.message : "Unable to get location";
-        setLocationError(errorMessage);
-        setCurrentLocation(null);
-      } finally {
-        setLocationResolved(true);
-      }
-    };
+  const refreshCurrentLocation = async () => {
+    setLocationRefreshing(true);
+    setLocationResolved(false);
+    setLocationError(null);
+    setCurrentLocation(null);
+    try {
+      const coords = await getCurrentLocation();
+      setCurrentLocation({ lat: coords.latitude, lng: coords.longitude, ...coords });
+    } catch (error) {
+      console.error("Error getting location:", error);
+      setLocationError(error instanceof Error ? error.message : "Unable to get location");
+    } finally {
+      setLocationResolved(true);
+      setLocationRefreshing(false);
+    }
+  };
 
-    getLocation();
+  useEffect(() => {
+    void refreshCurrentLocation();
   }, []);
 
   useEffect(() => {
@@ -211,6 +213,10 @@ export default function DriverLocations() {
             <p className="mt-1 text-xs text-foreground/65">
               {t("driver.locations.enableGps")}
             </p>
+            <Button type="button" variant="outline" size="sm" className="mt-3 min-h-11" onClick={() => void refreshCurrentLocation()} disabled={locationRefreshing} data-testid="button-retry-facility-gps">
+              <Navigation className="mr-2 h-4 w-4" />
+              {locationRefreshing ? t("geofence.driver.checking") : t("geofence.driver.retryGps")}
+            </Button>
           </div>
         )}
 
@@ -230,11 +236,19 @@ export default function DriverLocations() {
         {!activeMaterialSlug ? <Card className="border-border/70 bg-card/90"><CardContent className="py-8 text-center"><Package className="mx-auto mb-3 h-10 w-10 text-muted-foreground" /><p className="font-medium">{t("driver.material.selectionRequired")}</p><p className="mt-1 text-sm text-muted-foreground">{t("driver.material.selectionRequiredHelp")}</p></CardContent></Card> : <>
         {/* Location List */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold">{t("driver.locations.availableLocations")}</h2>
-            <Badge variant="secondary" data-testid="text-location-count">
-              {t("driver.locations.locationCount", { count: filteredAndSortedLocations.length })}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              {isGeofenceAdvisoryEnabled && (
+                <Button type="button" variant="ghost" size="sm" className="min-h-11" onClick={() => void refreshCurrentLocation()} disabled={locationRefreshing} data-testid="button-refresh-facility-advisory">
+                  <Navigation className="mr-1 h-4 w-4" />
+                  {locationRefreshing ? t("geofence.driver.checking") : t("geofence.driver.retryGps")}
+                </Button>
+              )}
+              <Badge variant="secondary" data-testid="text-location-count">
+                {t("driver.locations.locationCount", { count: filteredAndSortedLocations.length })}
+              </Badge>
+            </div>
           </div>
 
           {isError ? (
@@ -339,7 +353,15 @@ export default function DriverLocations() {
                     </div>
                   )}
                   {item.matchedMaterial && <Badge variant="secondary" className="mb-3">{t("driver.material.accepts", { material: item.matchedMaterial.displayName })}</Badge>}
-                  {isGeofenceAdvisoryEnabled && geofenceByLocation.has(location.id) && <DriverGeofenceIndicator state={geofenceByLocation.get(location.id)!} />}
+                  {isGeofenceAdvisoryEnabled && geofenceAdvisoryLoading && (
+                    <div className="mb-3 flex min-h-11 items-center gap-2 rounded-lg border border-slate-500/60 bg-slate-900/40 px-3 py-2 text-sm text-slate-100" role="status" aria-label={t("geofence.driver.checking")} data-testid="driver-geofence-status-loading">
+                      <Navigation className="h-5 w-5 animate-pulse" aria-hidden="true" />
+                      <span>{t("geofence.driver.checking")}</span>
+                    </div>
+                  )}
+                  {isGeofenceAdvisoryEnabled && !geofenceAdvisoryLoading && locationResolved && (
+                    <DriverGeofenceIndicator state={geofenceByLocation.get(location.id) || (geofenceAdvisoryError ? "LOCATION_UNAVAILABLE" : "GEOMETRY_UNAVAILABLE")} />
+                  )}
                   <p className="mb-3 text-xs text-muted-foreground">{t("driver.locations.configuredIncentiveQualification")}</p>
 
                   <div className="flex gap-2">
