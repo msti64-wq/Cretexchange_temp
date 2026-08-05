@@ -1,8 +1,8 @@
 # CTX-RB-010 — Geofence Exception and Boundary Correction Runbook
 
 - **Document ID:** CTX-RB-010
-- **Version:** 1.0
-- **Status:** Approved — effective governance; procedure not operational until implementation
+- **Version:** 1.1
+- **Status:** Approved — controlled feature-branch workflow implemented; not operational until release authorization
 - **Owner:** Platform Operations
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Product:** CreteXchange
@@ -14,20 +14,20 @@
 
 ## 1. Purpose and scope
 
-This approved runbook defines safe future handling of geofence exceptions, Owner boundary-correction requests, and Admin assistance. It is effective as governance but is not operational because the geofence capability is not implemented or released.
+This approved runbook defines safe handling of geofence exceptions, Owner boundary-correction requests, and Admin assistance. The controlled feature branch implements the workflow behind disabled controls, but this procedure is not operational until migration, activation, deployment, and Founder acceptance are separately authorized.
 
 It does not authorize direct database edits, geometry modification, account restriction, evidence deletion, Facility disabling, payment action, or a fraud finding.
 
 ## 2. Roles and authority
 
-| Role | Proposed responsibility | Boundary |
+| Role | Governed responsibility | Boundary |
 | --- | --- | --- |
 | Driver | Provide accurate acknowledgement and required evidence for a yellow exception | Cannot activate or modify Facility geometry |
 | Facility Owner | Review own pending activity and own Facility boundary drafts/history | Cannot view another Owner's geometry or rewrite historical versions |
 | Admin/Super Admin | Review red retained evidence and respond to authorized assistance requests; activate a corrected version only through a separately authorized process | Does not infer misconduct or alter geometry without recorded authority |
 | Platform Operations | Observe patterns and recommend review | A recommendation does not change a boundary or activity outcome |
 
-## 3. Proposed yellow-exception procedure
+## 3. Yellow-exception procedure
 
 1. Before activity creation, require explicit acknowledgement, a governed reason, required photo evidence, GPS timestamp/accuracy, evaluated boundary version, and any optional bounded note. If any required element is missing, return corrective guidance and create no incomplete activity.
 2. For a complete yellow submission, create atomically one activity in the ordinary Owner queue, one idempotent combined pending-review/boundary-review Owner notification, one idempotent low-priority operational-exception Admin/Super Admin notification, and a neutral Driver confirmation.
@@ -38,7 +38,7 @@ It does not authorize direct database edits, geometry modification, account rest
 7. If correction is warranted, open a new boundary draft, preview, validate, and activate it through the governed Owner workflow or separately authorized Admin correction process.
 8. Preserve the original evaluation and version regardless of the later correction.
 
-## 4. Proposed red-exception procedure
+## 4. Red-exception procedure
 
 1. Open the retained item through the existing PD-060 Admin Photo Review/integrity path; confirm it did not enter the Owner queue and no Owner notification was sent.
 2. Review minimum-necessary evidence and the canonical result without calling the Driver fraudulent.
@@ -68,7 +68,7 @@ It does not authorize direct database edits, geometry modification, account rest
 
 ## 7. Notification behavior
 
-| Trigger | Proposed recipients | Rule |
+| Trigger | Recipients | Rule |
 | --- | --- | --- |
 | Passive indicator/selection | None | No side effect |
 | Complete yellow submission | Owner, Admin/Super Admin, and Driver | One idempotent combined pending-review/boundary-review Owner notice; one idempotent low-priority operational-exception Admin/Super Admin notice; neutral Driver confirmation; no active Photo Review by default |
@@ -92,7 +92,7 @@ Do not infer, backfill, or automatically activate a polygon or radius. New enfor
 
 An incorrect activation is corrected by activating a new version or, under separately authorized recovery, restoring an earlier valid geometry as a new version. Do not rewrite history. Application rollback disables new reads/enforcement while retaining additive boundary, revision, evaluation, notification, and review evidence. No destructive rollback or Production recovery is authorized without an explicit Founder recovery checkpoint.
 
-This procedure cannot be used until CTX-ARCH-016 and PD-061 are approved, implementation is validated, migration authorization is complete, and Production acceptance succeeds.
+This procedure cannot be used operationally until the feature-branch checkpoint is Founder-accepted, migration `0040` is separately authorized and completed, controls are deliberately activated, the accepted commit is deployed, and Production acceptance succeeds.
 
 ## 11. Related documents
 
@@ -110,3 +110,4 @@ This procedure cannot be used until CTX-ARCH-016 and PD-061 are approved, implem
 | 0.1 | 2026-08-04 | Initial non-operational draft for Founder review. |
 | 0.2 | 2026-08-04 | Incorporated Founder-approved exception routing, notifications, correction authority, legacy transition, privacy, and recovery direction; still non-operational. |
 | 1.0 | 2026-08-04 | Founder-approved runbook made effective as governance; procedure remains non-operational until separately authorized implementation. |
+| 1.1 | 2026-08-04 | Recorded the controlled feature-branch yellow/red routing, Owner correction and assistance workflow, and remaining operational release gates. |

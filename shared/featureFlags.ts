@@ -37,8 +37,8 @@ export const FEATURE_FLAGS = {
   // Driver Tip Payouts - optional Stripe onboarding so drivers can receive owner-funded tips
   DRIVER_STRIPE_PAYOUTS: 'driver_stripe_payouts',
 
-  // Canonical Facility geofence controls. Work Package 1 defines these flags,
-  // but does not consume them from any participant-facing route or workflow.
+  // Canonical Facility geofence controls. The controlled feature-branch
+  // vertical slice consumes them, but every control remains disabled by default.
   GEOFENCE_ADVISORY_EVALUATION: 'geofence_advisory_evaluation',
   GEOFENCE_OWNER_BOUNDARY_MANAGEMENT: 'geofence_owner_boundary_management',
   GEOFENCE_SUBMISSION_ENFORCEMENT: 'geofence_submission_enforcement',
@@ -120,25 +120,25 @@ export const FEATURE_FLAG_DEFINITIONS: FeatureFlagDefinition[] = [
   },
   {
     key: FEATURE_FLAGS.GEOFENCE_ADVISORY_EVALUATION,
-    description: 'Enable side-effect-free canonical Facility geofence advisory evaluation. Driver UI is not included in Work Package 1.',
+    description: 'Enable side-effect-free canonical Facility geofence advisory evaluation and Driver status guidance.',
     enabled: false,
     allowedRoles: ['driver'],
   },
   {
     key: FEATURE_FLAGS.GEOFENCE_OWNER_BOUNDARY_MANAGEMENT,
-    description: 'Enable governed Owner Facility boundary draft, validation, and activation workflows. Owner UI is not included in Work Package 1.',
+    description: 'Enable governed Owner Facility boundary draft, validation, activation, history, and assistance workflows.',
     enabled: false,
     allowedRoles: ['owner'],
   },
   {
     key: FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT,
-    description: 'Enable canonical geofence enforcement for governed check-in and submission workflows. Enforcement is not included in Work Package 1.',
+    description: 'Enable canonical geofence enforcement for governed check-in and submission workflows.',
     enabled: false,
     allowedRoles: ['driver'],
   },
   {
     key: FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
-    description: 'Enable governed geofence notification intents through the canonical Notification Service. Notifications are not included in Work Package 1.',
+    description: 'Enable governed geofence notification intents through the canonical Notification Service.',
     enabled: false,
     allowedRoles: [],
   },

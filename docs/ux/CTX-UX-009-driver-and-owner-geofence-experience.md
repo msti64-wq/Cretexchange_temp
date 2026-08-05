@@ -1,8 +1,8 @@
 # CTX-UX-009 — Driver and Owner Geofence Experience
 
 - **Document ID:** CTX-UX-009
-- **Version:** 1.0
-- **Status:** Approved — effective experience specification; no implementation authority
+- **Version:** 1.1
+- **Status:** Approved — controlled feature-branch experience implemented; not activated or released
 - **Owner:** CreteXchange Product and Experience
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Product:** CreteXchange
@@ -14,7 +14,7 @@
 
 ## 1. Purpose and scope
 
-This document defines the approved minimal Driver Facility-status indicator and governed Owner boundary-management experience. It is effective as experience governance but does not authorize implementation. [CTX-ARCH-016](../architecture/CTX-ARCH-016-canonical-facility-geofence-architecture.md) owns evaluation and data contracts; [PD-061](../product/PD-061-facility-geofence-and-operational-exception-policy.md) owns product policy.
+This document defines the approved minimal Driver Facility-status indicator and governed Owner boundary-management experience. The separately authorized controlled feature branch implements this experience behind disabled controls; migration, activation, merge, deployment, and Founder Production acceptance remain separate gates. [CTX-ARCH-016](../architecture/CTX-ARCH-016-canonical-facility-geofence-architecture.md) owns evaluation and data contracts; [PD-061](../product/PD-061-facility-geofence-and-operational-exception-policy.md) owns product policy.
 
 ## 2. Driver Facility-selection experience
 
@@ -42,14 +42,14 @@ Requirements:
 
 Passive display and selection create no Admin or Owner notification, activity, rejection, Administrative Review, Photo Review item, audit exception, analytics exception, financial event, or reward event. The server evaluates again during check-in and submission; the client never promotes an advisory result into an authoritative outcome.
 
-Proposed English labels are specified above. Proposed Spanish labels:
+Implemented English labels are specified above. Implemented Spanish labels:
 
 - `Dentro del límite de la instalación`
 - `Fuera del límite — confirma la ubicación`
 - `Demasiado lejos de la instalación — revisa tu selección`
 - `No se pudo confirmar la ubicación`
 
-Translations require bilingual review before implementation.
+Translations require bilingual review during the final controlled validation and again before release.
 
 ## 3. Driver check-in and submission
 
@@ -173,3 +173,4 @@ Red platform exceptions reuse PD-060 routing, active Admin Photo Review, and the
 | 0.1 | 2026-08-04 | Initial Driver and Owner geofence experience draft; no implementation authority. |
 | 0.2 | 2026-08-04 | Incorporated Founder-approved indicator, yellow/red, guardrail, correction, notification, and transition direction; still no implementation authority. |
 | 1.0 | 2026-08-04 | Founder-approved Driver and Owner geofence experience made effective as governance; implementation remains separately authorized. |
+| 1.1 | 2026-08-04 | Recorded the controlled feature-branch Driver advisory, submission guidance, Owner boundary management, bilingual copy, and pending release gates. |

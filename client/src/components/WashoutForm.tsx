@@ -29,6 +29,12 @@ const SUPPORTED_PHOTO_CONTENT_TYPES = new Set([
   "image/heif",
 ]);
 
+function createSubmissionReference(): string {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  const suffix = Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+  return `00000000-0000-4000-8000-${suffix}`;
+}
+
 interface WashoutFormProps {
   location: {
     id: string;
@@ -66,7 +72,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   const [geofenceReason, setGeofenceReason] = useState("");
   const [geofenceAcknowledged, setGeofenceAcknowledged] = useState(false);
   const [geofenceNote, setGeofenceNote] = useState("");
-  const submissionReference = useRef(globalThis.crypto?.randomUUID?.() || `submission-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const submissionReference = useRef(createSubmissionReference());
   const { enabled: geofenceEnforcementEnabled } = useFeatureFlag(FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT);
   const [gpsWarning, setGpsWarning] = useState<string | null>(null);
   const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);
@@ -570,8 +576,8 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
                 <option value="">{t("geofence.driver.chooseReason")}</option>
                 <option value="FACILITY_PERSONNEL_DIRECTED">{t("geofence.driver.reason.personnel")}</option>
                 <option value="APPROVED_AREA_INACCESSIBLE">{t("geofence.driver.reason.inaccessible")}</option>
-                <option value="FACILITY_BOUNDARY_INCORRECT">{t("geofence.driver.reason.boundary")}</option>
-                <option value="GPS_LOCATION_INACCURATE">{t("geofence.driver.reason.gps")}</option>
+                <option value="BOUNDARY_APPEARS_INCORRECT">{t("geofence.driver.reason.boundary")}</option>
+                <option value="GPS_APPEARS_INACCURATE">{t("geofence.driver.reason.gps")}</option>
                 <option value="OTHER">{t("geofence.driver.reason.other")}</option>
               </select>
               <Label htmlFor="geofence-note">{t("geofence.driver.note")}</Label>

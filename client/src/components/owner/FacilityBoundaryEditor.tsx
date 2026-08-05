@@ -47,6 +47,7 @@ export function FacilityBoundaryEditor(props: Props) {
   const propsRef = useRef(props);
   propsRef.current = props;
   const [mapUnavailable, setMapUnavailable] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -61,6 +62,7 @@ export function FacilityBoundaryEditor(props: Props) {
         mapTypeControl: true,
       } as any);
       setMapUnavailable(false);
+      setMapReady(true);
     }, () => active && setMapUnavailable(true));
     return () => {
       active = false;
@@ -125,7 +127,7 @@ export function FacilityBoundaryEditor(props: Props) {
       polygon.getPath().push(event.latLng);
       sync();
     }));
-  }, [props.mode, props.center, props.radiusMeters, props.polygon]);
+  }, [mapReady, props.mode, props.center, props.radiusMeters, props.polygon]);
 
   const updatePoint = (index: number, axis: 0 | 1, raw: string) => {
     const value = Number(raw);

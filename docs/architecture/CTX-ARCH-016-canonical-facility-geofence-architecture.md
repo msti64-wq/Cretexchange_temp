@@ -1,8 +1,8 @@
 # CTX-ARCH-016 — Canonical Facility Geofence Architecture
 
 - **Document ID:** CTX-ARCH-016
-- **Version:** 1.1
-- **Status:** Approved — effective architecture governance; Work Package 1 implemented locally and pending Founder acceptance; not released
+- **Version:** 1.2
+- **Status:** Approved — complete feature-branch vertical slice implemented; migration, activation, merge, and release pending Founder authorization
 - **Owner:** CreteXchange Product and Engineering
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Product:** CreteXchange
@@ -16,9 +16,9 @@
 
 This architecture defines one server-authoritative Facility geofence capability for Driver guidance, check-in, evidence submission, operational exceptions, retained evidence, and governed boundary correction. It supports one active primary verification boundary per configured Facility: an explicitly configured radius or one Owner-defined polygon. The initial polygon represents the approved Driver delivery, disposal, recovery, or washout area, not automatically the full property. The versioned `zone_key` model preserves future compatibility with multiple approved polygons, separate entrances, multiple washout areas, operational material zones, and large industrial campuses, but those capabilities are deferred unless separately approved.
 
-The separately authorized Geofence Work Package 1 implements only the additive schema/migration, disabled feature controls, and canonical server service described here. Those changes remain local, unstaged, uncommitted, unpushed, unmigrated, undeployed, disabled, and pending Founder acceptance. This document does not authorize participant-facing APIs, Owner/Driver/Admin UI, submission enforcement, notifications, Production migration execution, feature activation, deployment, rollout, legacy retirement, or 2FA. It remains subordinate to [CTX-STD-001](../standards/cretexchange-platform-standards.md), [CTX-ARCH-002](./owner-operations-architecture.md), [CTX-ARCH-003](./driver-operations-architecture.md), [CTX-ARCH-013](./CTX-ARCH-013-notification-and-communication-center.md), [CTX-ARCH-015](./CTX-ARCH-015-photo-review-retention-and-integrity-routing.md), [PD-060](../product/PD-060-photo-review-retention-and-platform-rejection.md), and the [Development Protocol](../development-protocol.md).
+The separately authorized feature-branch implementation now includes the additive schema/migration, disabled controls, canonical server service, Owner boundary workflow, Driver advisory, submission enforcement, notification routing, safe Owner/Admin context, and focused tests described here. The work remains confined to `feature/canonical-facility-geofence`; migration `0040` is not executed outside isolated validation, every new feature control defaults disabled, and no merge, Production deployment, Production data mutation, Production activation, legacy retirement, or 2FA work is authorized. It remains subordinate to [CTX-STD-001](../standards/cretexchange-platform-standards.md), [CTX-ARCH-002](./owner-operations-architecture.md), [CTX-ARCH-003](./driver-operations-architecture.md), [CTX-ARCH-013](./CTX-ARCH-013-notification-and-communication-center.md), [CTX-ARCH-015](./CTX-ARCH-015-photo-review-retention-and-integrity-routing.md), [PD-060](../product/PD-060-photo-review-retention-and-platform-rejection.md), and the [Development Protocol](../development-protocol.md).
 
-## 2. Current implementation audit
+## 2. Pre-implementation audit (historical baseline)
 
 The current repository has no canonical Facility boundary entity and no approved polygon capability.
 
@@ -189,19 +189,20 @@ The legacy compatibility path is feature-flagged, explicit, and transitional: th
 
 No polygon or active radius may be inferred or backfilled. A radius draft may be seeded from the existing Facility point, but it remains a draft until an authorized Owner previews, validates, and activates it. Legacy behavior may be retired only after affected pilot Facilities are configured, tested, approved, and pass the separately governed release gates. No Production backfill or automatic activation is authorized.
 
-## 10. Proposed API boundaries
+## 10. Implemented feature-branch API boundaries
 
 | Method and route | Purpose | Authorization |
 | --- | --- | --- |
 | `POST /api/drivers/locations/geofence-status` | Batch-evaluate a fresh position against the authenticated Driver's bounded eligible Facilities and return safe states | Driver only; server re-resolves eligibility |
-| `POST /api/drivers/checkin/geofence` | Authoritative check-in evaluation; may create durable evidence only when a workflow record exists | Ready Driver; selected Facility must remain eligible |
-| `POST /api/activities/:workflowId/geofence-exception` | Record governed yellow acknowledgement/evidence before final submission | Owning Driver only; idempotent |
+| `POST /api/drivers/locations/:locationId/geofence-check` | Fresh check-in preflight using the canonical evaluator; side-effect free | Driver only; server re-resolves current material eligibility |
+| `POST /api/activities/create-with-photos` | Reevaluate at submission and atomically persist activity, private photos, and durable evaluation; route yellow/red per policy | Ready Driver; selected Facility must remain eligible |
 | `GET /api/owners/locations/:id/geofence` | Read active/draft boundary and safe revision metadata | Owning authorized Owner; Admin only under separate authority |
 | `POST /api/owners/locations/:id/geofence/validate` | Validate and preview a draft without activation | Owning authorized Owner |
-| `POST /api/owners/locations/:id/geofence/revisions` | Create a new immutable draft version | Owning authorized Owner |
-| `POST /api/owners/locations/:id/geofence/revisions/:versionId/activate` | Revalidate then atomically activate/supersede | Owning authorized Owner, or separately authorized Admin correction process; idempotent |
-| `GET /api/owners/locations/:id/geofence/history` | Read safe boundary revision history | Owning authorized Owner |
+| `POST /api/owners/locations/:id/geofence/drafts` | Create a validated new draft version | Owning authorized Owner |
+| `POST /api/owners/locations/:id/geofence/versions/:versionId/activate` | Revalidate then atomically activate/supersede | Owning authorized Owner; explicit confirmation required |
 | `POST /api/owners/locations/:id/geofence/assistance` | Request Admin assistance without changing geometry | Owning authorized Owner; idempotent Notification Service intent |
+| `POST /api/owners/activities/:activityId/geofence/temporary-context` | Append temporary operational context without changing geometry or activity outcome | Owner of the activity's Facility only |
+| `GET /api/admin/geofence/activities/:activityId/context` | Read minimum-necessary result, boundary version, and acknowledgement context | Admin/Super Admin only; no precise position or geometry |
 
 Coordinates SHALL be sent in request bodies, never query strings. Driver responses omit geometry, exact distance-to-edge, coordinates, and internal validation details. Every route reauthorizes role, ownership, Facility eligibility, and active version.
 
@@ -231,7 +232,7 @@ Coordinates SHALL be sent in request bodies, never query strings. Driver respons
 
 ## 13. Migration and rollback
 
-Work Package 1 provides the additive migration file and matching repository schema definitions. It includes versioned boundary storage, append-only revision-event storage, durable activity geofence evaluations, active-version and history indexes, uniqueness/lifecycle/mode constraints, idempotency constraints, activated-version immutability, and same-Facility boundary/evaluation references. No Production migration, inferred polygon backfill, or activation has occurred or is authorized by this implementation result.
+The feature branch provides the additive migration file and matching repository schema definitions. It includes versioned boundary storage, append-only revision-event storage, durable activity geofence evaluations, active-version and history indexes, uniqueness/lifecycle/mode constraints, idempotency constraints, activated-version immutability, and same-Facility boundary/evaluation references. No Production migration, inferred polygon backfill, or activation has occurred or is authorized by this implementation result.
 
 Recommended rollout: deploy additive tables and disabled code only after separate Founder authorization; validate catalog, constraints, indexes, backup, and recovery evidence; enable Owner draft/preview; activate selected pilot boundaries; enable advisory Driver reads; and enable check-in/submission enforcement only after acceptance. Application rollback disables reads/enforcement while retaining all additive boundary, revision, evaluation, notification, and review evidence. No destructive rollback is required or authorized.
 
@@ -243,7 +244,7 @@ The implementation checkpoint SHALL cover radius/polygon interior, exact edge, i
 
 The Founder has approved the architecture direction recorded here: JSONB GeoJSON with one bounded server library, one active primary radius or polygon, the seven canonical states, one-mile platform-governed exception distance, proposed GPS and polygon limits as governed configuration, immutable versioning, yellow and red workflow routing, privacy/RBAC controls, feature-flagged legacy transition, additive migration direction, and the sequencing in the [discovery and validation plan](../project/geofence-architecture-discovery-and-validation-plan.md).
 
-Founder approval made this architecture document effective as governance. The later Founder authorization for Work Package 1 permitted local implementation of the dependency selection, migration DDL, schema definitions, disabled feature controls, canonical server service, and isolated validation evidence. Founder acceptance of that implementation remains pending. Pilot activation, participant-facing behavior, Production migration, deployment, and release remain separately prohibited until their later checkpoints.
+Founder approval made this architecture effective as governance. Later Founder direction authorized the complete feature-branch vertical slice and focused commits without authorizing `main`, Production migration, Production feature activation, deployment, legacy retirement, or 2FA. Founder acceptance of the final branch checkpoint and every release action remain pending.
 
 ## 16. Change history
 
@@ -253,3 +254,4 @@ Founder approval made this architecture document effective as governance. The la
 | 0.2 | 2026-08-04 | Incorporated Founder-approved direction for methodology, limits, workflow routing, transition, privacy, migration, and sequencing; still no implementation authority. |
 | 1.0 | 2026-08-04 | Founder-approved canonical Facility geofence architecture made effective as governance; implementation remains separately authorized. |
 | 1.1 | 2026-08-04 | Recorded the separately authorized local Work Package 1 implementation, ADR-033 dependency selection, additive migration/schema, disabled controls, canonical service, and pending Founder acceptance; no Production change. |
+| 1.2 | 2026-08-04 | Recorded the authorized feature-branch Owner, Driver advisory, submission, notification, Admin context, and legacy-isolation vertical slice; release controls remain disabled and Production unchanged. |

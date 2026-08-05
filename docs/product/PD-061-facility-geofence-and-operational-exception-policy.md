@@ -1,8 +1,8 @@
 # PD-061 — Facility Geofence and Operational Exception Policy
 
 - **Document ID:** PD-061
-- **Version:** 1.0
-- **Status:** Active — Founder-approved product policy; no implementation authority
+- **Version:** 1.1
+- **Status:** Active — Founder-approved policy implemented on the controlled feature branch; not activated or released
 - **Owner:** CreteXchange Product
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Product:** CreteXchange
@@ -16,7 +16,7 @@
 
 CreteXchange should use one server-authoritative, versioned Facility geofence to distinguish an approved Driver delivery, disposal, recovery, or washout area from the Facility address or entire property. A configured Facility initially has one active primary boundary: an explicitly configured radius or one Owner-defined polygon. The versioned model remains compatible with future multiple approved polygons, separate entrances, multiple washout areas, material zones, and large campuses without changing the canonical result contract; those capabilities remain deferred.
 
-The Founder has approved this product policy. It is effective as governance but does not represent current runtime behavior or grant implementation authority.
+The Founder has approved this product policy and separately authorized its controlled feature-branch implementation. It is effective governance; it is not current Production behavior until migration, merge, activation, deployment, and Founder acceptance are separately authorized.
 
 ## 2. Product rules
 
@@ -45,7 +45,7 @@ The Founder has approved this product policy. It is effective as governance but 
 
 Yellow and red Facilities remain selectable during advisory discovery. Selection does not authorize submission.
 
-## 4. Proposed yellow operational-exception workflow
+## 4. Governed yellow operational-exception workflow
 
 A complete yellow submission may proceed to ordinary Owner review only after the Driver:
 
@@ -62,7 +62,7 @@ During the controlled pilot, the complete yellow submission creates one idempote
 
 Yellow is an operational exception, not a platform-integrity rejection. It does not enter active Admin Photo Review unless separately escalated, disputed, or governed evidence independently fails. If acknowledgement, governed reason, required photo, GPS timestamp/accuracy, or boundary version is absent, the platform returns corrective guidance and creates no incomplete activity.
 
-## 5. Proposed red workflow
+## 5. Governed red workflow
 
 A red submission should be retained atomically with its supplied evidence and quarantined before Owner review under PD-060:
 
@@ -114,11 +114,9 @@ Existing Facilities remain on the isolated legacy center-distance behavior until
 
 The current legacy photo-validation behavior is: through one mile from the Facility point is verified; more than one through three miles is warning; beyond three miles is failed. There is no four-mile rule. Separate duplicated 500-foot rubble arrival/completion checks are also legacy and require later convergence through the canonical server service.
 
-## 10. Remaining authority and implementation decisions
+## 10. Remaining release authority
 
-The Founder-approved policy includes the exception distance, yellow/red handling, controlled-pilot notification matrix, transition, correction authority, privacy, and sequencing. No product-policy conflict remains. Implementation still requires the separately authorized sequence.
-
-Exact dependency selection, migration DDL, feature-flag mechanics, recovery evidence, implementation, pilot activation, and Production release remain deferred to separately authorized checkpoints. No dependency, migration, backfill, schema, code, or deployment change is authorized here.
+The controlled feature branch implements the approved exception distance, yellow/red handling, notification matrix, correction authority, privacy boundary, and unconfigured-Facility transition. Migration `0040`, all five Production feature controls, merge to `main`, Production deployment, pilot activation, legacy retirement, and any Production data operation remain separate Founder gates. No inferred backfill or automatic boundary activation is authorized.
 
 ## 11. Related documents
 
@@ -138,3 +136,4 @@ Exact dependency selection, migration DDL, feature-flag mechanics, recovery evid
 | 0.1 | 2026-08-04 | Initial draft decision for Founder review; no implementation or Production authority. |
 | 0.2 | 2026-08-04 | Incorporated Founder-approved policy direction for classifications, exceptions, notifications, legacy transition, privacy, and authority; still not effective. |
 | 1.0 | 2026-08-04 | Founder-approved product policy made effective as governance; implementation remains separately authorized. |
+| 1.1 | 2026-08-04 | Recorded the separately authorized controlled feature-branch implementation; migration, activation, merge, deployment, and Production acceptance remain pending. |
