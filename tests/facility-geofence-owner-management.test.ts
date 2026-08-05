@@ -144,3 +144,11 @@ test("Owner boundary history and status metadata are bilingual and expose an on-
     assert.equal(i18n.split(`\"${key}\"`).length - 1, 2, `${key} must exist in English and Spanish`);
   }
 });
+
+test("Owner boundary map loads only the Maps JavaScript API using the supported asynchronous callback", async () => {
+  const editor = await readFile(new URL("../client/src/components/owner/FacilityBoundaryEditor.tsx", import.meta.url), "utf8");
+
+  assert.match(editor, /loading=async/);
+  assert.match(editor, /callback=\$\{callbackName\}/);
+  assert.doesNotMatch(editor, /libraries=places/);
+});

@@ -30,11 +30,28 @@ function loadGoogleMaps(onReady: () => void, onError: () => void) {
   const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   if (!key || key === "YOUR_API_KEY") return onError();
   const script = document.createElement("script");
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
+  const callbackName = "__creteXchangeFacilityBoundaryMapsReady";
+  let settled = false;
+  const ready = () => {
+    if (settled) return;
+    settled = true;
+    delete (window as any)[callbackName];
+    onReady();
+  };
+  const failed = () => {
+    if (settled) return;
+    settled = true;
+    delete (window as any)[callbackName];
+    onError();
+  };
+  (window as any)[callbackName] = ready;
+  script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&callback=${callbackName}`;
   script.async = true;
   script.defer = true;
-  script.addEventListener("load", onReady, { once: true });
-  script.addEventListener("error", onError, { once: true });
+  script.addEventListener("load", () => {
+    if ((window as any).google?.maps) ready();
+  }, { once: true });
+  script.addEventListener("error", failed, { once: true });
   document.head.appendChild(script);
 }
 
