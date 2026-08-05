@@ -16,6 +16,9 @@ import type {
   FacilityGeofenceRepository,
 } from "./facilityGeofenceService";
 
+export const FACILITY_GEOFENCE_OWNER_VERSION_LIMIT = 100;
+export const FACILITY_GEOFENCE_OWNER_HISTORY_LIMIT = 250;
+
 /**
  * Persistence adapter for the canonical service. Route-level role, ownership,
  * and Driver eligibility checks remain mandatory before callers provide a
@@ -90,7 +93,8 @@ export class DrizzleFacilityGeofenceRepository implements FacilityGeofenceReposi
         eq(facilityGeofenceBoundaries.locationId, locationId),
         eq(facilityGeofenceBoundaries.zoneKey, "primary"),
       ))
-      .orderBy(desc(facilityGeofenceBoundaries.version));
+      .orderBy(desc(facilityGeofenceBoundaries.version))
+      .limit(FACILITY_GEOFENCE_OWNER_VERSION_LIMIT);
   }
 
   async listRevisionEvents(locationId: string): Promise<FacilityGeofenceRevisionEvent[]> {
@@ -98,7 +102,8 @@ export class DrizzleFacilityGeofenceRepository implements FacilityGeofenceReposi
       .select()
       .from(facilityGeofenceRevisionEvents)
       .where(eq(facilityGeofenceRevisionEvents.locationId, locationId))
-      .orderBy(desc(facilityGeofenceRevisionEvents.createdAt));
+      .orderBy(desc(facilityGeofenceRevisionEvents.createdAt))
+      .limit(FACILITY_GEOFENCE_OWNER_HISTORY_LIMIT);
   }
 
   async getBoundaryVersion(boundaryVersionId: string): Promise<FacilityGeofenceBoundary | undefined> {
@@ -121,12 +126,17 @@ export class DrizzleFacilityGeofenceRepository implements FacilityGeofenceReposi
   }
 
   async listLatestActivityEvaluations(activityIds: string[]): Promise<Map<string, ActivityGeofenceEvaluation>> {
-    if (activityIds.length === 0) return new Map();
+    const uniqueActivityIds = Array.from(new Set(activityIds));
+    if (uniqueActivityIds.length === 0) return new Map();
     const rows = await db
-      .select()
+      .selectDistinctOn([activityGeofenceEvaluations.activityId])
       .from(activityGeofenceEvaluations)
-      .where(inArray(activityGeofenceEvaluations.activityId, activityIds))
-      .orderBy(desc(activityGeofenceEvaluations.createdAt));
+      .where(inArray(activityGeofenceEvaluations.activityId, uniqueActivityIds))
+      .orderBy(
+        activityGeofenceEvaluations.activityId,
+        desc(activityGeofenceEvaluations.createdAt),
+        desc(activityGeofenceEvaluations.id),
+      );
     const result = new Map<string, ActivityGeofenceEvaluation>();
     for (const row of rows) {
       if (row.activityId && !result.has(row.activityId)) result.set(row.activityId, row);

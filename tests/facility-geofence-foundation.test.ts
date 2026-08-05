@@ -135,3 +135,14 @@ test("selected focused Turf modules are pinned and remain outside client imports
   assert.equal(parsed.dependencies["@turf/turf"], undefined);
   assert.doesNotMatch(clientImports, /@turf\//);
 });
+
+test("Owner history and latest-evaluation reads are bounded without N+1 queries", async () => {
+  const repository = await source(new URL("../server/facilityGeofenceRepository.ts", import.meta.url));
+  assert.match(repository, /FACILITY_GEOFENCE_OWNER_VERSION_LIMIT = 100/);
+  assert.match(repository, /FACILITY_GEOFENCE_OWNER_HISTORY_LIMIT = 250/);
+  assert.match(repository, /\.limit\(FACILITY_GEOFENCE_OWNER_VERSION_LIMIT\)/);
+  assert.match(repository, /\.limit\(FACILITY_GEOFENCE_OWNER_HISTORY_LIMIT\)/);
+  assert.match(repository, /selectDistinctOn\(\[activityGeofenceEvaluations\.activityId\]\)/);
+  assert.match(repository, /inArray\(activityGeofenceEvaluations\.activityId, uniqueActivityIds\)/);
+  assert.doesNotMatch(repository, /for \(const activityId of uniqueActivityIds\)/);
+});

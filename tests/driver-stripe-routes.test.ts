@@ -217,32 +217,37 @@ test("migrated endpoints enforce auth and use mocked canonical Stripe behavior o
     return { conflict: false, updatedFields };
   };
 
-  stripe.accounts.retrieve = async (accountId: string) => {
-    if (stripeUnavailable) {
-      throw Object.assign(new Error("mock Stripe unavailable"), { code: "api_connection_error" });
-    }
-    return {
-      id: accountId,
-      email: currentUser.email,
-      metadata: { userId: currentUser.id, driverId: currentDriver.id },
-      details_submitted: true,
-      payouts_enabled: true,
-      charges_enabled: false,
-      capabilities: { transfers: "active" },
-      requirements: { currently_due: [], past_due: [] },
-      external_accounts: { data: [{ object: "bank_account" }], total_count: 1 },
-      ...accountOverrides,
-    };
+  const stripeAccounts = {
+    retrieve: async (accountId: string) => {
+      if (stripeUnavailable) {
+        throw Object.assign(new Error("mock Stripe unavailable"), { code: "api_connection_error" });
+      }
+      return {
+        id: accountId,
+        email: currentUser.email,
+        metadata: { userId: currentUser.id, driverId: currentDriver.id },
+        details_submitted: true,
+        payouts_enabled: true,
+        charges_enabled: false,
+        capabilities: { transfers: "active" },
+        requirements: { currently_due: [], past_due: [] },
+        external_accounts: { data: [{ object: "bank_account" }], total_count: 1 },
+        ...accountOverrides,
+      };
+    },
+    list: async () => ({ data: [], has_more: false }),
+    create: async (_params: unknown, options: { idempotencyKey?: string }) => {
+      accountCreateCalls += 1;
+      lastIdempotencyKey = options?.idempotencyKey;
+      return stripeAccounts.retrieve("acct_mock_created");
+    },
   };
-  stripe.accounts.list = async () => ({ data: [], has_more: false });
-  stripe.accounts.create = async (_params: unknown, options: { idempotencyKey?: string }) => {
-    accountCreateCalls += 1;
-    lastIdempotencyKey = options?.idempotencyKey;
-    return stripe.accounts.retrieve("acct_mock_created");
-  };
-  stripe.accountLinks.create = async ({ account }: { account: string }) => {
-    accountLinkCalls += 1;
-    return { url: `https://connect.stripe.test/${account}`, expires_at: 1234567890 };
+  stripe.accounts = stripeAccounts;
+  stripe.accountLinks = {
+    create: async ({ account }: { account: string }) => {
+      accountLinkCalls += 1;
+      return { url: `https://connect.stripe.test/${account}`, expires_at: 1234567890 };
+    },
   };
 
   const app = express();
