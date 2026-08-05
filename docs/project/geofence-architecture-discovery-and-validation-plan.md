@@ -1,14 +1,14 @@
 # Facility Geofence Architecture Discovery and Validation Plan
 
-- **Version:** 1.1
-- **Status:** Work Package 1 implemented locally; Level 3 validation complete; Founder acceptance pending; not released
+- **Version:** 2.0
+- **Status:** Level 4 engineering checkpoint complete on the feature branch; controlled visual acceptance and release authorization pending; not released
 - **Owner:** CreteXchange Product and Engineering
-- **Date:** 2026-08-04
+- **Date:** 2026-08-05
 - **Classification:** Internal
 
 ## 1. Work-package boundary
 
-This record began as the documentation-first audit and sequencing for canonical Facility geofencing. The Founder later authorized Work Package 1: additive data foundation, disabled feature controls, and the canonical server geofence service. That package is implemented locally and validated but remains unstaged, uncommitted, unpushed, unmigrated in Production, undeployed, disabled, and pending Founder acceptance.
+This record began as the documentation-first audit and sequencing for canonical Facility geofencing. The Founder subsequently authorized the implementation through the integrated Level 4 checkpoint on `feature/canonical-facility-geofence`. The complete feature-branch scope now includes the additive data foundation, canonical server evaluation, Owner boundary management, Driver advisory, submission enforcement, governed notifications, administrative context, and supporting documentation. All five Production controls remain disabled, migration `0040` has not been executed against Production, the feature branch has not been merged to `main`, and Production has not been deployed from it.
 
 The preserved Photo Review retention work is commit `8c9b9d7b947bba766d3f6f670c27b0a6603cb91f`. Phase 5 Sprint 3 Two-Factor Authentication has not started. It remains the next mandatory major sprint only after geofencing is completed and Founder-accepted.
 
@@ -43,7 +43,17 @@ The preserved Photo Review retention work is commit `8c9b9d7b947bba766d3f6f670c2
 - Feature controls: advisory, Owner boundary management, submission enforcement, notifications, and legacy transition; all disabled
 - Production status: unchanged; database connected and financial execution disabled at preflight
 
-## 4. Current implementation findings
+### Integrated Level 4 checkpoint baseline
+
+- Feature branch: `feature/canonical-facility-geofence`
+- Checkpoint starting SHA: `33d356acee69dac6d3218a4e6788f18d8dfb454f`
+- Production/main isolation baseline: `20ffc55d01d9416ac6d211382c6b2332a47039bc`
+- Migration checksum: `cc1686086b3c713b1567a35a9cada82d2690746f4d3527358023d2a97fc57bcd`
+- Detailed evidence: [Canonical Facility Geofence Level 4 Validation Closeout](../releases/canonical-facility-geofence-level-4-validation.md)
+
+## 4. Discovery baseline findings
+
+This section preserves the gaps observed before implementation. It is historical discovery evidence and is superseded for current status by the Level 4 closeout linked above.
 
 ### Canonical operational sources
 
@@ -78,24 +88,24 @@ There is no repository four-mile constant. Any observed four-mile rejection is a
 
 ## 5. Approved development sequence
 
-The Founder has approved CTX-ARCH-016, PD-061, CTX-UX-009, CTX-RB-010, and this documentation set, and separately authorized Work Package 1. The approved sequence and current state are:
+The Founder has approved CTX-ARCH-016, PD-061, CTX-UX-009, CTX-RB-010, and this documentation set, and separately authorized implementation through the integrated Level 4 checkpoint. The approved sequence and current state are:
 
 1. Governance-document approval
 2. Documentation-only commit
-3. Isolated migration and implementation design — implemented locally in Work Package 1
-4. Founder approval of migration/implementation design — current acceptance gate
-5. Canonical server geofence service — implemented locally in Work Package 1; not wired or released
-6. Owner boundary-management workflow
-7. Driver advisory indicator
-8. Check-in and submission enforcement
-9. Admin and operational integration
-10. Controlled testing
-11. Post-validation documentation and closeout
-12. Production release verification
-13. Founder acceptance
+3. Isolated migration and implementation design — complete on the feature branch
+4. Founder approval of migration/implementation design — complete
+5. Canonical server geofence service — complete behind disabled controls
+6. Owner boundary-management workflow — complete behind disabled controls
+7. Driver advisory indicator — complete behind disabled controls
+8. Check-in and submission enforcement — complete behind disabled controls
+9. Admin and operational integration — complete behind disabled controls
+10. Controlled automated testing — complete; controlled visual walkthrough remains pending
+11. Post-validation documentation and closeout — complete at the engineering checkpoint
+12. Production release verification — not begun
+13. Founder release acceptance — pending
 14. Phase 5 Sprint 3 — Two-Factor Authentication
 
-The later migration design must be additive and cover versioned boundary rows, revision events, durable activity evaluations, indexes, lifecycle/mode/uniqueness and idempotency constraints, feature flags, backup/recovery evidence, and application rollback that retains additive data. It must not infer polygons, backfill active geometry, require destructive rollback, or reach Production without explicit Founder authorization and a recovery checkpoint.
+Migration `0040` is additive and covers versioned boundary rows, revision events, durable activity evaluations, indexes, lifecycle/mode/uniqueness and idempotency constraints, feature flags, recovery evidence, and application rollback that retains additive data. It does not infer polygons or backfill active geometry. It must not reach Production without explicit Founder authorization and a recovery checkpoint.
 
 ## 6. Required test matrix
 
@@ -119,9 +129,9 @@ The later migration design must be additive and cover versioned boundary rows, r
 
 ## 7. Risk and validation
 
-The original documentation package was assigned Development Protocol Level 2. Work Package 1 is Level 3 because it changes schema definitions, adds a migration and persistent private evidence contract, and creates future authorization-sensitive server infrastructure. The eventual release remains Level 4.
+The original documentation package was assigned Development Protocol Level 2. Work Package 1 was Level 3 because it changed schema definitions, added a migration and persistent private evidence contract, and created authorization-sensitive server infrastructure. The integrated release checkpoint is Level 4.
 
-Work Package 1 validation includes focused geometry/schema/feature-flag/regression tests, TypeScript, Production build, one full suite, isolated PostgreSQL migration dry-run and transaction rollback, non-destructive application-recovery verification, documentation checks, and final diff/status inspection. Production database execution and deployment remain prohibited.
+The Level 4 checkpoint passed TypeScript, Production build, one complete suite, the focused geofence/Owner/Driver/Admin/Notification/RBAC/privacy/localization/financial matrix, isolated PostgreSQL migration/rollback/reapplication, schema and immutability checks, and final privacy/performance/query-bounding review. A controlled non-Production browser environment with Owner, Driver, and Admin identities was unavailable, so real-device map, browser, and assistive-technology acceptance remains a release condition. Production database execution and deployment remain prohibited until separately authorized.
 
 ### Work Package 1 migration verification and recovery plan
 
@@ -160,3 +170,4 @@ No policy conflict remains open in this approved documentation set. Exact librar
 | 0.2 | 2026-08-04 | Incorporated Founder-approved architecture, policy, transition, migration, validation, and fourteen-step sequencing; documentation only. |
 | 1.0 | 2026-08-04 | Founder approved the final documentation package; migration design and implementation remain separately authorized. |
 | 1.1 | 2026-08-04 | Recorded the separately authorized, locally implemented Work Package 1 data foundation, disabled controls, canonical server service, ADR-033, isolated migration/recovery validation, and pending Founder acceptance. |
+| 2.0 | 2026-08-05 | Recorded the integrated Level 4 engineering checkpoint, isolated migration lifecycle, complete automated matrix, query-bounding hardening, Production isolation, and the remaining controlled visual acceptance gate. |
