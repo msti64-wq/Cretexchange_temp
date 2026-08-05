@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatLocalizedDate, useLanguage } from "@/lib/i18n";
 import { FacilityBoundaryEditor, type BoundaryMode, type BoundaryPoint } from "@/components/owner/FacilityBoundaryEditor";
+import { LanguageToggle } from "@/components/LanguageToggle";
 
 type Boundary = {
   id: string; version: number; mode: BoundaryMode; center: BoundaryPoint | null; radiusMeters: number | null;
@@ -24,6 +25,30 @@ type Payload = {
   active: Boundary | null;
   versions: Boundary[];
   history: Array<{ id: string; boundaryVersionId: string; eventType: string; reasonCode: string; actorRole: string | null; safeMetadata: Record<string, unknown>; createdAt: string }>;
+};
+
+const STATUS_TRANSLATION_KEYS: Record<string, string> = {
+  active: "geofence.owner.status.active",
+  draft: "geofence.owner.status.draft",
+  superseded: "geofence.owner.status.superseded",
+};
+
+const EVENT_TRANSLATION_KEYS: Record<string, string> = {
+  draft_created: "geofence.owner.event.draftCreated",
+  activated: "geofence.owner.event.activated",
+  superseded: "geofence.owner.event.superseded",
+  assistance_requested: "geofence.owner.event.assistanceRequested",
+  correction_recorded: "geofence.owner.event.correctionRecorded",
+};
+
+const REASON_TRANSLATION_KEYS: Record<string, string> = {
+  OWNER_DRAFT_CREATED: "geofence.owner.reason.ownerDraftCreated",
+  OWNER_CONFIRMED_OPERATIONAL_AREA: "geofence.owner.reason.ownerConfirmedOperationalArea",
+  MAP_HELP: "geofence.owner.reason.mapHelp",
+  BOUNDARY_CORRECTION_HELP: "geofence.owner.reason.boundaryCorrectionHelp",
+  LOCATION_DATA_HELP: "geofence.owner.reason.locationDataHelp",
+  TEMPORARY_EXCEPTION_CONTEXT: "geofence.owner.reason.temporaryExceptionContext",
+  OTHER: "geofence.owner.reason.other",
 };
 
 function defaultPolygon(center: BoundaryPoint): BoundaryPoint[] {
@@ -43,7 +68,7 @@ export default function OwnerFacilityGeofence() {
   const [polygon, setPolygon] = useState<BoundaryPoint[]>([]);
   const [exceptionDistanceMeters, setExceptionDistanceMeters] = useState(1609.344);
   const [validation, setValidation] = useState<{ valid: boolean; reasonCode?: string } | null>(null);
-  const [activationReason, setActivationReason] = useState("OWNER_CONFIRMED_OPERATIONAL_AREA");
+  const [activationReason, setActivationReason] = useState("");
   const [assistanceNote, setAssistanceNote] = useState("");
 
   const query = useQuery<Payload>({ queryKey: [`/api/owners/locations/${locationId}/geofence`] });
@@ -51,6 +76,12 @@ export default function OwnerFacilityGeofence() {
   const effectiveCenter = center || facilityCenter;
   const effectivePolygon = polygon.length ? polygon : facilityCenter ? defaultPolygon(facilityCenter) : [];
   const latestDraft = query.data?.versions.find((boundary) => boundary.status === "draft") || null;
+  const localizedStatus = (status: string) => t(STATUS_TRANSLATION_KEYS[status] || "geofence.owner.status.unknown");
+  const localizedMode = (boundaryMode: BoundaryMode) => t(boundaryMode === "radius" ? "geofence.owner.radius" : "geofence.owner.polygon");
+  const localizedEvent = (eventType: string) => t(EVENT_TRANSLATION_KEYS[eventType] || "geofence.owner.event.updated");
+  const localizedReason = (reasonCode: string) => REASON_TRANSLATION_KEYS[reasonCode]
+    ? t(REASON_TRANSLATION_KEYS[reasonCode])
+    : reasonCode.replaceAll("_", " ").toLocaleLowerCase(language);
 
   const requestBody = useMemo(() => mode === "radius"
     ? { mode, center: effectiveCenter, radiusMeters, exceptionDistanceMeters }
@@ -107,7 +138,7 @@ export default function OwnerFacilityGeofence() {
     <main className="space-y-6 p-4 pb-24" data-testid="owner-facility-geofence-page">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div><Button variant="ghost" className="mb-2 px-0" onClick={() => navigate("/locations")}><ArrowLeft className="mr-2 h-4 w-4" />{t("geofence.owner.back")}</Button><h1 className="text-2xl font-bold">{t("geofence.owner.title")}</h1><p className="text-muted-foreground">{query.data.facility.name}</p></div>
-        <Badge variant={query.data.active ? "default" : "secondary"} className="w-fit"><ShieldCheck className="mr-1 h-4 w-4" />{query.data.active ? t("geofence.owner.ready") : t("geofence.owner.notReady")}</Badge>
+        <div className="flex items-center gap-2 sm:flex-col sm:items-end"><LanguageToggle /><Badge variant={query.data.active ? "default" : "secondary"} className="w-fit"><ShieldCheck className="mr-1 h-4 w-4" />{query.data.active ? t("geofence.owner.ready") : t("geofence.owner.notReady")}</Badge></div>
       </div>
 
       <Card><CardHeader><CardTitle className="flex items-center gap-2"><Map className="h-5 w-5" />{t("geofence.owner.editor")}</CardTitle></CardHeader><CardContent className="space-y-5">
@@ -119,11 +150,11 @@ export default function OwnerFacilityGeofence() {
         <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={validateMutation.isPending} onClick={() => validateMutation.mutate()}>{t("geofence.owner.validate")}</Button><Button disabled={draftMutation.isPending || validation?.valid !== true} onClick={() => draftMutation.mutate()}>{t("geofence.owner.saveDraft")}</Button></div>
       </CardContent></Card>
 
-      {latestDraft && <Card className="border-blue-300"><CardHeader><CardTitle>{t("geofence.owner.activation")}</CardTitle></CardHeader><CardContent className="space-y-4"><p className="text-sm">{t("geofence.owner.activationWarning", { version: latestDraft.version })}</p><div><Label htmlFor="activation-reason">{t("geofence.owner.activationReason")}</Label><Input id="activation-reason" value={activationReason} onChange={(event) => setActivationReason(event.target.value)} /></div><Button disabled={activateMutation.isPending || activationReason.trim().length < 3} onClick={() => activateMutation.mutate(latestDraft.id)}><ShieldCheck className="mr-2 h-4 w-4" />{t("geofence.owner.activate")}</Button></CardContent></Card>}
+      {latestDraft && <Card className="border-blue-300"><CardHeader><CardTitle>{t("geofence.owner.activation")}</CardTitle></CardHeader><CardContent className="space-y-4"><p className="text-sm">{t("geofence.owner.activationWarning", { version: latestDraft.version })}</p><div><Label htmlFor="activation-reason">{t("geofence.owner.activationReason")}</Label><Input id="activation-reason" value={activationReason} placeholder={t("geofence.owner.activationReasonPlaceholder")} onChange={(event) => setActivationReason(event.target.value)} /></div><Button disabled={activateMutation.isPending || activationReason.trim().length < 3} onClick={() => activateMutation.mutate(latestDraft.id)}><ShieldCheck className="mr-2 h-4 w-4" />{t("geofence.owner.activate")}</Button></CardContent></Card>}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card><CardHeader><CardTitle>{t("geofence.owner.versions")}</CardTitle></CardHeader><CardContent className="space-y-3">{query.data.versions.length === 0 ? <p className="text-sm text-muted-foreground">{t("geofence.owner.noVersions")}</p> : query.data.versions.map((boundary) => <div key={boundary.id} className="flex items-start justify-between gap-3 rounded-lg border p-3"><div><div className="flex items-center gap-2"><strong>{t("geofence.owner.version", { version: boundary.version })}</strong><Badge variant={boundary.status === "active" ? "default" : "secondary"}>{boundary.status}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{boundary.mode} · {boundary.effectiveFrom ? formatLocalizedDate(boundary.effectiveFrom, language, { dateStyle: "medium", timeStyle: "short" }) : t("geofence.owner.notEffective")}</p></div><Button size="sm" variant="outline" onClick={() => editFromVersion(boundary)}>{t("geofence.owner.correctVersion")}</Button></div>)}</CardContent></Card>
-        <Card><CardHeader><CardTitle className="flex items-center gap-2"><Clock3 className="h-5 w-5" />{t("geofence.owner.history")}</CardTitle></CardHeader><CardContent className="space-y-3">{query.data.history.length === 0 ? <p className="text-sm text-muted-foreground">{t("geofence.owner.noHistory")}</p> : query.data.history.map((event) => <div key={event.id} className="border-b pb-3 text-sm last:border-0"><strong>{event.eventType.replaceAll("_", " ")}</strong><p className="text-muted-foreground">{event.reasonCode} · {formatLocalizedDate(event.createdAt, language, { dateStyle: "medium", timeStyle: "short" })}</p></div>)}</CardContent></Card>
+        <Card><CardHeader><CardTitle>{t("geofence.owner.versions")}</CardTitle></CardHeader><CardContent className="space-y-3">{query.data.versions.length === 0 ? <p className="text-sm text-muted-foreground">{t("geofence.owner.noVersions")}</p> : query.data.versions.map((boundary) => <div key={boundary.id} className="flex items-start justify-between gap-3 rounded-lg border p-3"><div><div className="flex items-center gap-2"><strong>{t("geofence.owner.version", { version: boundary.version })}</strong><Badge variant={boundary.status === "active" ? "default" : "secondary"}>{localizedStatus(boundary.status)}</Badge></div><p className="mt-1 text-xs text-muted-foreground">{localizedMode(boundary.mode)} · {boundary.effectiveFrom ? formatLocalizedDate(boundary.effectiveFrom, language, { dateStyle: "medium", timeStyle: "short" }) : t("geofence.owner.notEffective")}</p></div><Button size="sm" variant="outline" onClick={() => editFromVersion(boundary)}>{t("geofence.owner.correctVersion")}</Button></div>)}</CardContent></Card>
+        <Card><CardHeader><CardTitle className="flex items-center gap-2"><Clock3 className="h-5 w-5" />{t("geofence.owner.history")}</CardTitle></CardHeader><CardContent className="space-y-3">{query.data.history.length === 0 ? <p className="text-sm text-muted-foreground">{t("geofence.owner.noHistory")}</p> : query.data.history.map((event) => <div key={event.id} className="border-b pb-3 text-sm last:border-0"><strong>{localizedEvent(event.eventType)}</strong><p className="text-muted-foreground">{localizedReason(event.reasonCode)} · {formatLocalizedDate(event.createdAt, language, { dateStyle: "medium", timeStyle: "short" })}</p></div>)}</CardContent></Card>
       </div>
 
       <Card><CardHeader><CardTitle className="flex items-center gap-2"><HelpCircle className="h-5 w-5" />{t("geofence.owner.assistance")}</CardTitle></CardHeader><CardContent className="space-y-3"><p className="text-sm text-muted-foreground">{t("geofence.owner.assistanceHelp")}</p><Textarea value={assistanceNote} onChange={(event) => setAssistanceNote(event.target.value)} maxLength={500} placeholder={t("geofence.owner.assistancePlaceholder")} /><Button variant="outline" disabled={!query.data.versions[0] || assistanceMutation.isPending} onClick={() => assistanceMutation.mutate(query.data.versions[0].id)}>{t("geofence.owner.requestAssistance")}</Button></CardContent></Card>

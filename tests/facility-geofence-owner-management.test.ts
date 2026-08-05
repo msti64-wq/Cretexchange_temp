@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { registerFacilityGeofenceRoutes } from "../server/facilityGeofenceRoutes";
 import { calculateFacilityGeofenceChecksum } from "../server/facilityGeofenceService";
@@ -119,5 +120,27 @@ test("Admin context is role-protected and privacy-reduced", async () => {
   assert.equal(res.body.state, "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE");
   for (const forbidden of ["observationLatitude", "observationLongitude", "accuracyMeters", "outsideDistanceMeters", "geometry"]) {
     assert.equal(forbidden in res.body, false, forbidden);
+  }
+});
+
+test("Owner boundary history and status metadata are bilingual and expose an on-page language control", async () => {
+  const [page, i18n] = await Promise.all([
+    readFile(new URL("../client/src/pages/owner/facility-geofence.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../client/src/lib/i18n.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /<LanguageToggle/);
+  assert.match(page, /localizedStatus\(boundary\.status\)/);
+  assert.match(page, /localizedMode\(boundary\.mode\)/);
+  assert.match(page, /localizedEvent\(event\.eventType\)/);
+  assert.match(page, /localizedReason\(event\.reasonCode\)/);
+
+  for (const key of [
+    "geofence.owner.status.active",
+    "geofence.owner.event.activated",
+    "geofence.owner.reason.ownerConfirmedOperationalArea",
+    "geofence.owner.activationReasonPlaceholder",
+  ]) {
+    assert.equal(i18n.split(`\"${key}\"`).length - 1, 2, `${key} must exist in English and Spanish`);
   }
 });
