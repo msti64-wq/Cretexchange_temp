@@ -145,10 +145,16 @@ test("Owner boundary history and status metadata are bilingual and expose an on-
   }
 });
 
-test("Owner boundary map loads only the Maps JavaScript API using the supported asynchronous callback", async () => {
-  const editor = await readFile(new URL("../client/src/components/owner/FacilityBoundaryEditor.tsx", import.meta.url), "utf8");
+test("Owner boundary map awaits the focused Maps library and retains controlled error UI", async () => {
+  const [editor, loader] = await Promise.all([
+    readFile(new URL("../client/src/components/owner/FacilityBoundaryEditor.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../client/src/lib/googleMapsLoader.ts", import.meta.url), "utf8"),
+  ]);
 
-  assert.match(editor, /loading=async/);
-  assert.match(editor, /callback=\$\{callbackName\}/);
-  assert.doesNotMatch(editor, /libraries=places/);
+  assert.match(editor, /loadGoogleMapsLibrary/);
+  assert.match(editor, /new mapsLibrary\.Map/);
+  assert.match(editor, /setMapUnavailable\(true\)/);
+  assert.match(loader, /loading=async/);
+  assert.match(loader, /importLibrary\("maps"\)/);
+  assert.doesNotMatch(loader, /libraries=places/);
 });

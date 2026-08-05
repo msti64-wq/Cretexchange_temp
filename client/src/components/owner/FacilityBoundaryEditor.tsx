@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MapPin, Plus, Trash2 } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
+import { loadGoogleMapsLibrary, type GoogleMapsLibrary } from "@/lib/googleMapsLoader";
 
 export type BoundaryMode = "radius" | "polygon";
 export type BoundaryPoint = [number, number];
@@ -19,46 +20,11 @@ interface Props {
   onPolygonChange: (points: BoundaryPoint[]) => void;
 }
 
-function loadGoogleMaps(onReady: () => void, onError: () => void) {
-  if ((window as any).google?.maps) return onReady();
-  const existing = document.querySelector<HTMLScriptElement>('script[src*="maps.googleapis.com"]');
-  if (existing) {
-    existing.addEventListener("load", onReady, { once: true });
-    existing.addEventListener("error", onError, { once: true });
-    return;
-  }
-  const key = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-  if (!key || key === "YOUR_API_KEY") return onError();
-  const script = document.createElement("script");
-  const callbackName = "__creteXchangeFacilityBoundaryMapsReady";
-  let settled = false;
-  const ready = () => {
-    if (settled) return;
-    settled = true;
-    delete (window as any)[callbackName];
-    onReady();
-  };
-  const failed = () => {
-    if (settled) return;
-    settled = true;
-    delete (window as any)[callbackName];
-    onError();
-  };
-  (window as any)[callbackName] = ready;
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&callback=${callbackName}`;
-  script.async = true;
-  script.defer = true;
-  script.addEventListener("load", () => {
-    if ((window as any).google?.maps) ready();
-  }, { once: true });
-  script.addEventListener("error", failed, { once: true });
-  document.head.appendChild(script);
-}
-
 export function FacilityBoundaryEditor(props: Props) {
   const { t } = useLanguage();
   const mapElement = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
+  const mapsLibraryRef = useRef<GoogleMapsLibrary | null>(null);
   const overlayRef = useRef<any>(null);
   const listenersRef = useRef<any[]>([]);
   const propsRef = useRef(props);
@@ -68,9 +34,11 @@ export function FacilityBoundaryEditor(props: Props) {
 
   useEffect(() => {
     let active = true;
-    loadGoogleMaps(() => {
+    setMapReady(false);
+    void loadGoogleMapsLibrary(import.meta.env.VITE_GOOGLE_MAPS_API_KEY).then((mapsLibrary) => {
       if (!active || !mapElement.current) return;
-      mapRef.current = new google.maps.Map(mapElement.current, {
+      mapsLibraryRef.current = mapsLibrary;
+      mapRef.current = new mapsLibrary.Map(mapElement.current, {
         center: { lat: props.facilityCenter[1], lng: props.facilityCenter[0] },
         zoom: 18,
         mapTypeId: "satellite",
@@ -80,7 +48,11 @@ export function FacilityBoundaryEditor(props: Props) {
       } as any);
       setMapUnavailable(false);
       setMapReady(true);
-    }, () => active && setMapUnavailable(true));
+    }).catch(() => {
+      if (!active) return;
+      setMapReady(false);
+      setMapUnavailable(true);
+    });
     return () => {
       active = false;
       listenersRef.current.forEach((listener) => listener.remove());
@@ -90,13 +62,14 @@ export function FacilityBoundaryEditor(props: Props) {
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !(window as any).google?.maps) return;
+    const mapsLibrary = mapsLibraryRef.current;
+    if (!map || !mapsLibrary) return;
     listenersRef.current.forEach((listener) => listener.remove());
     listenersRef.current = [];
     overlayRef.current?.setMap(null);
 
     if (props.mode === "radius") {
-      const circle = new (google.maps as any).Circle({
+      const circle = new mapsLibrary.Circle({
         map,
         center: { lat: props.center[1], lng: props.center[0] },
         radius: props.radiusMeters,
@@ -119,7 +92,7 @@ export function FacilityBoundaryEditor(props: Props) {
       return;
     }
 
-    const polygon = new (google.maps as any).Polygon({
+    const polygon = new mapsLibrary.Polygon({
       map,
       paths: props.polygon.map(([lng, lat]) => ({ lng, lat })),
       editable: true,
