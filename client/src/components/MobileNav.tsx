@@ -43,6 +43,7 @@ export function MobileNav({ role }: MobileNavProps) {
       case "owner":
         return [
           { path: "/", icon: Home, label: t("common.dashboard"), testIdLabel: "dashboard" },
+          { path: "/dashboard/reviews", icon: ClipboardList, label: t("owner.reviews.nav"), testIdLabel: "washout-reviews" },
           { path: "/locations", icon: Building, label: t("common.locations"), testIdLabel: "locations" },
           { path: "/drivers", icon: Users, label: t("common.drivers"), testIdLabel: "drivers" },
           { path: "/intelligence", icon: BarChart3, label: t("owner.intelligence.nav"), testIdLabel: "facility-intelligence" },

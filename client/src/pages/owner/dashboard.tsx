@@ -723,6 +723,17 @@ export default function OwnerDashboard() {
       <OwnerHeader />
 
       <main className="mx-auto w-full max-w-6xl min-w-0 space-y-6 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-5">
+        <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between" aria-labelledby="washout-reviews-title" data-testid="washout-reviews-heading">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("owner.reviews.allFacilities")}</p>
+            <h2 id="washout-reviews-title" className="mt-1 text-2xl font-semibold tracking-tight">{t("owner.reviews.title")}</h2>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{t("owner.reviews.description")}</p>
+          </div>
+          <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={() => setLocation("/dashboard")} data-testid="button-back-to-owner-dashboard">
+            {t("owner.reviews.backToDashboard")}
+          </Button>
+        </section>
+
         {/* Profile Completion Notice - Temporarily commented out for TypeScript fix */}
         {/* TODO: Re-enable after TypeScript configuration is resolved */}
 

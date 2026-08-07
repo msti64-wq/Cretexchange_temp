@@ -91,6 +91,7 @@ export type OwnerOperationalSummary = {
   };
   attention: null | {
     pendingReviews: number;
+    allPendingReviews: number;
     agedPendingReviews: number;
     missingEvidence: number;
     returnedFromAdministrativeReview: number;
@@ -168,10 +169,16 @@ async function loadActivitySummary(database: Database, facilityId: string, start
   return rowsOf<Record<string, unknown>>(result)[0] || {};
 }
 
-async function loadAttentionSummary(database: Database, facilityId: string, agedBefore: Date) {
+async function loadAttentionSummary(database: Database, facilityId: string, ownerId: string, agedBefore: Date) {
   const result = await database.execute(sql`
     select
       count(*) filter (where a.status = 'pending') as pending_reviews,
+      (
+        select count(*)
+        from washout_activities owner_activity
+        join washout_locations owner_location on owner_location.id = owner_activity.location_id
+        where owner_location.owner_id = ${ownerId} and owner_activity.status = 'pending'
+      ) as all_pending_reviews,
       count(*) filter (where a.status = 'pending' and a.created_at < ${agedBefore}) as aged_pending_reviews,
       count(*) filter (where a.status = 'pending' and not exists (
         select 1 from washout_photos p where p.activity_id = a.id
@@ -332,7 +339,7 @@ export async function buildOwnerOperationalSummary(input: {
   const agedBefore = new Date(now.getTime() - OWNER_OPERATIONAL_PENDING_AGE_HOURS * 60 * 60 * 1000);
   const [activitySummary, attentionSummary, pendingReviews, recentActivity, acceptedMaterials] = await Promise.all([
     loadActivitySummary(input.database, selectedFacilityId, startOfToday, endOfToday),
-    loadAttentionSummary(input.database, selectedFacilityId, agedBefore),
+    loadAttentionSummary(input.database, selectedFacilityId, input.ownerId, agedBefore),
     loadActivityPreview(input.database, selectedFacilityId, true, OWNER_OPERATIONAL_PREVIEW_LIMIT),
     loadActivityPreview(input.database, selectedFacilityId, false, OWNER_OPERATIONAL_PREVIEW_LIMIT),
     loadAcceptedMaterials(input.database, selectedFacilityId),
@@ -385,6 +392,7 @@ export async function buildOwnerOperationalSummary(input: {
     },
     attention: {
       pendingReviews: numberValue(attentionSummary.pending_reviews),
+      allPendingReviews: numberValue(attentionSummary.all_pending_reviews),
       agedPendingReviews: numberValue(attentionSummary.aged_pending_reviews),
       missingEvidence: numberValue(attentionSummary.missing_evidence),
       returnedFromAdministrativeReview: numberValue(attentionSummary.returned_from_admin_review),

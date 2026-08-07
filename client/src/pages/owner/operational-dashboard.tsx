@@ -49,7 +49,7 @@ type OperationalActivity = {
 type OperationalSummary = {
   selection: { state: "selected" | "required" | "empty"; selectedFacilityId: string | null; selectedFacilityName: string | null; source: "request" | "single" | null; facilities: Facility[] };
   today: null | { submitted: number; awaitingReview: number; verified: number; rejected: number; activeDrivers: number; latestActivityAt: string | null; timezone: "UTC" };
-  attention: null | { pendingReviews: number; agedPendingReviews: number; missingEvidence: number; returnedFromAdministrativeReview: number; failedEvidence: number; unresolvedOperationalNotices: number; facilityConfigurationIssues: string[]; termsAcceptanceRequired: boolean; readinessActionRequired: boolean };
+  attention: null | { pendingReviews: number; allPendingReviews: number; agedPendingReviews: number; missingEvidence: number; returnedFromAdministrativeReview: number; failedEvidence: number; unresolvedOperationalNotices: number; facilityConfigurationIssues: string[]; termsAcceptanceRequired: boolean; readinessActionRequired: boolean };
   pendingReviews: OperationalActivity[];
   recentActivity: OperationalActivity[];
   facilityStatus: null | { id: string; name: string; ownerApproved: boolean; active: boolean; visible: boolean; profileComplete: boolean; operatingHoursConfigured: boolean; acceptedMaterials: string[]; operational: boolean; issues: string[]; intelligenceLink: string; manageLink: string };
@@ -193,7 +193,7 @@ export default function OwnerOperationalDashboard() {
     content = <main className="mx-auto max-w-6xl space-y-7 px-4 py-6">
       <span className="sr-only" role="status" aria-live="polite">{summary.isFetching ? t("owner.operational.refreshing") : t("owner.operational.loaded", { facility: facility.name })}</span>
       <header className="space-y-4">
-        <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("owner.operational.eyebrow")}</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">{t("owner.operational.title")}</h2><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t("owner.operational.subtitle")}</p></div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("owner.operational.eyebrow")}</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">{t("owner.operational.title")}</h2><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t("owner.operational.subtitle")}</p></div><Button type="button" className="min-h-11 shrink-0" onClick={() => setLocation("/dashboard/reviews")} aria-label={t("owner.reviews.openAria")} data-testid="button-washout-reviews"><ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />{t("owner.reviews.nav")}</Button></div>
         <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-end sm:justify-between" data-testid="owner-operational-current-context">
           <div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("owner.operational.currentlyViewing")}</p><p className="mt-1 text-lg font-semibold">{facility.name}</p></div>
           <div><p className="mb-1 text-xs font-medium text-muted-foreground">{t("owner.operational.changeFacility")}</p>{facilitySelector}</div>
@@ -201,9 +201,10 @@ export default function OwnerOperationalDashboard() {
       </header>
 
       <section aria-labelledby="attention-heading" className="space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 id="attention-heading" className="text-xl font-semibold">{t("owner.operational.requiresAttention")}</h2><p className="mt-1 text-sm text-muted-foreground">{attentionTotal > 0 ? t("owner.operational.attentionDescription", { count: attentionTotal }) : t("owner.operational.noAttention")}</p></div><Button className="min-h-11" disabled={attention.pendingReviews === 0} onClick={() => setLocation(data.pendingReviews[0]?.reviewLink || "/dashboard/reviews")}><ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />{t("owner.operational.reviewPending")}</Button></div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <MetricCard label={t("owner.operational.pendingReviews")} value={attention.pendingReviews} icon={Clock3} testId="owner-operational-pending-count" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 id="attention-heading" className="text-xl font-semibold">{t("owner.operational.requiresAttention")}</h2><p className="mt-1 text-sm text-muted-foreground">{attentionTotal > 0 ? t("owner.operational.attentionDescription", { count: attentionTotal }) : t("owner.operational.noAttention")}</p></div><Button type="button" className="min-h-11" variant="outline" onClick={() => setLocation("/dashboard/reviews")} aria-label={t("owner.reviews.openAria")}><ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />{t("owner.reviews.nav")}</Button></div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+          <MetricCard label={t("owner.operational.pendingAtFacility")} value={attention.pendingReviews} icon={Clock3} testId="owner-operational-pending-count" />
+          <MetricCard label={t("owner.operational.allPendingReviews")} value={attention.allPendingReviews} icon={ShieldCheck} testId="owner-operational-all-pending-count" />
           <MetricCard label={t("owner.operational.missingEvidence")} value={attention.missingEvidence} icon={FileImage} testId="owner-operational-missing-evidence" />
           <MetricCard label={t("owner.operational.returnedReviews")} value={attention.returnedFromAdministrativeReview} icon={RefreshCw} testId="owner-operational-returned-reviews" />
           <MetricCard label={t("owner.operational.failedEvidence")} value={attention.failedEvidence} icon={AlertTriangle} testId="owner-operational-failed-evidence" />

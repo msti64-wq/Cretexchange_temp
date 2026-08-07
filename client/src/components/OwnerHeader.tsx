@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-import { BarChart3, User, Plus, CreditCard } from "lucide-react";
+import { BarChart3, User, Plus, CreditCard, ClipboardList } from "lucide-react";
 import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
@@ -40,7 +40,18 @@ export function OwnerHeader() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLocation('/dashboard/reviews')}
+            aria-label={t("owner.reviews.openAria")}
+            data-testid="button-owner-washout-reviews"
+            className="h-11 border-border bg-card text-foreground hover:bg-muted sm:h-10"
+          >
+            <ClipboardList className="mr-2 h-4 w-4" aria-hidden="true" />
+            {t("owner.reviews.nav")}
+          </Button>
           <Button
             variant="outline"
             size="sm"

@@ -77,7 +77,7 @@ test("single-Facility operational summary auto-selects and projects canonical to
   const database = databaseWithResults([
     [{ id: "facility-one", name: "Revel Patio Grill", is_active: true, is_visible: true, operating_hours: { monday: "open" } }],
     [{ submitted: "4", awaiting_review: "2", verified: "1", rejected: "1", active_drivers: "3", latest_activity_at: new Date("2026-08-03T20:00:00Z") }],
-    [{ pending_reviews: "2", aged_pending_reviews: "1", missing_evidence: "1", failed_evidence: "0", returned_from_admin_review: "1" }],
+    [{ pending_reviews: "2", all_pending_reviews: "6", aged_pending_reviews: "1", missing_evidence: "1", failed_evidence: "0", returned_from_admin_review: "1" }],
     pendingRows,
     recentRows,
     [{ label: "Concrete Washout" }, { label: "Asphalt" }],
@@ -97,6 +97,7 @@ test("single-Facility operational summary auto-selects and projects canonical to
   assert.equal(result.selection.source, "single");
   assert.deepEqual(result.today, { submitted: 4, awaitingReview: 2, verified: 1, rejected: 1, activeDrivers: 3, latestActivityAt: "2026-08-03T20:00:00.000Z", timezone: "UTC" });
   assert.equal(result.attention?.pendingReviews, 2);
+  assert.equal(result.attention?.allPendingReviews, 6);
   assert.equal(result.attention?.agedPendingReviews, 1);
   assert.equal(result.attention?.returnedFromAdministrativeReview, 1);
   assert.equal(result.pendingReviews.length, OWNER_OPERATIONAL_PREVIEW_LIMIT);
@@ -180,7 +181,7 @@ test("operational summary contract contains no financial, contact, precise GPS, 
   assert.match(source, new RegExp(`OWNER_OPERATIONAL_PENDING_AGE_HOURS = ${OWNER_OPERATIONAL_PENDING_AGE_HOURS}`));
 });
 
-test("route and client enforce Owner RBAC, Facility selection, loading, refresh, retry, deep links, and separate Facility Intelligence", async () => {
+test("route and client enforce Owner RBAC, Facility selection, permanent all-Facility review navigation, refresh, retry, deep links, and separate Facility Intelligence", async () => {
   const [routes, app, page] = await Promise.all([
     readFile(new URL("../server/routes.ts", import.meta.url), "utf8"),
     readFile(new URL("../client/src/App.tsx", import.meta.url), "utf8"),
@@ -202,6 +203,11 @@ test("route and client enforce Owner RBAC, Facility selection, loading, refresh,
   assert.match(page, /facility\.intelligenceLink/);
   assert.match(page, /window\.location\.search/);
   assert.match(page, /setUrlSelection\(\{ present: true, facilityId: nextFacilityId \}\)/);
+  assert.match(page, /setLocation\("\/dashboard\/reviews"\)/);
+  assert.match(page, /owner\.operational\.pendingAtFacility/);
+  assert.match(page, /owner\.operational\.allPendingReviews/);
+  assert.match(page, /owner-operational-all-pending-count/);
+  assert.doesNotMatch(page, /disabled=\{attention\.pendingReviews === 0\}/);
   assert.match(page, /min-h-11/);
   assert.match(page, /aria-live="polite"/);
   assert.doesNotMatch(page, /locations\[0\]/);
