@@ -180,7 +180,7 @@ test("operational summary contract contains no financial, contact, precise GPS, 
   assert.match(source, new RegExp(`OWNER_OPERATIONAL_PENDING_AGE_HOURS = ${OWNER_OPERATIONAL_PENDING_AGE_HOURS}`));
 });
 
-test("route and client enforce Owner RBAC, Facility selection, loading, retry, deep links, and separate Facility Intelligence", async () => {
+test("route and client enforce Owner RBAC, Facility selection, loading, refresh, retry, deep links, and separate Facility Intelligence", async () => {
   const [routes, app, page] = await Promise.all([
     readFile(new URL("../server/routes.ts", import.meta.url), "utf8"),
     readFile(new URL("../client/src/App.tsx", import.meta.url), "utf8"),
@@ -194,6 +194,10 @@ test("route and client enforce Owner RBAC, Facility selection, loading, retry, d
   assert.match(page, /owner-operational-loading/);
   assert.match(page, /owner-operational-error/);
   assert.match(page, /summary\.refetch\(\)/);
+  assert.match(page, /refetchInterval:\s*30_000/);
+  assert.match(page, /refetchIntervalInBackground:\s*false/);
+  assert.match(page, /refetchOnMount:\s*"always"/);
+  assert.match(page, /refetchOnWindowFocus:\s*true/);
   assert.match(page, /reviewLink/);
   assert.match(page, /facility\.intelligenceLink/);
   assert.match(page, /window\.location\.search/);

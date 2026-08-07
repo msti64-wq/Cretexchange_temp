@@ -130,6 +130,9 @@ export default function OwnerOperationalDashboard() {
     queryKey: ["owner-operational-dashboard", facilityId || "unselected"],
     queryFn: ({ signal }) => requestOperationalSummary(endpoint, signal),
     staleTime: 30_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+    refetchOnMount: "always",
     refetchOnWindowFocus: true,
     retry: 1,
   });
