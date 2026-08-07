@@ -149,6 +149,41 @@ test("0040 dry-runs, rolls back, reapplies, and preserves disabled recovery in i
     );
     assert.deepEqual(evaluation.rows[0], { boundary_version_id: "boundary-v1", boundary_version: 1 });
     await assert.rejects(
+      client.query(`
+        INSERT INTO activity_geofence_evaluations (
+          id, activity_id, location_id, boundary_version_id, boundary_version,
+          evaluation_purpose, result_state, reason_code, evaluated_at,
+          evidence_complete, idempotency_key
+        ) VALUES (
+          'evaluation-duplicate', 'activity-1', 'facility-1', 'boundary-v1', 1,
+          'submission', 'INSIDE_APPROVED_BOUNDARY', 'INSIDE_APPROVED_BOUNDARY', now(),
+          true, 'activity-1:submission:boundary-v1'
+        )
+      `),
+      /activity_geofence_evaluations_idempotency_key/i,
+    );
+
+    await client.query("BEGIN");
+    try {
+      await client.query("INSERT INTO washout_activities(id, driver_id, location_id) VALUES ('activity-retry', 'driver-1', 'facility-1')");
+      await client.query(`
+        INSERT INTO activity_geofence_evaluations (
+          id, activity_id, location_id, boundary_version_id, boundary_version,
+          evaluation_purpose, result_state, reason_code, evaluated_at,
+          evidence_complete, idempotency_key
+        ) VALUES (
+          'evaluation-retry', 'activity-retry', 'facility-1', 'boundary-v1', 1,
+          'submission', 'INSIDE_APPROVED_BOUNDARY', 'INSIDE_APPROVED_BOUNDARY', now(),
+          true, 'activity-1:submission:boundary-v1'
+        )
+      `);
+      assert.fail("duplicate submission idempotency key must fail");
+    } catch {
+      await client.query("ROLLBACK");
+    }
+    const rolledBackRetry = await client.query<{ count: string }>("SELECT count(*)::text AS count FROM washout_activities WHERE id = 'activity-retry'");
+    assert.equal(rolledBackRetry.rows[0].count, "0");
+    await assert.rejects(
       client.query("DELETE FROM activity_geofence_evaluations WHERE id = 'evaluation-1'"),
       /append-only/,
     );

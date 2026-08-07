@@ -131,9 +131,13 @@ export class DrizzleFacilityGeofenceRepository implements FacilityGeofenceReposi
     const rows = await db
       .selectDistinctOn([activityGeofenceEvaluations.activityId])
       .from(activityGeofenceEvaluations)
-      .where(inArray(activityGeofenceEvaluations.activityId, uniqueActivityIds))
+      .where(and(
+        inArray(activityGeofenceEvaluations.activityId, uniqueActivityIds),
+        eq(activityGeofenceEvaluations.evaluationPurpose, "submission"),
+      ))
       .orderBy(
         activityGeofenceEvaluations.activityId,
+        desc(activityGeofenceEvaluations.evaluatedAt),
         desc(activityGeofenceEvaluations.createdAt),
         desc(activityGeofenceEvaluations.id),
       );

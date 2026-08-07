@@ -31,6 +31,7 @@ import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/d
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { resolveWashoutOperationalStatus } from "@/lib/washoutOperationalStatus";
+import { getOwnerGeofencePresentation, type OwnerGeofencePresentationState } from "@/lib/ownerGeofencePresentation";
 
 function OwnerDashboardSkeleton() {
   return (
@@ -103,7 +104,7 @@ function OwnerAdministrativeReviewStatus({ activity }: { activity: any }) {
 }
 
 function OwnerGeofenceExceptionContext({ activity }: { activity: any }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [note, setNote] = useState("");
@@ -120,13 +121,40 @@ function OwnerGeofenceExceptionContext({ activity }: { activity: any }) {
       toast({ title: t("geofence.owner.temporaryRecorded"), description: t("geofence.owner.temporaryRecordedHelp") });
     },
   });
-  if (!context || context.state !== "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE") return null;
-  return <div className="mt-3 space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" data-testid={`owner-geofence-context-${activity.id}`}>
-    <p className="font-semibold">{t("geofence.owner.exceptionReview")}</p>
-    <p>{t("geofence.owner.exceptionReviewHelp", { version: context.boundaryVersion || "—" })}</p>
-    {context.acknowledgementCode && <p><strong>{t("geofence.driver.reason")}:</strong> {t(`geofence.reason.${context.acknowledgementCode}`)}</p>}
-    {context.driverNote && <p><strong>{t("geofence.driver.note")}:</strong> {context.driverNote}</p>}
-    {!recorded ? <div className="space-y-2"><Textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder={t("geofence.owner.temporaryPlaceholder")} /><Button type="button" size="sm" variant="outline" disabled={note.trim().length < 3 || recordTemporary.isPending} onClick={() => recordTemporary.mutate()}>{t("geofence.owner.markTemporary")}</Button></div> : <p className="font-medium text-emerald-800">{t("geofence.owner.temporaryRecorded")}</p>}
+  if (!context) return null;
+
+  const state = context.presentationState as OwnerGeofencePresentationState;
+  const presentation = getOwnerGeofencePresentation(state);
+  const Icon = presentation.tone === "green" ? Check : presentation.tone === "yellow" ? ShieldAlert : MapPin;
+  const toneClasses = presentation.tone === "green"
+    ? "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-900/70 dark:bg-emerald-950/25 dark:text-emerald-100"
+    : presentation.tone === "yellow"
+      ? "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/25 dark:text-amber-100"
+      : "border-slate-300 bg-slate-50 text-slate-900 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100";
+  const evaluatedAt = context.evaluatedAt
+    ? new Date(context.evaluatedAt).toLocaleString(language === "es" ? "es-US" : "en-US")
+    : null;
+  const yellow = state === "JUST_OUTSIDE_DELIVERY_BOUNDARY";
+
+  return <div
+    className={`mt-3 space-y-2 rounded-lg border p-3 text-sm ${toneClasses}`}
+    data-testid={`owner-geofence-context-${activity.id}`}
+    data-geofence-tone={presentation.tone}
+    role="status"
+    aria-label={t(presentation.labelKey)}
+  >
+    <div className="flex items-start gap-2">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+      <div>
+        <p className="font-semibold">{t(presentation.labelKey)}</p>
+        <p className="mt-1 text-xs opacity-90">{t(presentation.guidanceKey)}</p>
+      </div>
+    </div>
+    {evaluatedAt && <p className="text-xs"><strong>{t("geofence.owner.submission.evaluatedAt")}:</strong> {evaluatedAt}</p>}
+    {context.boundaryVersion && <p className="text-xs">{t("geofence.owner.submission.boundaryVersion", { version: context.boundaryVersion })}</p>}
+    {yellow && context.acknowledgementCode && <p><strong>{t("geofence.driver.reason")}:</strong> {t(`geofence.reason.${context.acknowledgementCode}`)}</p>}
+    {yellow && context.driverNote && <p><strong>{t("geofence.driver.note")}:</strong> {context.driverNote}</p>}
+    {yellow && (!recorded ? <div className="space-y-2"><Textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} placeholder={t("geofence.owner.temporaryPlaceholder")} /><Button type="button" size="sm" variant="outline" disabled={note.trim().length < 3 || recordTemporary.isPending} onClick={() => recordTemporary.mutate()}>{t("geofence.owner.markTemporary")}</Button></div> : <p className="font-medium text-emerald-800">{t("geofence.owner.temporaryRecorded")}</p>)}
   </div>;
 }
 
@@ -1461,11 +1489,6 @@ export default function OwnerDashboard() {
                           state: activity.location.state || '',
                           zip: activity.location.zip || ''
                         })}
-                      </div>
-                    )}
-                    {(activity.latitude && activity.longitude) && (
-                      <div className="mt-1 text-xs text-muted-foreground" data-testid={`text-gps-coordinates-${index}`}>
-                        GPS: {Number(activity.latitude).toFixed(6)}, {Number(activity.longitude).toFixed(6)}
                       </div>
                     )}
                     <OwnerAdministrativeReviewStatus activity={activity} />

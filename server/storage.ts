@@ -90,6 +90,7 @@ import {
   type InsertWashoutLocation,
   type InsertWashoutActivity,
   type InsertWashoutPhoto,
+  type ActivityGeofenceEvaluation,
   type InsertActivityGeofenceEvaluation,
   type InsertPayment,
   type InsertNotification,
@@ -338,7 +339,7 @@ export interface IStorage {
     activity: InsertWashoutActivity, 
     photos: Omit<InsertWashoutPhoto, 'activityId'>[],
     geofenceEvaluation?: InsertActivityGeofenceEvaluation | null,
-  ): Promise<{ activity: WashoutActivity; photos: WashoutPhoto[] }>;
+  ): Promise<{ activity: WashoutActivity; photos: WashoutPhoto[]; geofenceEvaluation: ActivityGeofenceEvaluation | null; reused?: boolean }>;
 
   // Payment operations
   createPayment(payment: InsertPayment & { tipAmountCents?: number | string | null }): Promise<Payment>;
@@ -1990,8 +1991,43 @@ export class DatabaseStorage implements IStorage {
     activity: InsertWashoutActivity, 
     photos: Omit<InsertWashoutPhoto, 'activityId'>[],
     geofenceEvaluation?: InsertActivityGeofenceEvaluation | null,
-  ): Promise<{ activity: WashoutActivity; photos: WashoutPhoto[] }> {
+  ): Promise<{ activity: WashoutActivity; photos: WashoutPhoto[]; geofenceEvaluation: ActivityGeofenceEvaluation | null; reused?: boolean }> {
     return await db.transaction(async (tx) => {
+      if (geofenceEvaluation) {
+        // Serialize identical submission references before any activity, photo,
+        // analytics, or evaluation row is created. The unique idempotency key
+        // remains the durable backstop; the advisory lock makes a concurrent
+        // retry return the already committed aggregate instead of failing.
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${geofenceEvaluation.idempotencyKey}))`);
+        const [existingEvaluation] = await tx
+          .select()
+          .from(activityGeofenceEvaluations)
+          .where(eq(activityGeofenceEvaluations.idempotencyKey, geofenceEvaluation.idempotencyKey))
+          .limit(1);
+        if (existingEvaluation?.activityId) {
+          const [existingActivity] = await tx
+            .select()
+            .from(washoutActivities)
+            .where(eq(washoutActivities.id, existingEvaluation.activityId))
+            .limit(1);
+          if (
+            !existingActivity
+            || existingActivity.driverId !== activity.driverId
+            || existingActivity.locationId !== activity.locationId
+          ) {
+            const error = new Error("Geofence submission reference conflicts with another activity") as Error & { code?: string };
+            error.code = "GEOFENCE_SUBMISSION_IDEMPOTENCY_CONFLICT";
+            throw error;
+          }
+          const existingPhotos = await tx
+            .select()
+            .from(washoutPhotos)
+            .where(eq(washoutPhotos.activityId, existingActivity.id))
+            .orderBy(washoutPhotos.uploadedAt);
+          return { activity: existingActivity, photos: existingPhotos, geofenceEvaluation: existingEvaluation, reused: true };
+        }
+      }
+
       // Create the activity first
       let newActivity: WashoutActivity;
       try {
@@ -2021,12 +2057,13 @@ export class DatabaseStorage implements IStorage {
         throw error;
       }
 
+      let createdGeofenceEvaluation: ActivityGeofenceEvaluation | null = null;
       if (geofenceEvaluation) {
-        await tx.insert(activityGeofenceEvaluations).values({
+        [createdGeofenceEvaluation] = await tx.insert(activityGeofenceEvaluations).values({
           ...geofenceEvaluation,
           activityId: newActivity.id,
           workflowReference: null,
-        });
+        }).returning();
       }
       const platformIntegrityRejection = newActivity.status === "rejected" && !newActivity.rejectedBy;
       if (platformIntegrityRejection) {
@@ -2094,7 +2131,9 @@ export class DatabaseStorage implements IStorage {
       
       return {
         activity: newActivity,
-        photos: newPhotos
+        photos: newPhotos,
+        geofenceEvaluation: createdGeofenceEvaluation,
+        reused: false,
       };
     });
   }

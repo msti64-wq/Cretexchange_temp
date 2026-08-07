@@ -95,6 +95,8 @@ import { FacilityGeofenceService, type FacilityGeofenceResult } from "./facility
 import { DrizzleFacilityGeofenceRepository } from "./facilityGeofenceRepository";
 import { isGeofenceFeatureEnabled } from "./geofenceFeatureFlags";
 import { GEOFENCE_EXCEPTION_REASON_CODES, resolveGeofenceSubmissionDecision } from "./geofenceSubmissionPolicy";
+import { resolveSubmissionGeofenceRouting, shouldCaptureSubmissionGeofenceEvidence } from "./geofenceSubmissionCapture";
+import { projectOwnerGeofenceContext, stripPrivateOwnerActivityEvidence } from "./ownerGeofenceContext";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
 import { buildCanonicalObligationCreationReason, createDatabaseFinancialObligationRepository, createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole, previewFinancialObligationForVerifiedActivity } from "./financialObligations";
 import { getFinancialSchemaCapabilities } from "./financialSchemaCapabilities";
@@ -5676,15 +5678,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activitiesWithGeofenceContext = activities.map((activity) => {
         const evaluation = geofenceEvaluations.get(activity.id);
         return {
-          ...activity,
-          geofenceContext: evaluation ? {
-            state: evaluation.resultState,
-            reasonCode: evaluation.reasonCode,
-            boundaryVersion: evaluation.boundaryVersion,
-            acknowledgementCode: evaluation.exceptionAcknowledgementCode,
-            driverNote: evaluation.driverNote,
-            evidenceComplete: evaluation.evidenceComplete,
-          } : null,
+          ...stripPrivateOwnerActivityEvidence(activity as unknown as Record<string, unknown>),
+          geofenceContext: ownerGeofenceEnabled
+            ? projectOwnerGeofenceContext(evaluation)
+            : undefined,
         };
       });
       
@@ -17135,7 +17132,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         "driver",
       );
-      if (geofenceEnforcementEnabled) {
+      const geofenceAdvisoryEnabled = await isGeofenceFeatureEnabled(
+        storage,
+        FEATURE_FLAGS.GEOFENCE_ADVISORY_EVALUATION,
+        userId,
+        "driver",
+      );
+      const geofenceEvidenceCaptureEnabled = shouldCaptureSubmissionGeofenceEvidence({
+        advisoryEnabled: geofenceAdvisoryEnabled,
+        enforcementEnabled: geofenceEnforcementEnabled,
+      });
+      if (geofenceEvidenceCaptureEnabled) {
         const parsedGeofence = submissionGeofenceEvidenceSchema.safeParse(req.body?.geofenceEvidence);
         if (!parsedGeofence.success) {
           return res.status(422).json({
@@ -17154,8 +17161,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           acknowledgement: parsedGeofence.data.acknowledgement,
           hasRequiredEvidence: photoData.length > 0,
         });
-        if (geofenceDecision.action !== "legacy") {
-          if (geofenceDecision.action === "recover") {
+        const geofenceRouting = resolveSubmissionGeofenceRouting(geofenceDecision, geofenceEnforcementEnabled);
+        if (geofenceRouting.recover && geofenceDecision.action === "recover") {
             return res.status(422).json({
               code: geofenceDecision.code,
               reasonCode: geofenceDecision.reasonCode,
@@ -17165,19 +17172,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
               recovery: geofenceDecision.code === "GEOFENCE_EXCEPTION_ACKNOWLEDGEMENT_REQUIRED" ? "confirm_boundary_exception" : "retry_location",
               allowedReasons: geofenceDecision.code === "GEOFENCE_EXCEPTION_ACKNOWLEDGEMENT_REQUIRED" ? GEOFENCE_EXCEPTION_REASON_CODES : undefined,
             });
-          }
-          geofenceYellow = geofenceDecision.action === "exception_review";
-          geofenceRed = geofenceDecision.action === "quarantine";
-          geofenceEvaluationEvidence = submissionGeofenceService.prepareActivityEvaluation({
-            result: geofenceResult,
-            purpose: "submission",
-            workflowReference: parsedGeofence.data.submissionReference,
-            idempotencyKey: `geofence:${parsedGeofence.data.submissionReference}:submission`,
-            exceptionAcknowledgementCode: parsedGeofence.data.acknowledgement?.reasonCode || null,
-            driverNote: parsedGeofence.data.acknowledgement?.note || null,
-            evidenceComplete: true,
-          }).evidence;
         }
+        geofenceYellow = geofenceRouting.yellowOwnerReview;
+        geofenceRed = geofenceRouting.redPlatformQuarantine;
+        geofenceEvaluationEvidence = submissionGeofenceService.prepareActivityEvaluation({
+          result: geofenceResult,
+          purpose: "submission",
+          workflowReference: parsedGeofence.data.submissionReference,
+          idempotencyKey: `geofence:${parsedGeofence.data.submissionReference}:submission`,
+          exceptionAcknowledgementCode: parsedGeofence.data.acknowledgement?.reasonCode || null,
+          driverNote: parsedGeofence.data.acknowledgement?.note || null,
+          evidenceComplete: Boolean(
+            geofenceResult.observationTimestamp
+            && geofenceResult.accuracyMeters !== null
+            && photoData.length > 0
+            && (
+              geofenceResult.state !== "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE"
+              || parsedGeofence.data.acknowledgement?.confirmed
+            )
+          ),
+        }).evidence;
       }
 
       const locationLatitude = location.latitude != null ? Number(location.latitude) : null;
@@ -17424,7 +17438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         photoCount: result.photos.length,
       });
 
-      if (result.photos.length > 0) {
+      if (!result.reused && result.photos.length > 0) {
         const objectStorageService = new ObjectStorageService();
         const aclPolicy: ObjectAclPolicy = {
           owner: userId,
@@ -17464,13 +17478,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const geofenceNotificationsEnabled = await isGeofenceFeatureEnabled(
-        storage,
-        FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
-        userId,
-        "driver",
-      );
-      await runNotificationDeliveryBestEffort(result.activity.id, async () => {
+      if (!result.reused) {
+        const geofenceNotificationsEnabled = await isGeofenceFeatureEnabled(
+          storage,
+          FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
+          userId,
+          "driver",
+        );
+        await runNotificationDeliveryBestEffort(result.activity.id, async () => {
       if (platformIntegrityDetected) {
         await emitNotificationBestEffort({
           userId, recipientRole: 'driver', templateKey: 'activity_integrity_review', title: 'Activity evidence needs review',
@@ -17519,16 +17534,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           idempotencyKey: `activity:${result.activity.id}:submitted:owner`, priority: 'high',
         });
       }
-      });
+        });
+      }
       
       res.json({
         activity: result.activity,
         photoCount: result.photos.length,
-        geofence: geofenceResult ? {
-          state: geofenceResult.state,
-          boundaryVersionId: geofenceResult.boundaryVersionId,
-          exceptionAccepted: geofenceYellow,
+        geofence: result.geofenceEvaluation ? {
+          state: result.geofenceEvaluation.resultState,
+          boundaryVersionId: result.geofenceEvaluation.boundaryVersionId,
+          exceptionAccepted: Boolean(result.geofenceEvaluation.exceptionAcknowledgementCode),
         } : null,
+        reused: Boolean(result.reused),
       });
     } catch (error) {
       const dbError = summarizeDatabaseError(error, {

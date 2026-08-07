@@ -79,6 +79,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   const submissionReference = useRef(createSubmissionReference());
   const { enabled: geofenceAdvisoryEnabled } = useFeatureFlag(FEATURE_FLAGS.GEOFENCE_ADVISORY_EVALUATION);
   const { enabled: geofenceEnforcementEnabled } = useFeatureFlag(FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT);
+  const geofenceEvidenceCaptureEnabled = geofenceAdvisoryEnabled || geofenceEnforcementEnabled;
   const [gpsWarning, setGpsWarning] = useState<string | null>(null);
   const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);
   const [failedPhotoFiles, setFailedPhotoFiles] = useState<File[]>([]);
@@ -504,20 +505,20 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
     setIsSubmitting(true);
 
     try {
-      const submissionGps = geofenceEnforcementEnabled ? await gpsAcquirer.current.acquire({ fresh: true }) : gpsLocation;
-      if (geofenceEnforcementEnabled) setGpsLocation({ lat: submissionGps.latitude, lng: submissionGps.longitude, ...submissionGps });
+      const submissionGps = geofenceEvidenceCaptureEnabled ? await gpsAcquirer.current.acquire({ fresh: true }) : gpsLocation;
+      if (geofenceEvidenceCaptureEnabled) setGpsLocation({ lat: submissionGps.latitude, lng: submissionGps.longitude, ...submissionGps });
       await checkInMutation.mutateAsync({
         activityData: {
           locationId: location.id,
           amount: location.rate,
-          latitude: gpsLocation?.lat?.toString(),
-          longitude: gpsLocation?.lng?.toString(),
+          latitude: submissionGps.latitude.toString(),
+          longitude: submissionGps.longitude.toString(),
           notes,
           checkInTime: new Date(), // Send Date object as expected by schema
           status: 'pending', // Add required status field
         },
         photoData: photoData,
-        geofenceEvidence: geofenceEnforcementEnabled ? {
+        geofenceEvidence: geofenceEvidenceCaptureEnabled ? {
           submissionReference: submissionReference.current,
           observation: {
             latitude: submissionGps.latitude,
