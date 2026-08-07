@@ -161,7 +161,10 @@ test("green, yellow, red, and each neutral advisory presentation is bilingual an
     ["OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE", null, "yellow", "Just outside delivery boundary", "Justo fuera del límite de entrega", "none"],
     ["OUTSIDE_EXCEPTION_ZONE", null, "red", "Outside delivery area", "Fuera del área de entrega", "none"],
     ["LOCATION_UNAVAILABLE", "LOCATION_COORDINATES_UNAVAILABLE", "neutral", "Device location unavailable", "Ubicación del dispositivo no disponible", "gps"],
-    ["LOCATION_ACCURACY_INSUFFICIENT", "LOCATION_ACCURACY_EXCEEDS_LIMIT", "neutral", "Location signal needs improvement", "La señal de ubicación necesita mejorar", "gps"],
+    ["LOCATION_ACCURACY_INSUFFICIENT", "LOCATION_ACCURACY_EXCEEDS_LIMIT", "neutral", "GPS precision is still too low.", "La precisión del GPS aún es demasiado baja.", "gps"],
+    ["LOCATION_ACCURACY_INSUFFICIENT", "LOCATION_TIMESTAMP_OUTSIDE_WINDOW", "neutral", "The location reading is out of date.", "La lectura de ubicación está desactualizada.", "gps"],
+    ["LOCATION_ACCURACY_INSUFFICIENT", "LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY", "neutral", "Your location appears close to the delivery boundary.", "Tu ubicación parece estar cerca del límite de entrega.", "gps"],
+    ["LOCATION_ACCURACY_INSUFFICIENT", "LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD", "neutral", "Your location appears close to the advisory limit.", "Tu ubicación parece estar cerca del límite de aviso.", "gps"],
     ["GEOMETRY_UNAVAILABLE", "NO_ACTIVE_PRIMARY_BOUNDARY", "neutral", "Delivery boundary not configured", "Límite de entrega no configurado", "none"],
     ["GEOMETRY_INVALID", "GEOMETRY_CHECKSUM_MISMATCH", "neutral", "Delivery boundary temporarily unavailable", "Límite de entrega no disponible temporalmente", "none"],
     ["ADVISORY_REQUEST_FAILED", null, "neutral", "Boundary status temporarily unavailable", "Estado del límite no disponible temporalmente", "status"],
@@ -179,7 +182,7 @@ test("green, yellow, red, and each neutral advisory presentation is bilingual an
   }
 });
 
-test("traffic-light indicator renders a solid accessible light plus icon and text for green, yellow, red, and gray", () => {
+test("traffic-light indicator renders accessible color lights while neutral uses one solid gray light and text", () => {
   const cases = [
     ["INSIDE_APPROVED_BOUNDARY", "green", "Inside delivery boundary"],
     ["OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE", "yellow", "Just outside delivery boundary"],
@@ -195,6 +198,8 @@ test("traffic-light indicator renders a solid accessible light plus icon and tex
     assert.match(html, /aria-label=/);
     assert.match(html, /rounded-full/);
   }
+  const neutral = renderToStaticMarkup(React.createElement(DriverGeofenceIndicator, { state: "LOCATION_UNAVAILABLE" }));
+  assert.doesNotMatch(neutral, /lucide-circle-help|lucide-help-circle/);
 });
 
 test("missing boundary never recommends retrying GPS, while request failure requests status retry", () => {
@@ -234,9 +239,28 @@ test("Driver advisory UI is visible, accessible, retryable, and reevaluates fres
   assert.match(locations, /\/api\/drivers\/locations\/geofence-status/);
   assert.match(checkIn, /\/geofence-advisory/);
   assert.match(checkIn, /forceRefresh: true/);
+  assert.match(checkIn, /fresh: isRetry \|\| forceRefresh/);
   assert.match(checkIn, /gpsLocation\?\.observedAt/);
   assert.match(checkIn, /button-retry-geofence-gps/);
+  assert.match(checkIn, /geofence\.driver\.improving/);
+  assert.match(checkIn, /pilot\.gps\.timeout/);
+  assert.match(locations, /pilot\.gps\.timeout/);
+  assert.match(locations, /locationAttempt/);
+  assert.match(locations, /retry: false/);
+  assert.match(locations, /driver-geofence-gps-improving/);
+  assert.match(gps, /maximumAge: options\.fresh \? 0 : INITIAL_MAXIMUM_AGE_MS/);
+  assert.match(gps, /watchPosition/);
   assert.doesNotMatch(`${locations}\n${checkIn}\n${gps}`, /Denver|fallbackLatitude|fallbackLongitude/i);
+  assert.doesNotMatch(`${locations}\n${checkIn}\n${gps}`, /console\.(log|info|debug).*latitude|console\.(log|info|debug).*longitude/i);
+});
+
+test("reason-specific neutral wording does not give stale or overlap cases outdoor-signal guidance", () => {
+  const stale = getDriverGeofencePresentation("LOCATION_ACCURACY_INSUFFICIENT", "LOCATION_TIMESTAMP_OUTSIDE_WINDOW");
+  const boundary = getDriverGeofencePresentation("LOCATION_ACCURACY_INSUFFICIENT", "LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY");
+  const exception = getDriverGeofencePresentation("LOCATION_ACCURACY_INSUFFICIENT", "LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD");
+  assert.doesNotMatch(translate(stale.guidanceKey, "en"), /open area|outdoors/i);
+  assert.doesNotMatch(translate(boundary.guidanceKey, "en"), /open area|outdoors/i);
+  assert.doesNotMatch(translate(exception.guidanceKey, "en"), /open area|outdoors/i);
 });
 
 test("Driver advisory UI preserves Facility ordering, material eligibility, and advisory-only selection", async () => {

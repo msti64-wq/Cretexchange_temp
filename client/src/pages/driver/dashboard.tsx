@@ -13,7 +13,7 @@ import { MapPin, MessageCircle, Phone, Wallet, Ticket, RefreshCw, Truck, Route, 
 import { formatCurrency } from "@/lib/utils";
 import { formatAddress } from "@shared/addressUtils";
 import { getWashoutApprovalDisplayStatus, isPendingWashoutApproval } from "@shared/washoutApproval";
-import { calculateDistance, getCurrentLocation } from "@/lib/gps";
+import { calculateDistance, createDriverLocationAcquirer } from "@/lib/gps";
 import { resolveLocationDriverTipRateCents } from "@shared/locationBilling";
 import { formatLocalizedDate, localeForLanguage, useLanguage } from "@/lib/i18n";
 import { DSCard, DSKpiCard, DSSectionHeader, DSStatusChip } from "@/components/design-system";
@@ -265,6 +265,7 @@ export default function DriverDashboard() {
   const [gpsChecking, setGpsChecking] = useState(true);
   const [gpsRetryCount, setGpsRetryCount] = useState(0);
   const materialSelectorRef = useRef<HTMLDivElement>(null);
+  const dashboardGpsAcquirer = useRef(createDriverLocationAcquirer());
 
   const { data: dashboardData, isLoading, isError: dashboardDataError, refetch } = useQuery({
     queryKey: [`/api/drivers/dashboard?statsRange=${statsRange}&includeSecondary=false`],
@@ -420,7 +421,7 @@ export default function DriverDashboard() {
     const loadCurrentLocation = async () => {
       setGpsChecking(true);
       try {
-        const coords = await getCurrentLocation();
+        const coords = await dashboardGpsAcquirer.current.acquire({ fresh: gpsRetryCount > 0 });
         if (cancelled) return;
         setCurrentLocation({ lat: coords.latitude, lng: coords.longitude });
         setLocationError(null);
@@ -438,6 +439,7 @@ export default function DriverDashboard() {
 
     return () => {
       cancelled = true;
+      dashboardGpsAcquirer.current.cancel();
     };
   }, [gpsRetryCount]);
 

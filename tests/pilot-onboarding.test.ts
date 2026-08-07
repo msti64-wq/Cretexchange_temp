@@ -16,7 +16,7 @@ import {
 
 test("GPS preflight distinguishes denied permission from unavailable location", () => {
   assert.equal(resolveGpsPreflightStatus(new Error("Location access denied by user.")), "permission_denied");
-  assert.equal(resolveGpsPreflightStatus(new Error("Location request timed out.")), "unavailable");
+  assert.equal(resolveGpsPreflightStatus(new Error("Location request timed out.")), "timeout");
   assert.equal(resolveGpsPreflightStatus(null), "required");
 });
 
@@ -272,7 +272,7 @@ test("first-activity views provide activity-bound confirmation and GPS retry rec
   assert.match(formSource, /failedPhotoFiles/);
   assert.match(formSource, /uploadRecovery\.state === "partial_failure"/);
   assert.match(formSource, /resolveDriverCheckInButtonState/);
-  assert.match(formSource, /disabled=\{!checkInButton\.enabled\}/);
+  assert.match(formSource, /disabled=\{!checkInButton\.enabled \|\|/);
   assert.match(formSource, /uploadPhotos\(filesToRetry, browserLocation, \{ isRetry: true \}\)/);
   assert.match(formSource, /uploadInFlightRef/);
   assert.doesNotMatch(formSource, /may need manual review/);

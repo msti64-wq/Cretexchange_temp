@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Camera, MapPin, Clock, ShieldAlert, ShieldCheck, Loader2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatAddress } from "@shared/addressUtils";
-import { getCurrentLocation } from "@/lib/gps";
+import { createDriverLocationAcquirer, GpsAcquisitionError } from "@/lib/gps";
 import { computePhotoFingerprint } from "@/lib/photoFingerprint";
 import { useLanguage } from "@/lib/i18n";
 import { resolveDriverCheckInButtonState, resolveGpsPreflightStatus, resolvePhotoUploadRecoveryState, type GpsPreflightStatus } from "@/lib/pilotOnboarding";
@@ -85,6 +85,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   const [uploadProgress, setUploadProgress] = useState<{ total: number; current: number; completed: number; failed: number } | null>(null);
   const [submissionError, setSubmissionError] = useState<DriverOperationalErrorPresentation | null>(null);
   const uploadInFlightRef = useRef(false);
+  const gpsAcquirer = useRef(createDriverLocationAcquirer());
   const uploadedPhotoCount = Math.max(photoData.length, photoUrls.length);
   const uploadRecovery = resolvePhotoUploadRecoveryState({
     successfulCount: uploadedPhotoCount,
@@ -100,20 +101,22 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
     if (forceRefresh) setGpsLocation(null);
     setGpsStatus(isRetry ? "retrying" : "checking");
     try {
-      const coords = await getCurrentLocation();
+      const coords = await gpsAcquirer.current.acquire({ fresh: isRetry || forceRefresh });
       const nextLocation = { lat: coords.latitude, lng: coords.longitude, ...coords };
       setGpsLocation(nextLocation);
       setGpsStatus("ready");
       setGpsWarning(null);
       return nextLocation;
     } catch (error) {
+      if (error instanceof GpsAcquisitionError && error.reason === "cancelled") return null;
       const message = error instanceof Error ? error.message : "";
       setGpsLocation(null);
       setGpsStatus(resolveGpsPreflightStatus(error));
-      setGpsWarning(/denied/i.test(message) ? t("pilot.gps.permissionDenied") : t("pilot.gps.unavailable"));
+      const warningKey = /denied/i.test(message) ? "pilot.gps.permissionDenied" : /timed out|timeout/i.test(message) ? "pilot.gps.timeout" : "pilot.gps.unavailable";
+      setGpsWarning(t(warningKey));
       toast({
         title: t("pilot.gps.title"),
-        description: /denied/i.test(message) ? t("pilot.gps.permissionDenied") : t("pilot.gps.unavailable"),
+        description: t(warningKey),
         variant: "destructive",
       });
       return null;
@@ -122,6 +125,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
 
   useEffect(() => {
     void ensureGpsLocation();
+    return () => gpsAcquirer.current.cancel();
   }, []);
 
   useEffect(() => {
@@ -131,7 +135,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       setGeofenceAdvisoryLoading(false);
       return;
     }
-    if (!["ready", "permission_denied", "unavailable"].includes(gpsStatus)) return;
+    if (!["ready", "permission_denied", "unavailable", "timeout"].includes(gpsStatus)) return;
 
     let active = true;
     setGeofenceAdvisoryLoading(true);
@@ -359,7 +363,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
     if (geofenceAdvisoryEnabled) {
       setGeofenceAdvisoryResult(null);
       setGeofenceAdvisoryRequestFailed(false);
-      setGeofenceAdvisoryLoading(true);
+      setGeofenceAdvisoryLoading(false);
     }
     const browserLocation = await ensureGpsLocation({ isRetry: true, forceRefresh: true });
     if (browserLocation && pendingPhotoFiles.length > 0) {
@@ -450,7 +454,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
       return;
     }
 
-    if (gpsStatus === "permission_denied" || gpsStatus === "unavailable" || !gpsLocation) {
+    if (gpsStatus === "permission_denied" || gpsStatus === "unavailable" || gpsStatus === "timeout" || !gpsLocation) {
       toast({
         title: t("pilot.gps.title"),
         description: gpsStatus === "permission_denied" ? t("pilot.gps.permissionDenied") : t("pilot.gps.required"),
@@ -500,7 +504,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
     setIsSubmitting(true);
 
     try {
-      const submissionGps = geofenceEnforcementEnabled ? await getCurrentLocation() : gpsLocation;
+      const submissionGps = geofenceEnforcementEnabled ? await gpsAcquirer.current.acquire({ fresh: true }) : gpsLocation;
       if (geofenceEnforcementEnabled) setGpsLocation({ lat: submissionGps.latitude, lng: submissionGps.longitude, ...submissionGps });
       await checkInMutation.mutateAsync({
         activityData: {
@@ -587,7 +591,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
             <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700" data-testid="gps-preflight-retrying">
               <div className="flex items-center">
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                <span>{t("pilot.gps.retrying")}</span>
+                <span>{t("geofence.driver.improving")}</span>
               </div>
               <Button type="button" variant="outline" size="sm" className="mt-3" disabled data-testid="button-retry-gps">
                 {t("pilot.gps.retry")}
@@ -604,11 +608,11 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
               </Button>
             </div>
           )}
-          {(gpsStatus === "permission_denied" || gpsStatus === "unavailable") && (
+          {(gpsStatus === "permission_denied" || gpsStatus === "unavailable" || gpsStatus === "timeout") && (
             <div className="flex items-start rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
               <ShieldAlert className="w-4 h-4 mr-2 mt-0.5" />
               <div>
-                <p className="font-medium">{gpsStatus === "permission_denied" ? t("pilot.gps.permissionDenied") : t("pilot.gps.unavailable")}</p>
+                <p className="font-medium">{gpsStatus === "permission_denied" ? t("pilot.gps.permissionDenied") : gpsStatus === "timeout" ? t("pilot.gps.timeout") : t("pilot.gps.unavailable")}</p>
                 <p className="text-xs text-amber-700 mt-0.5">
                   {gpsWarning || t("pilot.gps.why")}
                 </p>
@@ -619,7 +623,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
             </div>
           )}
 
-          {geofenceAdvisoryEnabled && geofenceAdvisoryLoading && (
+          {geofenceAdvisoryEnabled && gpsStatus !== "retrying" && geofenceAdvisoryLoading && (
             <div className="flex min-h-11 items-center rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800" role="status" aria-label={t("geofence.driver.checking")} data-testid="driver-checkin-geofence-loading">
               <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
               <span>{t("geofence.driver.checking")}</span>

@@ -85,7 +85,7 @@ test("Driver golden path blocks incomplete terms, profile, invalid material, GPS
   assert.equal(materialMismatch.reasons[0]?.code, "active_material_invalid");
 
   assert.equal(resolveGpsPreflightStatus(new Error("Location access denied by user.")), "permission_denied");
-  assert.equal(resolveGpsPreflightStatus(new Error("Location request timed out.")), "unavailable");
+  assert.equal(resolveGpsPreflightStatus(new Error("Location request timed out.")), "timeout");
   assert.equal(resolvePhotoUploadRecoveryState({ successfulCount: 0, failedCount: 1, isProcessing: false }).canSubmit, false);
   for (const blocked of [
     { gpsStatus: "unavailable" as const, hasGpsLocation: false, failedPhotoCount: 0, isProcessingPhotos: false, hasInvalidPhotoUrls: false },

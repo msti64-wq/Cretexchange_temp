@@ -48,6 +48,18 @@ export function getDriverGeofencePresentation(
   if (state === "LOCATION_UNAVAILABLE") {
     return { tone: "neutral", labelKey: "geofence.driver.deviceUnavailable", guidanceKey: "geofence.driver.deviceUnavailableGuidance", retry: "gps" };
   }
+  if (state === "LOCATION_ACCURACY_INSUFFICIENT" && reasonCode === "LOCATION_ACCURACY_EXCEEDS_LIMIT") {
+    return { tone: "neutral", labelKey: "geofence.driver.gpsPrecisionLow", guidanceKey: "geofence.driver.gpsPrecisionLowGuidance", retry: "gps" };
+  }
+  if (state === "LOCATION_ACCURACY_INSUFFICIENT" && reasonCode === "LOCATION_TIMESTAMP_OUTSIDE_WINDOW") {
+    return { tone: "neutral", labelKey: "geofence.driver.locationOutOfDate", guidanceKey: "geofence.driver.locationOutOfDateGuidance", retry: "gps" };
+  }
+  if (state === "LOCATION_ACCURACY_INSUFFICIENT" && reasonCode === "LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY") {
+    return { tone: "neutral", labelKey: "geofence.driver.boundaryOverlap", guidanceKey: "geofence.driver.boundaryOverlapGuidance", retry: "gps" };
+  }
+  if (state === "LOCATION_ACCURACY_INSUFFICIENT" && reasonCode === "LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD") {
+    return { tone: "neutral", labelKey: "geofence.driver.advisoryLimitOverlap", guidanceKey: "geofence.driver.advisoryLimitOverlapGuidance", retry: "gps" };
+  }
   if (state === "LOCATION_ACCURACY_INSUFFICIENT") {
     return { tone: "neutral", labelKey: "geofence.driver.accuracyInsufficient", guidanceKey: "geofence.driver.accuracyInsufficientGuidance", retry: "gps" };
   }

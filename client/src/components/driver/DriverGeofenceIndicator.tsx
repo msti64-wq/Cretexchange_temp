@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, HelpCircle, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 import { getDriverGeofencePresentation, type DriverGeofenceDisplayState } from "@/lib/driverGeofenceAdvisory";
 
@@ -13,7 +13,7 @@ export function DriverGeofenceIndicator({ state, reasonCode }: { state: DriverGe
       ? { Icon: AlertTriangle, className: "border-amber-700 bg-amber-50 text-amber-950 dark:border-amber-400 dark:bg-amber-950/50 dark:text-amber-100" }
       : content.tone === "red"
         ? { Icon: XCircle, className: "border-red-700 bg-red-50 text-red-950 dark:border-red-500 dark:bg-red-950/50 dark:text-red-100" }
-        : { Icon: HelpCircle, className: "border-slate-600 bg-slate-50 text-slate-950 dark:border-slate-400 dark:bg-slate-900/60 dark:text-slate-100" };
+        : { Icon: null, className: "border-slate-600 bg-slate-50 text-slate-950 dark:border-slate-400 dark:bg-slate-900/60 dark:text-slate-100" };
   const label = t(content.labelKey);
   const guidance = t(content.guidanceKey);
   return (
@@ -32,7 +32,7 @@ export function DriverGeofenceIndicator({ state, reasonCode }: { state: DriverGe
         aria-hidden="true"
         data-testid={`driver-geofence-light-${content.tone}`}
       />
-      <presentation.Icon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+      {presentation.Icon && <presentation.Icon className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />}
       <span>
         <span className="block font-semibold">{label}</span>
         <span className="block text-xs opacity-90">{guidance}</span>

@@ -1,7 +1,7 @@
 import { isOwnerProfileComplete } from "@shared/ownerLocationAccess";
 import { resolveDriverProfileReadiness } from "@shared/driverOperationalReadiness";
 
-export type GpsPreflightStatus = "required" | "checking" | "retrying" | "ready" | "permission_denied" | "unavailable";
+export type GpsPreflightStatus = "required" | "checking" | "retrying" | "ready" | "permission_denied" | "unavailable" | "timeout";
 
 export const SUBMISSION_CONFIRMATION_TTL_MS = 15 * 60 * 1000;
 
@@ -58,6 +58,7 @@ export function resolveSubmittedActivityConfirmation({
 export function resolveGpsPreflightStatus(error: unknown): GpsPreflightStatus {
   const message = error instanceof Error ? error.message : String(error || "");
   if (/denied/i.test(message)) return "permission_denied";
+  if (/timed out|timeout/i.test(message)) return "timeout";
   if (message) return "unavailable";
   return "required";
 }
