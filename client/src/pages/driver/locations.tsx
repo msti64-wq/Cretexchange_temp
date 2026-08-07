@@ -17,7 +17,8 @@ import { FEATURE_FLAGS } from "@shared/featureFlags";
 import { useLanguage } from "@/lib/i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { DriverMaterialIntentSelector, driverMaterialIntentKey, type DriverMaterialIntent } from "@/components/driver/DriverMaterialIntentSelector";
-import { DriverGeofenceIndicator, type DriverGeofenceState } from "@/components/driver/DriverGeofenceIndicator";
+import { DriverGeofenceIndicator } from "@/components/driver/DriverGeofenceIndicator";
+import { indexDriverGeofenceResults, type DriverGeofenceDisplayState, type DriverGeofenceResult } from "@/lib/driverGeofenceAdvisory";
 import type { Coordinates } from "@/lib/gps";
 
 export default function DriverLocations() {
@@ -48,7 +49,7 @@ export default function DriverLocations() {
     enabled: Boolean(activeMaterialSlug),
   });
   const locationIds = Array.isArray(locations) ? locations.map((item: any) => (item.washout_locations || item).id as string) : [];
-  const { data: geofenceAdvisory, isFetching: geofenceAdvisoryLoading, isError: geofenceAdvisoryError } = useQuery<{ enabled: boolean; results: Array<{ locationId: string; state: DriverGeofenceState }> }>({
+  const { data: geofenceAdvisory, isFetching: geofenceAdvisoryLoading, isError: geofenceAdvisoryError, refetch: refetchGeofenceAdvisory } = useQuery<{ enabled: boolean; complete: boolean; results: DriverGeofenceResult[] }>({
     queryKey: ["/api/drivers/locations/geofence-status", activeMaterialSlug, locationIds.join(","), currentLocation?.observedAt || "unavailable"],
     queryFn: async () => (await apiRequest("/api/drivers/locations/geofence-status", {
       method: "POST",
@@ -67,7 +68,7 @@ export default function DriverLocations() {
     staleTime: 30_000,
     retry: 1,
   });
-  const geofenceByLocation = new Map((geofenceAdvisory?.results || []).map((result) => [result.locationId, result.state]));
+  const indexedGeofenceResults = indexDriverGeofenceResults(locationIds, geofenceAdvisory?.results);
 
   const refreshCurrentLocation = async () => {
     setLocationRefreshing(true);
@@ -263,6 +264,12 @@ export default function DriverLocations() {
           ) : (
             filteredAndSortedLocations.map((item: any, index: number) => {
               const location = item.washout_locations || item;
+              const geofenceResult = indexedGeofenceResults.byLocation.get(location.id);
+              const geofenceDisplayState: DriverGeofenceDisplayState = geofenceAdvisoryError
+                ? "ADVISORY_REQUEST_FAILED"
+                : geofenceResult?.state || "ADVISORY_RESULT_MISSING";
+              const geofenceNeedsGpsRetry = geofenceResult?.state === "LOCATION_UNAVAILABLE" || geofenceResult?.state === "LOCATION_ACCURACY_INSUFFICIENT";
+              const geofenceNeedsStatusRetry = geofenceAdvisoryError || !geofenceResult;
               return (
               <Card key={location.id} className="border-border/70 bg-card/90 hover:border-border hover:shadow-md transition-shadow" data-testid={`card-location-${index}`}>
                 <CardContent className="p-4">
@@ -360,7 +367,21 @@ export default function DriverLocations() {
                     </div>
                   )}
                   {isGeofenceAdvisoryEnabled && !geofenceAdvisoryLoading && locationResolved && (
-                    <DriverGeofenceIndicator state={geofenceByLocation.get(location.id) || (geofenceAdvisoryError ? "LOCATION_UNAVAILABLE" : "GEOMETRY_UNAVAILABLE")} />
+                    <div data-testid={`driver-geofence-advisory-${index}`}>
+                      <DriverGeofenceIndicator state={geofenceDisplayState} reasonCode={geofenceResult?.reasonCode} />
+                      {geofenceNeedsGpsRetry && (
+                        <Button type="button" variant="outline" size="sm" className="mb-3 min-h-11" onClick={() => void refreshCurrentLocation()} disabled={locationRefreshing} data-testid={`button-retry-facility-gps-${index}`}>
+                          <Navigation className="mr-2 h-4 w-4" />
+                          {locationRefreshing ? t("geofence.driver.checking") : t("geofence.driver.retryGps")}
+                        </Button>
+                      )}
+                      {geofenceNeedsStatusRetry && (
+                        <Button type="button" variant="outline" size="sm" className="mb-3 min-h-11" onClick={() => void refetchGeofenceAdvisory()} data-testid={`button-retry-facility-status-${index}`}>
+                          <Navigation className="mr-2 h-4 w-4" />
+                          {t("geofence.driver.retryStatus")}
+                        </Button>
+                      )}
+                    </div>
                   )}
                   <p className="mb-3 text-xs text-muted-foreground">{t("driver.locations.configuredIncentiveQualification")}</p>
 

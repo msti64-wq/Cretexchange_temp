@@ -17,7 +17,7 @@ import { presentDriverOperationalError } from "@/lib/driverOperationalErrorPrese
 import type { DriverOperationalErrorPresentation } from "@/lib/driverOperationalErrorPresentation";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
-import { DriverGeofenceIndicator, type DriverGeofenceState } from "@/components/driver/DriverGeofenceIndicator";
+import { DriverGeofenceIndicator, type DriverGeofenceResult, type DriverGeofenceState } from "@/components/driver/DriverGeofenceIndicator";
 import type { Coordinates } from "@/lib/gps";
 
 const MAX_PHOTO_UPLOAD_BYTES = 15 * 1024 * 1024;
@@ -68,7 +68,9 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<GpsPreflightStatus>("required");
   const [gpsLocation, setGpsLocation] = useState<({ lat: number; lng: number } & Coordinates) | null>(null);
-  const [geofenceAdvisoryState, setGeofenceAdvisoryState] = useState<DriverGeofenceState | null>(null);
+  const [geofenceAdvisoryResult, setGeofenceAdvisoryResult] = useState<DriverGeofenceResult | null>(null);
+  const [geofenceAdvisoryRequestFailed, setGeofenceAdvisoryRequestFailed] = useState(false);
+  const [geofenceAdvisoryRetryToken, setGeofenceAdvisoryRetryToken] = useState(0);
   const [geofenceAdvisoryLoading, setGeofenceAdvisoryLoading] = useState(false);
   const [geofenceState, setGeofenceState] = useState<DriverGeofenceState | null>(null);
   const [geofenceReason, setGeofenceReason] = useState("");
@@ -124,7 +126,8 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
 
   useEffect(() => {
     if (!geofenceAdvisoryEnabled) {
-      setGeofenceAdvisoryState(null);
+      setGeofenceAdvisoryResult(null);
+      setGeofenceAdvisoryRequestFailed(false);
       setGeofenceAdvisoryLoading(false);
       return;
     }
@@ -132,6 +135,7 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
 
     let active = true;
     setGeofenceAdvisoryLoading(true);
+    setGeofenceAdvisoryRequestFailed(false);
     void apiRequest(`/api/drivers/locations/${location.id}/geofence-advisory`, {
       method: "POST",
       body: JSON.stringify({ observation: gpsLocation ? {
@@ -140,15 +144,18 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
         accuracyMeters: gpsLocation.accuracyMeters,
         observedAt: gpsLocation.observedAt,
       } : null }),
-    }).then((response) => response.json()).then((result) => {
-      if (active) setGeofenceAdvisoryState(result.state);
+    }).then((response) => response.json()).then((result: DriverGeofenceResult) => {
+      if (active) setGeofenceAdvisoryResult(result);
     }).catch(() => {
-      if (active) setGeofenceAdvisoryState("LOCATION_UNAVAILABLE");
+      if (active) {
+        setGeofenceAdvisoryResult(null);
+        setGeofenceAdvisoryRequestFailed(true);
+      }
     }).finally(() => {
       if (active) setGeofenceAdvisoryLoading(false);
     });
     return () => { active = false; };
-  }, [geofenceAdvisoryEnabled, gpsStatus, gpsLocation?.observedAt, location.id]);
+  }, [geofenceAdvisoryEnabled, gpsStatus, gpsLocation?.observedAt, location.id, geofenceAdvisoryRetryToken]);
 
   useEffect(() => {
     if (!geofenceEnforcementEnabled || !gpsLocation) {
@@ -350,13 +357,21 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
 
   const retryGps = async () => {
     if (geofenceAdvisoryEnabled) {
-      setGeofenceAdvisoryState(null);
+      setGeofenceAdvisoryResult(null);
+      setGeofenceAdvisoryRequestFailed(false);
       setGeofenceAdvisoryLoading(true);
     }
     const browserLocation = await ensureGpsLocation({ isRetry: true, forceRefresh: true });
     if (browserLocation && pendingPhotoFiles.length > 0) {
       await uploadPhotos(pendingPhotoFiles, browserLocation);
         }
+  };
+
+  const retryGeofenceStatus = () => {
+    setGeofenceAdvisoryResult(null);
+    setGeofenceAdvisoryRequestFailed(false);
+    setGeofenceAdvisoryLoading(true);
+    setGeofenceAdvisoryRetryToken((value) => value + 1);
   };
     
   const retryFailedPhotos = async () => {
@@ -610,10 +625,19 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
               <span>{t("geofence.driver.checking")}</span>
             </div>
           )}
-          {geofenceAdvisoryEnabled && !geofenceAdvisoryLoading && geofenceAdvisoryState && (
+          {geofenceAdvisoryEnabled && !geofenceAdvisoryLoading && geofenceAdvisoryRequestFailed && (
             <div data-testid="driver-checkin-geofence-advisory">
-              <DriverGeofenceIndicator state={geofenceAdvisoryState} />
-              {["LOCATION_UNAVAILABLE", "LOCATION_ACCURACY_INSUFFICIENT", "GEOMETRY_UNAVAILABLE", "GEOMETRY_INVALID"].includes(geofenceAdvisoryState) && (
+              <DriverGeofenceIndicator state="ADVISORY_REQUEST_FAILED" />
+              <Button type="button" variant="outline" size="sm" className="mb-3 min-h-11" onClick={retryGeofenceStatus} data-testid="button-retry-geofence-status">
+                <MapPin className="mr-2 h-4 w-4" />
+                {t("geofence.driver.retryStatus")}
+              </Button>
+            </div>
+          )}
+          {geofenceAdvisoryEnabled && !geofenceAdvisoryLoading && geofenceAdvisoryResult && (
+            <div data-testid="driver-checkin-geofence-advisory">
+              <DriverGeofenceIndicator state={geofenceAdvisoryResult.state} reasonCode={geofenceAdvisoryResult.reasonCode} />
+              {["LOCATION_UNAVAILABLE", "LOCATION_ACCURACY_INSUFFICIENT"].includes(geofenceAdvisoryResult.state) && (
                 <Button type="button" variant="outline" size="sm" className="mb-3 min-h-11" onClick={() => void retryGps()} disabled={gpsStatus === "retrying"} data-testid="button-retry-geofence-gps">
                   <MapPin className="mr-2 h-4 w-4" />
                   {t("geofence.driver.retryGps")}

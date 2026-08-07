@@ -374,7 +374,29 @@ export function registerFacilityGeofenceRoutes(
           evaluatedAt,
         }),
       ));
-      res.json({ enabled: true, results });
+      const responseComplete = results.length === locationIds.length
+        && locationIds.every((locationId) => results.some((result) => result.locationId === locationId));
+      if (!responseComplete) {
+        console.error("Driver Facility advisory response incomplete", {
+          requestedCount: locationIds.length,
+          resultCount: results.length,
+        });
+        return res.status(503).json({ message: "Facility boundary status response was incomplete", code: "ADVISORY_RESPONSE_INCOMPLETE" });
+      }
+
+      console.info("Driver Facility advisory evaluated", {
+        requestedCount: locationIds.length,
+        resultCount: results.length,
+        observationPresent: parsed.data.observation !== null,
+        responseComplete,
+        results: results.map((result) => ({
+          locationId: result.locationId,
+          state: result.state,
+          reasonCode: result.reasonCode,
+          activeBoundaryPresent: result.boundaryVersionId !== null,
+        })),
+      });
+      res.json({ enabled: true, complete: true, results });
     } catch (error) {
       console.error("Driver Facility advisory failed", { userId: req.user?.id, message: error instanceof Error ? error.message : "unknown" });
       res.status(503).json({ message: "Facility boundary status could not be confirmed" });
