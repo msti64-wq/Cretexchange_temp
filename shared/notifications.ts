@@ -71,7 +71,7 @@ export function sanitizeNotificationMetadata(input: unknown): Record<string, str
 
 const safePaths: Record<NotificationRole, RegExp[]> = {
   driver: [/^\/$/, /^\/dashboard$/, /^\/activity(?:\?.*)?$/, /^\/rewards$/, /^\/driver\/competition$/, /^\/messages$/, /^\/profile$/],
-  owner: [/^\/$/, /^\/dashboard$/, /^\/intelligence(?:\?facilityId=[0-9a-f-]{36})?$/, /^\/locations\/[0-9a-f-]{36}\/geofence$/, /^\/notifications$/],
+  owner: [/^\/$/, /^\/dashboard$/, /^\/dashboard\/reviews\?facilityId=[0-9a-f-]{36}&activityId=([0-9a-f-]{36})#activity-\1$/, /^\/intelligence(?:\?facilityId=[0-9a-f-]{36})?$/, /^\/locations\/[0-9a-f-]{36}\/geofence$/, /^\/notifications$/],
   admin: [/^\/$/, /^\/notifications$/, /^\/admin\/photo-review$/, /^\/network-intelligence$/, /^\/reports$/, /^\/admin\/administration-repository$/],
   super_admin: [/^\/$/, /^\/notifications$/, /^\/admin\/photo-review$/, /^\/network-intelligence$/, /^\/reports$/, /^\/admin\/administration-repository$/],
 };

@@ -37,6 +37,8 @@ test("metadata projection excludes private and financial fields", () => {
 
 test("deep links are same-origin and role governed", () => {
   assert.equal(isSafeNotificationDeepLink("driver", "/activity"), true);
+  assert.equal(isSafeNotificationDeepLink("owner", "/dashboard/reviews?facilityId=1367c68a-e12b-46a4-a417-6f21febe5640&activityId=323528bb-bc19-4e88-9f66-ce383ab591cf#activity-323528bb-bc19-4e88-9f66-ce383ab591cf"), true);
+  assert.equal(isSafeNotificationDeepLink("owner", "/dashboard/reviews?facilityId=1367c68a-e12b-46a4-a417-6f21febe5640&activityId=323528bb-bc19-4e88-9f66-ce383ab591cf#activity-ff18a63c-48ff-4f17-808f-31a84da639b7"), false);
   assert.equal(isSafeNotificationDeepLink("owner", "/intelligence?facilityId=1367c68a-e12b-46a4-a417-6f21febe5640"), true);
   assert.equal(isSafeNotificationDeepLink("admin", "/admin/photo-review"), true);
   assert.equal(isSafeNotificationDeepLink("driver", "/admin/photo-review"), false);

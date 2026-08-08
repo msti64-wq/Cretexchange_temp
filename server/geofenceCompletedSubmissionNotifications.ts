@@ -149,6 +149,15 @@ function metadata(input: CompletedSubmissionNotificationInput, classification: C
   };
 }
 
+function driverActivityLink(activityId: string): string {
+  return `/activity?submittedActivityId=${encodeURIComponent(activityId)}`;
+}
+
+function ownerReviewLink(facilityId: string, activityId: string): string {
+  const encodedActivityId = encodeURIComponent(activityId);
+  return `/dashboard/reviews?facilityId=${encodeURIComponent(facilityId)}&activityId=${encodedActivityId}#activity-${encodedActivityId}`;
+}
+
 export async function deliverCompletedSubmissionGeofenceNotifications(
   input: CompletedSubmissionNotificationInput,
 ): Promise<CompletedSubmissionNotificationResult> {
@@ -174,7 +183,7 @@ export async function deliverCompletedSubmissionGeofenceNotifications(
   if (classification.kind === "yellow") {
     deliveries.push({ recipientRole: "driver", templateKey: "geofence_exception_submitted", deliver: () => input.emitUser({
       userId: input.activity.driverUserId, recipientRole: "driver", templateKey: "geofence_exception_submitted",
-      title: "Boundary review submitted", message: yellowMessage(input, "driver"), deepLink: "/activity",
+      title: "Boundary review submitted", message: yellowMessage(input, "driver"), deepLink: driverActivityLink(input.activity.id),
       metadata: safeMetadata, sourceEntityType: "washout_activity", sourceEntityId: input.activity.id,
       idempotencyKey: `activity:${input.activity.id}:geofence:${eventKey}:driver:geofence_exception_submitted:${input.activity.driverUserId}`,
     }) });
@@ -183,7 +192,7 @@ export async function deliverCompletedSubmissionGeofenceNotifications(
       if (!ownerUserId) return;
       await input.emitUser({
         userId: ownerUserId, recipientRole: "owner", templateKey: "owner_geofence_exception_review",
-        title: "Activity needs boundary review", message: yellowMessage(input, "owner"), deepLink: "/dashboard",
+        title: "Activity needs boundary review", message: yellowMessage(input, "owner"), deepLink: ownerReviewLink(input.facility.id, input.activity.id),
         metadata: safeMetadata, sourceEntityType: "washout_activity", sourceEntityId: input.activity.id,
         idempotencyKey: `activity:${input.activity.id}:geofence:${eventKey}:owner:owner_geofence_exception_review:${ownerUserId}`,
         priority: "high",
@@ -202,7 +211,7 @@ export async function deliverCompletedSubmissionGeofenceNotifications(
     const copy = grayCopy[classification.condition];
     deliveries.push({ recipientRole: "driver", templateKey: "geofence_uncertainty_submitted", deliver: () => input.emitUser({
       userId: input.activity.driverUserId, recipientRole: "driver", templateKey: "geofence_uncertainty_submitted",
-      title: copy.driver.title, message: `${copy.driver.message} Facility: ${input.facility.name}.`, deepLink: "/activity",
+      title: copy.driver.title, message: `${copy.driver.message} Facility: ${input.facility.name}.`, deepLink: driverActivityLink(input.activity.id),
       metadata: safeMetadata, sourceEntityType: "washout_activity", sourceEntityId: input.activity.id,
       idempotencyKey: `activity:${input.activity.id}:geofence:${eventKey}:driver:geofence_uncertainty_submitted:${input.activity.driverUserId}`,
     }) });
@@ -211,7 +220,7 @@ export async function deliverCompletedSubmissionGeofenceNotifications(
       if (!ownerUserId) return;
       await input.emitUser({
         userId: ownerUserId, recipientRole: "owner", templateKey: "owner_geofence_uncertainty_review",
-        title: copy.owner.title, message: `${copy.owner.message} Facility: ${input.facility.name}.`, deepLink: "/dashboard",
+        title: copy.owner.title, message: `${copy.owner.message} Facility: ${input.facility.name}.`, deepLink: ownerReviewLink(input.facility.id, input.activity.id),
         metadata: safeMetadata, sourceEntityType: "washout_activity", sourceEntityId: input.activity.id,
         idempotencyKey: `activity:${input.activity.id}:geofence:${eventKey}:owner:owner_geofence_uncertainty_review:${ownerUserId}`,
         priority: "high",

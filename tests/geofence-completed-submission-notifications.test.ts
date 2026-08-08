@@ -202,8 +202,8 @@ test("templates, deep links, metadata, English, and Spanish remain role- and pri
   const spanish = localizeCenterNotification(centerItem, "es", (key, values) => translate(key, "es", values));
   assert.match(english.title, /boundary needed correction/i);
   assert.match(spanish.title, /límite necesitaba corrección/i);
-  assert.equal(driver.deepLink, "/activity");
-  assert.equal(notification.captured.find((item) => item.recipientRole === "owner")!.deepLink, "/dashboard");
+  assert.equal(driver.deepLink, "/activity?submittedActivityId=activity-1");
+  assert.equal(notification.captured.find((item) => item.recipientRole === "owner")!.deepLink, "/dashboard/reviews?facilityId=facility-1&activityId=activity-1#activity-activity-1");
   assert.equal(notification.captured.find((item) => item.recipientRole === "admin")!.deepLink, "/notifications");
 });
 
