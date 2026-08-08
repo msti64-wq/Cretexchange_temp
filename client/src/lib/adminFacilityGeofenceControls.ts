@@ -56,12 +56,36 @@ export function createFacilityControlRequestReference(): string {
   return `facility-geofence-${randomPart}`.slice(0, FACILITY_CONTROL_REQUEST_MAX);
 }
 
+export function isFacilityControlEnableAuthorized(
+  flagKey: FacilityScopedGeofenceFeatureFlag,
+): boolean {
+  return flagKey === "geofence_submission_enforcement";
+}
+
+export type FacilityControlAction = {
+  kind: "enable" | "disable";
+  available: boolean;
+};
+
+export function resolveFacilityControlAction(
+  flagKey: FacilityScopedGeofenceFeatureFlag,
+  effectiveEnabled: boolean,
+): FacilityControlAction {
+  if (effectiveEnabled) return { kind: "disable", available: true };
+  return { kind: "enable", available: isFacilityControlEnableAuthorized(flagKey) };
+}
+
+export function facilityControlConfirmationText(enabled: boolean): "ENABLE" | "DISABLE" {
+  return enabled ? "ENABLE" : "DISABLE";
+}
+
 export function validateFacilityControlDraft(input: {
   facilityId: string;
   flagKey: string;
+  enabled: boolean;
   reason: string;
   requestReference: string;
-  confirmed: boolean;
+  confirmationText: string;
 }): FacilityControlDraftError | null {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.facilityId)) {
     return "facility";
@@ -75,7 +99,9 @@ export function validateFacilityControlDraft(input: {
   if (requestLength < 1 || requestLength > FACILITY_CONTROL_REQUEST_MAX) {
     return "requestReference";
   }
-  if (!input.confirmed) return "confirmation";
+  if (input.confirmationText.trim() !== facilityControlConfirmationText(input.enabled)) {
+    return "confirmation";
+  }
   return null;
 }
 
@@ -85,7 +111,7 @@ export function buildFacilityControlMutation(input: {
   enabled: boolean;
   reason: string;
   requestReference: string;
-  confirmed: boolean;
+  confirmationText: string;
 }) {
   const error = validateFacilityControlDraft(input);
   if (error) throw new Error(`FACILITY_CONTROL_DRAFT_${error.toUpperCase()}`);

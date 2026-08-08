@@ -5,6 +5,8 @@ import {
   FACILITY_CONTROL_REQUEST_MAX,
   buildFacilityControlMutation,
   createFacilityControlRequestReference,
+  facilityControlConfirmationText,
+  resolveFacilityControlAction,
   validateFacilityControlDraft,
 } from "../client/src/lib/adminFacilityGeofenceControls";
 import { FEATURE_FLAGS } from "../shared/featureFlags";
@@ -15,16 +17,17 @@ test("governed mutation draft requires exact Facility, allowed flag, reason, req
   const valid = {
     facilityId: FACILITY_ID,
     flagKey: FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT,
+    enabled: true,
     reason: "Founder-authorized controlled pilot",
     requestReference: "founder-approval-2026-08-08",
-    confirmed: true,
+    confirmationText: "ENABLE",
   };
   assert.equal(validateFacilityControlDraft(valid), null);
   assert.equal(validateFacilityControlDraft({ ...valid, facilityId: "missing" }), "facility");
   assert.equal(validateFacilityControlDraft({ ...valid, flagKey: FEATURE_FLAGS.WALLET_FUNDING }), "flag");
   assert.equal(validateFacilityControlDraft({ ...valid, reason: "  " }), "reason");
   assert.equal(validateFacilityControlDraft({ ...valid, requestReference: "" }), "requestReference");
-  assert.equal(validateFacilityControlDraft({ ...valid, confirmed: false }), "confirmation");
+  assert.equal(validateFacilityControlDraft({ ...valid, confirmationText: "enable" }), "confirmation");
   assert.equal(validateFacilityControlDraft({ ...valid, requestReference: "x".repeat(FACILITY_CONTROL_REQUEST_MAX + 1) }), "requestReference");
 });
 
@@ -36,7 +39,7 @@ test("isolated frontend handling builds explicit enable and disable requests wit
       enabled,
       reason: enabled ? "Controlled pilot enable" : "Controlled recovery disable",
       requestReference: `request-${enabled}`,
-      confirmed: true,
+      confirmationText: facilityControlConfirmationText(enabled),
     });
     assert.equal(request.body.enabled, enabled);
     assert.equal(request.flagKey, FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT);
@@ -48,7 +51,7 @@ test("isolated frontend handling builds explicit enable and disable requests wit
     enabled: true,
     reason: "Not Facility governed",
     requestReference: "request-financial",
-    confirmed: true,
+    confirmationText: "ENABLE",
   }), /FACILITY_CONTROL_DRAFT_FLAG/);
   assert.ok(createFacilityControlRequestReference().length <= FACILITY_CONTROL_REQUEST_MAX);
 });
@@ -66,10 +69,22 @@ test("Admin and Super Admin navigation exposes the responsive Facility pilot int
   assert.match(nav, /testIdLabel: "facility-geofence-controls"/);
   assert.match(dashboard, /button-facility-geofence-controls-hero/);
   assert.match(dashboard, /button-facility-geofence-controls/);
-  assert.match(page, /sm:grid-cols-2/);
+  assert.match(page, /p-4 md:p-6/);
+  assert.match(page, /flex-col gap-4 sm:flex-row/);
   assert.match(page, /lg:grid-cols-3/);
   assert.match(page, /<MobileNav role=/);
   assert.match(page, /user\?\.role === "admin" \|\| user\?\.role === "super_admin"/);
+});
+
+test("only the current valid action is exposed and deferred enables remain unavailable", () => {
+  assert.deepEqual(resolveFacilityControlAction(FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT, false), { kind: "enable", available: true });
+  assert.deepEqual(resolveFacilityControlAction(FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS, false), { kind: "enable", available: false });
+  assert.deepEqual(resolveFacilityControlAction(FEATURE_FLAGS.GEOFENCE_LEGACY_TRANSITION, false), { kind: "enable", available: false });
+  for (const flagKey of [
+    FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT,
+    FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
+    FEATURE_FLAGS.GEOFENCE_LEGACY_TRANSITION,
+  ]) assert.deepEqual(resolveFacilityControlAction(flagKey, true), { kind: "disable", available: true });
 });
 
 test("page load is read-only and failed mutations retain the server-rendered state", async () => {
@@ -77,7 +92,7 @@ test("page load is read-only and failed mutations retain the server-rendered sta
   assert.match(page, /queryFn: async \(\) => \(await apiRequest\("GET", controlEndpoint\)\)\.json\(\)/);
   assert.match(page, /enabled: allowed && Boolean\(facilityId\)/);
   assert.match(page, /method: "PUT"/);
-  assert.match(page, /onSuccess: async \(\) => \{[\s\S]{0,260}setDraft\(null\)/);
+  assert.match(page, /onSuccess: async \(_data, pending\) => \{[\s\S]{0,500}setDraft\(null\)/);
   const onError = page.match(/onError: \(error: Error\) => \{[\s\S]{0,420}?\n    \},/)?.[0] || "";
   assert.doesNotMatch(onError, /setDraft\(null\)|setQueryData|effectiveEnabled\s*=/);
   assert.doesNotMatch(page, /onMutate|setQueryData/);
@@ -90,13 +105,17 @@ test("Facility state, audit history, confirmation, loading, retry, and accessibi
   for (const required of [
     "globalEnabled", "overrideEnabled", "effectiveEnabled", "source",
     "facility-control-history-event", "priorEnabled", "newEnabled", "requestId",
-    "facility-control-confirmed", "facility-control-reason", "facility-control-request-reference",
+    "facility-control-confirmation-text", "facility-control-reason", "facility-control-request-reference",
     "facilities.isLoading", "facilities.isError", "controls.isLoading", "controls.isError",
     "controls.refetch", "role=\"status\"", "role=\"alert\"", "aria-labelledby",
   ]) assert.match(page, new RegExp(required));
   assert.match(page, /data-state=\{enabled \? "enabled" : "disabled"\}/);
   assert.match(page, /enforcementWarning/);
   assert.match(page, /authorizationWarning/);
+  assert.match(page, /action\.kind === "disable"/);
+  assert.match(page, /disabled=\{!action\.available\}/);
+  assert.match(page, /aria-describedby=\{phaseId\}/);
+  assert.match(page, /variant="outline" autoFocus onClick=\{\(\) => setDraft\(null\)\}/);
   assert.match(page, /<LanguageToggle/);
 });
 
@@ -109,11 +128,18 @@ test("English and Spanish cover the full Facility control experience without fin
   for (const key of [
     "facilityControls.title",
     "facilityControls.control.enforcement",
-    "facilityControls.confirm.checkbox",
+    "facilityControls.safety.deliveryIndependence",
+    "facilityControls.phase.notifications",
+    "facilityControls.phase.legacy",
+    "facilityControls.confirm.typedLabel",
     "facilityControls.history.empty",
-    "facilityControls.mutation.inlineError",
+    "facilityControls.mutation.enableSuccessDescription",
     "adminNav.facilityGeofenceControls",
   ]) assert.equal(i18n.split(`"${key}"`).length - 1, 2, `${key} must exist in English and Spanish`);
+  assert.match(i18n, /These controls do not control whether Owners can see deliveries or washout reviews\. They affect how new submissions are processed after activation\./);
+  assert.match(i18n, /Not yet authorized—complete enforcement acceptance first/);
+  assert.match(i18n, /Not yet authorized—deferred until configured Facilities complete acceptance/);
+  assert.match(i18n, /This affects new qualifying submissions only\. Existing reviews and deliveries are unchanged\./);
   assert.doesNotMatch(page, /latitude|longitude|polygon|gps|ownerId|driverId|storagePath|analyticsPayload|stripe|wallet|settlement/i);
   assert.doesNotMatch(server, /latitude|longitude|polygon|gps|ownerId|driverId|storagePath|analyticsPayload|stripe|wallet|settlement/i);
   assert.match(server, /FACILITY_SCOPED_GEOFENCE_FEATURE_FLAGS/);

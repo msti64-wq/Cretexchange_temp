@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import {
   buildFacilityControlMutation,
   createFacilityControlRequestReference,
+  facilityControlConfirmationText,
+  resolveFacilityControlAction,
   validateFacilityControlDraft,
   type FacilityControlDraftError,
   type FacilityControlResponse,
@@ -30,7 +32,7 @@ type MutationDraft = {
   enabled: boolean;
   reason: string;
   requestReference: string;
-  confirmed: boolean;
+  confirmationText: string;
 };
 
 const labelKeyByFlag: Record<FacilityScopedGeofenceFeatureFlag, string> = {
@@ -43,6 +45,12 @@ const descriptionKeyByFlag: Record<FacilityScopedGeofenceFeatureFlag, string> = 
   geofence_submission_enforcement: "facilityControls.control.enforcementDescription",
   geofence_notifications: "facilityControls.control.notificationsDescription",
   geofence_legacy_transition: "facilityControls.control.legacyDescription",
+};
+
+const phaseKeyByFlag: Record<FacilityScopedGeofenceFeatureFlag, string> = {
+  geofence_submission_enforcement: "facilityControls.phase.enforcement",
+  geofence_notifications: "facilityControls.phase.notifications",
+  geofence_legacy_transition: "facilityControls.phase.legacy",
 };
 
 function StateIndicator({ enabled, label }: { enabled: boolean; label: string }) {
@@ -87,7 +95,7 @@ export default function AdminFacilityGeofenceControls() {
         enabled: pending.enabled,
         reason: pending.reason,
         requestReference: pending.requestReference,
-        confirmed: pending.confirmed,
+        confirmationText: pending.confirmationText,
       });
       return (await apiRequest(
         `/api/admin/facilities/${encodeURIComponent(request.facilityId)}/geofence-controls/${encodeURIComponent(request.flagKey)}`,
@@ -98,10 +106,15 @@ export default function AdminFacilityGeofenceControls() {
         },
       )).json();
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, pending) => {
       await queryClient.invalidateQueries({ queryKey: ["/api/admin/facilities/geofence-controls", facilityId] });
       setDraft(null);
-      toast({ title: t("facilityControls.mutation.successTitle"), description: t("facilityControls.mutation.successDescription") });
+      toast({
+        title: t("facilityControls.mutation.successTitle"),
+        description: t(pending.enabled
+          ? "facilityControls.mutation.enableSuccessDescription"
+          : "facilityControls.mutation.disableSuccessDescription"),
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -127,7 +140,7 @@ export default function AdminFacilityGeofenceControls() {
       enabled,
       reason: "",
       requestReference: createFacilityControlRequestReference(),
-      confirmed: false,
+      confirmationText: "",
     });
     mutation.reset();
   };
@@ -165,7 +178,11 @@ export default function AdminFacilityGeofenceControls() {
             <CardDescription>{t("facilityControls.safety.description")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm text-muted-foreground">
+            <p className="font-semibold text-foreground" role="note">{t("facilityControls.safety.deliveryIndependence")}</p>
             <p>{t("facilityControls.safety.enforcement")}</p>
+            <p>{t("facilityControls.safety.notifications")}</p>
+            <p>{t("facilityControls.safety.legacy")}</p>
+            <p>{t("facilityControls.safety.existingUnchanged")}</p>
             <p>{t("facilityControls.safety.authorization")}</p>
             <p>{t("facilityControls.safety.noPageMutation")}</p>
           </CardContent>
@@ -218,7 +235,10 @@ export default function AdminFacilityGeofenceControls() {
             <section aria-labelledby="facility-control-state-heading" className="space-y-3">
               <div><h2 id="facility-control-state-heading" className="text-xl font-semibold">{t("facilityControls.controls.title")}</h2><p className="text-sm text-muted-foreground">{t("facilityControls.controls.description")}</p><p className="mt-1 text-xs text-muted-foreground">{t("facilityControls.controls.userOverrideNote")}</p></div>
               <div className="grid gap-4 lg:grid-cols-3">
-                {controls.data.controls.map((control) => (
+                {controls.data.controls.map((control) => {
+                  const action = resolveFacilityControlAction(control.flagKey, control.effectiveEnabled);
+                  const phaseId = `facility-control-phase-${control.flagKey}`;
+                  return (
                   <Card key={control.flagKey} data-testid={`facility-control-${control.flagKey}`}>
                     <CardHeader>
                       <CardTitle className="text-base">{t(labelKeyByFlag[control.flagKey])}</CardTitle>
@@ -232,13 +252,16 @@ export default function AdminFacilityGeofenceControls() {
                         <div className="flex items-center justify-between gap-3"><dt>{t("facilityControls.source")}</dt><dd className="font-medium">{sourceLabel(control.source)}</dd></div>
                       </dl>
                       {control.overrideReason && <p className="rounded-md bg-muted p-2 text-xs text-muted-foreground"><span className="font-semibold">{t("facilityControls.lastReason")}:</span> {control.overrideReason}<br />{formatDate(control.overrideUpdatedAt)}</p>}
-                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                        <Button type="button" onClick={() => openMutation(control, true)} disabled={control.overrideEnabled === true} data-testid={`enable-${control.flagKey}`}>{t("facilityControls.enable")}</Button>
-                        <Button type="button" variant="outline" onClick={() => openMutation(control, false)} disabled={control.overrideEnabled === false} data-testid={`disable-${control.flagKey}`}>{t("facilityControls.disable")}</Button>
-                      </div>
+                      <p id={phaseId} className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground"><span className="font-semibold text-foreground">{t("facilityControls.phase.label")}:</span> {t(phaseKeyByFlag[control.flagKey])}</p>
+                      {action.kind === "disable" ? (
+                        <Button type="button" variant="destructive" className="w-full" onClick={() => openMutation(control, false)} data-testid={`disable-${control.flagKey}`}>{t("facilityControls.disable")}</Button>
+                      ) : (
+                        <Button type="button" className="w-full" onClick={() => openMutation(control, true)} disabled={!action.available} aria-describedby={phaseId} data-testid={`enable-${control.flagKey}`}>{t("facilityControls.enable")}</Button>
+                      )}
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             </section>
 
@@ -278,17 +301,24 @@ export default function AdminFacilityGeofenceControls() {
                 <p className="font-mono text-xs text-muted-foreground">{draft.flagKey}</p>
                 <p className="mt-2">{t("facilityControls.confirm.newState")}: <strong>{stateLabel(draft.enabled)}</strong></p>
               </div>
+              <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm" role="alert">{t("facilityControls.confirm.futureImpact", { feature: t(labelKeyByFlag[draft.flagKey]) })}</p>
+              <p className="text-sm text-muted-foreground">{t(descriptionKeyByFlag[draft.flagKey])}</p>
+              <p className="text-sm font-medium">{t("facilityControls.confirm.noDeliveryAccess")}</p>
               {draft.flagKey === "geofence_submission_enforcement" && <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm" role="alert">{t("facilityControls.confirm.enforcementWarning")}</p>}
               {draft.flagKey !== "geofence_submission_enforcement" && <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm" role="alert">{t("facilityControls.confirm.authorizationWarning")}</p>}
               <div className="space-y-2"><Label htmlFor="facility-control-reason">{t("facilityControls.confirm.reason")}</Label><Textarea id="facility-control-reason" maxLength={500} value={draft.reason} onChange={(event) => setDraft({ ...draft, reason: event.target.value })} placeholder={t("facilityControls.confirm.reasonPlaceholder")} /><p className="text-xs text-muted-foreground">{draft.reason.trim().length}/500</p></div>
               <div className="space-y-2"><Label htmlFor="facility-control-request-reference">{t("facilityControls.confirm.requestReference")}</Label><Input id="facility-control-request-reference" maxLength={160} value={draft.requestReference} onChange={(event) => setDraft({ ...draft, requestReference: event.target.value })} /><p className="text-xs text-muted-foreground">{t("facilityControls.confirm.requestHelp")}</p></div>
-              <label className="flex items-start gap-3 rounded-lg border p-3 text-sm" htmlFor="facility-control-confirmed"><input id="facility-control-confirmed" type="checkbox" className="mt-1 h-4 w-4" checked={draft.confirmed} onChange={(event) => setDraft({ ...draft, confirmed: event.target.checked })} /><span>{t("facilityControls.confirm.checkbox", { facility: selectedFacility.name, feature: t(labelKeyByFlag[draft.flagKey]) })}</span></label>
+              <div className="space-y-2 rounded-lg border p-3">
+                <Label htmlFor="facility-control-confirmation-text">{t("facilityControls.confirm.typedLabel", { confirmation: facilityControlConfirmationText(draft.enabled) })}</Label>
+                <Input id="facility-control-confirmation-text" data-testid="facility-control-confirmation-text" autoComplete="off" value={draft.confirmationText} onChange={(event) => setDraft({ ...draft, confirmationText: event.target.value })} placeholder={facilityControlConfirmationText(draft.enabled)} />
+                <p className="text-xs text-muted-foreground">{t("facilityControls.confirm.typedHelp", { facility: selectedFacility.name, feature: t(labelKeyByFlag[draft.flagKey]) })}</p>
+              </div>
               {draftError && <p className="text-sm text-destructive" role="alert">{localizedDraftError(draftError)}</p>}
               {mutation.isError && <p className="text-sm text-destructive" role="alert">{t("facilityControls.mutation.inlineError")}</p>}
             </div>
           )}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setDraft(null)} disabled={mutation.isPending}>{t("facilityControls.cancel")}</Button>
+            <Button type="button" variant="outline" autoFocus onClick={() => setDraft(null)} disabled={mutation.isPending}>{t("facilityControls.cancel")}</Button>
             <Button type="button" onClick={() => draft && mutation.mutate(draft)} disabled={!draft || Boolean(draftError) || mutation.isPending} data-testid="confirm-facility-control-mutation">
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t("facilityControls.confirm.apply")}
             </Button>
