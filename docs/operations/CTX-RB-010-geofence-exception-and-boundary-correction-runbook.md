@@ -1,20 +1,20 @@
 # CTX-RB-010 — Geofence Exception and Boundary Correction Runbook
 
 - **Document ID:** CTX-RB-010
-- **Version:** 1.1
-- **Status:** Approved — controlled feature-branch workflow implemented; not operational until release authorization
+- **Version:** 1.2
+- **Status:** Approved — advisory and submission-time Owner context operational; notification workflow and red enforcement pilot not activated
 - **Owner:** Platform Operations
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Product:** CreteXchange
 - **Classification:** Internal
 - **Effective Date:** 2026-08-04
 - **Review Frequency:** Quarterly and after a material geofence, exception, or authorization change
-- **Last Reviewed:** 2026-08-04
-- **Next Review:** Before operational activation or after a material authorization change
+- **Last Reviewed:** 2026-08-08
+- **Next Review:** Before notification implementation or red enforcement-pilot authorization
 
 ## 1. Purpose and scope
 
-This approved runbook defines safe handling of geofence exceptions, Owner boundary-correction requests, and Admin assistance. The controlled feature branch implements the workflow behind disabled controls, but this procedure is not operational until migration, activation, deployment, and Founder acceptance are separately authorized.
+This approved runbook defines safe handling of geofence exceptions, Gray uncertainty/configuration states, Owner boundary-correction requests, and Admin assistance. Owner/Driver advisory scope and submission-time Owner context are accepted. The completed-submission notification workflow and red enforcement pilot are not activated; legacy transition is deferred; and 2FA has not begun.
 
 It does not authorize direct database edits, geometry modification, account restriction, evidence deletion, Facility disabling, payment action, or a fraud finding.
 
@@ -48,7 +48,18 @@ It does not authorize direct database edits, geometry modification, account rest
 6. Repeated failures may be recorded for later pattern analysis but do not authorize account warning, suspension, or disabling without a separately governed policy.
 7. Confirm the item created no verification success, operational-success metric, reward, achievement, competition credit, settlement, wallet value, payment, or financial execution.
 
-## 5. Owner boundary-correction procedure
+This procedure applies only after separate Founder authorization activates submission enforcement for the controlled Facility.
+
+## 5. Gray uncertainty/configuration procedure
+
+1. Confirm a completed submission produced one of the six governed Gray states; passive advisory evaluation never enters this procedure.
+2. Distinguish GPS unavailable/insufficient, near-boundary uncertainty, near-advisory-limit uncertainty, missing Facility boundary, and invalid/unavailable Facility boundary.
+3. Send neutral Driver guidance appropriate to the state: review evidence, retry/verify operational location, correct the Facility boundary, or contact the Owner for assistance.
+4. When the notification workflow is separately activated, create one idempotent Owner uncertainty/configuration notice and one low-priority assistance notice for each approved Admin/Super Admin recipient.
+5. Do not create a rejection, fraud finding, or active Photo Review item solely because the state is Gray.
+6. Preserve the completed submission and its governed evidence. Notification-delivery failure must not roll back the canonical activity/evidence transaction.
+
+## 6. Owner boundary-correction procedure
 
 1. Authenticate and confirm ownership of the selected Facility.
 2. Review the active boundary and immutable revision history.
@@ -59,42 +70,58 @@ It does not authorize direct database edits, geometry modification, account rest
 7. Activate atomically so the previous version receives an effective end and the new version receives an effective start.
 8. Confirm new evaluations use the new version while earlier submissions retain the old version.
 
-## 6. Assistance and escalation
+## 7. Assistance and escalation
 
 - Authentication, authorization, account compromise, or evidence tampering follows [CTX-RB-003](./CTX-RB-003-incident-response-runbook.md).
 - Photo/evidence review follows [CTX-RB-007](./CTX-RB-007-administrative-photo-review-runbook.md).
 - Marketplace-trust concerns follow [CTX-RB-008](./CTX-RB-008-marketplace-trust-and-fraud-escalation-runbook.md).
 - If a required control is unavailable, preserve safe references and escalate. Do not use SQL, object storage, provider consoles, or client-side geometry as a workaround.
 
-## 7. Notification behavior
+## 8. Notification behavior
 
-| Trigger | Recipients | Rule |
-| --- | --- | --- |
-| Passive indicator/selection | None | No side effect |
-| Complete yellow submission | Owner, Admin/Super Admin, and Driver | One idempotent combined pending-review/boundary-review Owner notice; one idempotent low-priority operational-exception Admin/Super Admin notice; neutral Driver confirmation; no active Photo Review by default |
-| Red platform exception | Driver and Admin/Super Admin | Neutral Driver language; no Owner notification |
-| Owner assistance request | Requesting Owner and authorized Admin recipients | Notification Service, idempotent, safe metadata |
-| Boundary activation | Owner confirmation | No Driver broadcast unless separately approved |
+| Trigger | Driver | Owner | Admin/Super Admin | Rule |
+| --- | --- | --- | --- | --- |
+| Passive viewing/selection/GPS/retry/advisory change | None | None | None | No notification or persisted notification side effect |
+| Green completed submission | Ordinary confirmation | Existing ordinary pending-review notice | None | No separate geofence notice; do not duplicate the Owner notice |
+| Yellow completed submission | Neutral confirmation | Boundary-review notice | Low-priority assistance notice | Include acknowledgement reason/note when available; identify boundary-correction requests |
+| Gray — GPS unavailable/insufficient | Neutral retry/verify guidance | Uncertainty notice | Low-priority assistance | No rejection or accusation |
+| Gray — near-boundary uncertainty | Neutral evidence-review guidance | Near-boundary notice | Low-priority assistance | No rejection or accusation |
+| Gray — near-advisory-limit uncertainty | Neutral evidence-review guidance | Near-limit notice | Low-priority assistance | No rejection or accusation |
+| Gray — missing Facility boundary | Neutral contact-Owner guidance | Configuration notice | Low-priority assistance | Correct/configure the boundary |
+| Gray — invalid/unavailable boundary | Neutral contact-Owner guidance | Configuration notice | Low-priority assistance | Correct the boundary |
+| Red completed submission under authorized enforcement | Neutral retained/quarantine communication | None | Active attention | No ordinary Owner review item, fraud label, or financial/success outcome |
+| Owner assistance request | None | Request confirmation | Authorized assistance notice | Notification Service, idempotent, safe metadata |
+| Boundary activation | None | Confirmation | None | No Driver broadcast unless separately approved |
 
-## 8. Evidence, privacy, and audit
+Exactly one idempotent notification is allowed per approved recipient/event. Refresh, retry, or idempotent resubmission creates no duplicate. Delivery failures are recoverable notification failures and do not undo the canonical activity/evidence transaction. Facility/activity deep links remain RBAC-protected.
+
+### 8.1 Feature-control boundary
+
+- Owner access to deliveries and Washout Reviews is independent of every geofence control.
+- Submission Enforcement is an internal controlled-pilot routing switch for future completed submissions.
+- Geofence Notifications is an internal completed-submission kill switch. Yellow and Gray notification handling is independent of submission enforcement; red quarantine requires enforcement.
+- Legacy Transition is unrelated to notifications and remains deferred.
+- Notification and legacy controls are omitted from the ordinary Facility pilot workflow or shown only as internal read-only/deferred state.
+
+## 9. Evidence, privacy, and audit
 
 Record safe Facility/activity/boundary-version identifiers, result/reason code, actor, timestamp, action, and idempotency identity. Boundary, evaluation, notification, and review evidence is append-only. Precise Driver coordinates, raw polygon geometry, credentials, contact data, storage paths, financial data, and internal analytics payloads must not appear in notification metadata, list payloads, or general logs. Preserve existing Photo Review privacy and evidence-access controls.
 
-Operational records are retained according to [CTX-POL-003](../standards/CTX-POL-003-data-retention-policy.md). This draft sets no retention period or deletion authority.
+Operational records are retained according to [CTX-POL-003](../standards/CTX-POL-003-data-retention-policy.md). This runbook sets no retention period or deletion authority.
 
-## 9. Existing-Facility transition
+## 10. Existing-Facility transition
 
 For a Facility without an active valid governed boundary, keep the isolated feature-flagged legacy center-distance behavior operational: through one mile is verified; more than one through three miles is warning; beyond three miles is failed. There is no four-mile rule. The separate duplicated 500-foot rubble arrival/completion checks remain legacy behavior pending canonical convergence.
 
 Do not infer, backfill, or automatically activate a polygon or radius. New enforcement applies only after an authorized Owner activates a valid boundary. Retire legacy behavior only after affected pilot Facilities are configured, tested, approved, and pass release gates.
 
-## 10. Recovery and limitations
+## 11. Recovery and limitations
 
 An incorrect activation is corrected by activating a new version or, under separately authorized recovery, restoring an earlier valid geometry as a new version. Do not rewrite history. Application rollback disables new reads/enforcement while retaining additive boundary, revision, evaluation, notification, and review evidence. No destructive rollback or Production recovery is authorized without an explicit Founder recovery checkpoint.
 
-This procedure cannot be used operationally until the feature-branch checkpoint is Founder-accepted, migration `0040` is separately authorized and completed, controls are deliberately activated, the accepted commit is deployed, and Production acceptance succeeds.
+The advisory and submission-time Owner-context portions are Founder-accepted. Notification procedures cannot be used until implementation, validation, release, and explicit activation are separately authorized. Red handling cannot be piloted until submission enforcement is separately authorized for the controlled Facility. Legacy transition remains deferred.
 
-## 11. Related documents
+## 12. Related documents
 
 - [CTX-ARCH-016](../architecture/CTX-ARCH-016-canonical-facility-geofence-architecture.md)
 - [PD-061](../product/PD-061-facility-geofence-and-operational-exception-policy.md)
@@ -103,7 +130,7 @@ This procedure cannot be used operationally until the feature-branch checkpoint 
 - [PD-060](../product/PD-060-photo-review-retention-and-platform-rejection.md)
 - [CTX-ARCH-013](../architecture/CTX-ARCH-013-notification-and-communication-center.md)
 
-## 12. Change history
+## 13. Change history
 
 | Version | Date | Change |
 | --- | --- | --- |
@@ -111,3 +138,4 @@ This procedure cannot be used operationally until the feature-branch checkpoint 
 | 0.2 | 2026-08-04 | Incorporated Founder-approved exception routing, notifications, correction authority, legacy transition, privacy, and recovery direction; still non-operational. |
 | 1.0 | 2026-08-04 | Founder-approved runbook made effective as governance; procedure remains non-operational until separately authorized implementation. |
 | 1.1 | 2026-08-04 | Recorded the controlled feature-branch yellow/red routing, Owner correction and assistance workflow, and remaining operational release gates. |
+| 1.2 | 2026-08-08 | Added the completed-submission notification matrix, Gray handling, control separation, idempotency/privacy safeguards, and current accepted/inactive/deferred scope. |

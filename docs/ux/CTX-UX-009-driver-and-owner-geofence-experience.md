@@ -1,20 +1,20 @@
 # CTX-UX-009 — Driver and Owner Geofence Experience
 
 - **Document ID:** CTX-UX-009
-- **Version:** 1.1
-- **Status:** Approved — controlled feature-branch experience implemented; not activated or released
+- **Version:** 1.2
+- **Status:** Approved — Owner/Driver advisory and submission-time Owner context accepted; notification experience not activated
 - **Owner:** CreteXchange Product and Experience
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Product:** CreteXchange
 - **Effective Date:** 2026-08-04
 - **Classification:** Internal
 - **Review Frequency:** Event-driven after a material Driver-location or Owner-boundary change
-- **Last Reviewed:** 2026-08-04
-- **Next Review:** Before implementation approval or after a material experience change
+- **Last Reviewed:** 2026-08-08
+- **Next Review:** Before geofence notification implementation or red enforcement-pilot authorization
 
 ## 1. Purpose and scope
 
-This document defines the approved minimal Driver Facility-status indicator and governed Owner boundary-management experience. The separately authorized controlled feature branch implements this experience behind disabled controls; migration, activation, merge, deployment, and Founder Production acceptance remain separate gates. [CTX-ARCH-016](../architecture/CTX-ARCH-016-canonical-facility-geofence-architecture.md) owns evaluation and data contracts; [PD-061](../product/PD-061-facility-geofence-and-operational-exception-policy.md) owns product policy.
+This document defines the approved Driver Facility-status indicator, governed Owner boundary-management experience, and completed-submission notification experience. Owner/Driver advisory scope and submission-time Owner context are accepted. The Gray-capable notification workflow and red enforcement pilot are not activated; legacy transition is deferred; and 2FA has not begun. [CTX-ARCH-016](../architecture/CTX-ARCH-016-canonical-facility-geofence-architecture.md) owns evaluation and data contracts; [PD-061](../product/PD-061-facility-geofence-and-operational-exception-policy.md) owns product policy.
 
 ## 2. Driver Facility-selection experience
 
@@ -25,7 +25,7 @@ The existing material-filtered Facility list, nearest-location ordering, search,
 | Inside | `Inside facility boundary` | Check-circle icon | Green text/icon on high-contrast subtle background |
 | Yellow exception zone | `Outside boundary — confirm location` | Alert-triangle icon | Amber text/icon; never presented as approved |
 | Red outside exception zone | `Too far from facility — review selection` | X-circle or map-pin-alert icon | Red text/icon |
-| Unavailable/uncertain | `Location could not be confirmed` | Help-circle or location-off icon | Neutral gray text/icon |
+| Gray — unavailable, uncertain, or configuration issue | `Location could not be confirmed` or state-specific neutral guidance | Help-circle or location-off icon | Neutral gray text/icon |
 
 Requirements:
 
@@ -58,7 +58,7 @@ The check-in page repeats the server evaluation with a fresh observation. An ear
 - Green continues the ordinary evidence flow.
 - Yellow presents an inline, accessible acknowledgement area before final submission. It explains that the Driver is outside the approved boundary and asks for a governed reason, optional note, and required photo evidence.
 - Red explains neutrally that the activity cannot enter ordinary Facility review and that submitted evidence will require Platform review. It does not use “fraud,” “fraudulent,” or accusatory language.
-- Neutral explains the specific safe recovery action—retry location, improve signal/accuracy, or contact support for Facility geometry—without fabricating coordinates or bypassing evidence.
+- Gray explains the specific safe recovery action—review the submission evidence, retry or verify operational location, correct the Facility boundary, or contact the Owner for assistance—without fabricating coordinates or bypassing evidence. It distinguishes GPS uncertainty, near-boundary uncertainty, near-advisory-limit uncertainty, missing Facility boundary, and invalid/unavailable Facility boundary.
 
 Reason choices for yellow:
 
@@ -70,7 +70,9 @@ Reason choices for yellow:
 
 The optional note is bounded, labeled, and not required to disclose personal information. The interface records acknowledgement only when the Driver submits; merely opening or selecting a reason does not notify anyone. A complete yellow submission also includes the GPS timestamp/accuracy and evaluated boundary version. If any required yellow element is missing, show corrective guidance inline and create no incomplete activity.
 
-After a complete yellow submission, show a neutral Driver confirmation. During the controlled pilot, the backend creates one combined pending-review/boundary-review Owner notification and one low-priority operational-exception Admin/Super Admin notification. The UX must not imply that yellow is an integrity rejection or active Photo Review item unless a separate escalation, dispute, or independent evidence failure occurs.
+After a complete yellow submission, show a neutral Driver confirmation. When the separately authorized notification workflow is active, the backend creates one boundary-review Owner notification and one low-priority assistance notification for each approved Admin/Super Admin recipient. Show the governed acknowledgement reason and bounded note when available; identify **Facility boundary appears incorrect** as a boundary-correction request. The UX must not imply that yellow is an integrity rejection or active Photo Review item unless a separate escalation, dispute, or independent evidence failure occurs.
+
+After a completed Gray submission, show neutral, state-specific Driver communication. When the notification workflow is active, create an Owner uncertainty/configuration notice and a low-priority Admin/Super Admin assistance notice. Do not use fraud, rejection, or accusation language.
 
 ## 4. Owner boundary-management experience
 
@@ -126,11 +128,28 @@ The Owner interface separates:
 
 None of these controls changes a payment, wallet, reward, settlement, or financial status.
 
-## 6. Admin guidance
+Owner access to deliveries and Washout Reviews is always available under ordinary Owner RBAC and Facility ownership. No geofence feature control reveals, hides, or authorizes those records.
+
+## 6. Completed-submission notification experience
+
+| Completed result | Driver experience | Owner experience | Admin/Super Admin experience |
+| --- | --- | --- | --- |
+| Green | Ordinary confirmation | Existing pending-review notice only | No geofence workload |
+| Yellow | Neutral confirmation | Boundary-review notice with acknowledgement context | Low-priority assistance notice |
+| Gray | Neutral, state-specific guidance | Uncertainty or configuration notice | Low-priority assistance notice |
+| Red under authorized enforcement | Neutral retained/quarantine communication | No notice and no ordinary review item | Active attention |
+
+Passive viewing, Facility selection, GPS acquisition, Retry GPS, and advisory color changes create no notification or persisted notification side effect. Opening a page, reloading it, retrying a request, or idempotently resubmitting cannot create duplicate notices. A notification-delivery failure must produce a controlled recovery state without undoing the completed canonical activity/evidence transaction.
+
+All notification copy is available in English and Spanish, accessible by text and assistive technology, and neutral. Deep links preserve RBAC. Do not expose precise GPS, exact distance, polygon geometry, storage paths, contact details, or private analytics.
+
+## 7. Admin guidance
 
 Red platform exceptions reuse PD-060 routing, active Admin Photo Review, and the existing private evidence viewer. They are quarantined before Owner review, send no Owner notification, and use neutral Driver language. Boundary assistance/correction is a separate operational request and does not automatically label the Driver, invalidate a Facility, or alter geometry. Repeated-location clustering is future decision support only and requires separate methodology, privacy review, and approval.
 
-## 7. Loading, error, and recovery states
+Submission Enforcement is labeled as an internal controlled-pilot routing switch for future completed submissions and must explicitly state that it does not reveal deliveries. Geofence Notifications is an internal kill switch, not a delivery-visibility control, and Legacy Transition is unrelated and deferred. Notification and legacy controls are omitted from the ordinary Facility pilot workflow or rendered read-only/deferred.
+
+## 8. Loading, error, and recovery states
 
 - Device location checking: maintain page shell and Facility list; show neutral status placeholders.
 - Permission denied: explain device/browser recovery and allow retry.
@@ -139,13 +158,13 @@ Red platform exceptions reuse PD-060 routing, active Admin Photo Review, and the
 - Invalid geometry: do not expose technical geometry details to the Driver; show neutral status and route Owner/Admin correction through authorized surfaces.
 - API timeout/error: use bounded retry and retain the list; never assume green.
 
-## 8. Acceptance criteria
+## 9. Acceptance criteria
 
 1. Inside radius and polygon show green from server results.
 2. Exact boundary contact follows the documented inside rule.
 3. Outside within the configured exception distance shows yellow.
 4. Beyond the exception distance shows red.
-5. Unavailable, inaccurate, stale, or invalid states show neutral.
+5. Both uncertainty-overlap states plus unavailable, inaccurate, stale, missing-boundary, and invalid-boundary states show governed Gray guidance.
 6. Yellow/red Facilities remain selectable.
 7. Passive display/selection creates no notifications or workflow records.
 8. Check-in/submission reevaluates with fresh evidence.
@@ -153,10 +172,14 @@ Red platform exceptions reuse PD-060 routing, active Admin Photo Review, and the
 10. English/Spanish, screen reader, keyboard, touch, contrast, loading, error, and reduced-motion behavior pass.
 11. No precise Driver coordinates or private geometry are disclosed outside authorized purpose.
 12. Driver, Owner, Admin Photo Review, Administrative Review, and Notification regressions pass.
-13. Complete yellow submissions show neutral confirmation and route the controlled-pilot notifications; incomplete yellow attempts create no activity.
+13. Complete yellow submissions show neutral confirmation and, only after separate activation, route the approved Owner/Admin notices; incomplete yellow attempts create no activity.
 14. Unconfigured existing Facilities remain usable under the explicit transitional legacy path, with no inferred or automatically activated geometry.
+15. Passive activity creates no notifications; green does not duplicate the ordinary Owner pending-review notice.
+16. Completed Gray submissions distinguish the governed reason and next action without accusation or rejection wording.
+17. Notification retries/resubmissions are idempotent, delivery failure does not roll back the activity/evidence transaction, and deep links preserve RBAC.
+18. Owner delivery and Washout Review access is never conditioned on a geofence control.
 
-## 9. Related documents
+## 10. Related documents
 
 - [CTX-UX-003](./CTX-UX-003-first-time-user-journey-and-pilot-readiness.md)
 - [CTX-UX-004](./CTX-UX-004-first-time-user-onboarding-experience.md)
@@ -166,7 +189,7 @@ Red platform exceptions reuse PD-060 routing, active Admin Photo Review, and the
 - [CTX-ARCH-016](../architecture/CTX-ARCH-016-canonical-facility-geofence-architecture.md)
 - [PD-061](../product/PD-061-facility-geofence-and-operational-exception-policy.md)
 
-## 10. Change history
+## 11. Change history
 
 | Version | Date | Change |
 | --- | --- | --- |
@@ -174,3 +197,4 @@ Red platform exceptions reuse PD-060 routing, active Admin Photo Review, and the
 | 0.2 | 2026-08-04 | Incorporated Founder-approved indicator, yellow/red, guardrail, correction, notification, and transition direction; still no implementation authority. |
 | 1.0 | 2026-08-04 | Founder-approved Driver and Owner geofence experience made effective as governance; implementation remains separately authorized. |
 | 1.1 | 2026-08-04 | Recorded the controlled feature-branch Driver advisory, submission guidance, Owner boundary management, bilingual copy, and pending release gates. |
+| 1.2 | 2026-08-08 | Added the Founder-approved completed-submission matrix, required Gray experience, control separation, idempotency/privacy safeguards, and accepted/inactive/deferred scope. |

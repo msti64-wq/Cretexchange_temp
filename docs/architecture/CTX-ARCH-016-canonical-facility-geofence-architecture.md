@@ -1,22 +1,22 @@
 # CTX-ARCH-016 — Canonical Facility Geofence Architecture
 
 - **Document ID:** CTX-ARCH-016
-- **Version:** 1.2
-- **Status:** Approved — complete feature-branch vertical slice implemented; migration, activation, merge, and release pending Founder authorization
+- **Version:** 1.4
+- **Status:** Approved and effective — Owner/Driver advisory and submission-time Owner context accepted; notification workflow and red enforcement pilot not activated
 - **Owner:** CreteXchange Product and Engineering
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Product:** CreteXchange
 - **Effective Date:** 2026-08-04
 - **Classification:** Internal
 - **Review Frequency:** Event-driven before implementation and after a material geofence change
-- **Last Reviewed:** 2026-08-04
-- **Next Review:** Before migration/implementation design approval or after a material geofence change
+- **Last Reviewed:** 2026-08-08
+- **Next Review:** Before geofence notification implementation or red enforcement-pilot authorization
 
 ## 1. Purpose and authority boundary
 
 This architecture defines one server-authoritative Facility geofence capability for Driver guidance, check-in, evidence submission, operational exceptions, retained evidence, and governed boundary correction. It supports one active primary verification boundary per configured Facility: an explicitly configured radius or one Owner-defined polygon. The initial polygon represents the approved Driver delivery, disposal, recovery, or washout area, not automatically the full property. The versioned `zone_key` model preserves future compatibility with multiple approved polygons, separate entrances, multiple washout areas, operational material zones, and large industrial campuses, but those capabilities are deferred unless separately approved.
 
-The separately authorized feature-branch implementation now includes the additive schema/migration, disabled controls, canonical server service, Owner boundary workflow, Driver advisory, submission enforcement, notification routing, safe Owner/Admin context, and focused tests described here. The work remains confined to `feature/canonical-facility-geofence`; migration `0040` is not executed outside isolated validation, every new feature control defaults disabled, and no merge, Production deployment, Production data mutation, Production activation, legacy retirement, or 2FA work is authorized. It remains subordinate to [CTX-STD-001](../standards/cretexchange-platform-standards.md), [CTX-ARCH-002](./owner-operations-architecture.md), [CTX-ARCH-003](./driver-operations-architecture.md), [CTX-ARCH-013](./CTX-ARCH-013-notification-and-communication-center.md), [CTX-ARCH-015](./CTX-ARCH-015-photo-review-retention-and-integrity-routing.md), [PD-060](../product/PD-060-photo-review-retention-and-platform-rejection.md), and the [Development Protocol](../development-protocol.md).
+The additive geofence foundation, Owner boundary management, Driver advisory evaluation, submission-time evidence capture, submission-time Owner review context, and Facility-scoped control foundation have been released under separate Founder authorizations. Owner/Driver advisory scope and submission-time Owner context are accepted. The geofence notification workflow defined in this revision is required but not activated; red submission enforcement is not activated; legacy transition is deferred; and Phase 5 Sprint 3 Two-Factor Authentication has not begun. Owner access to deliveries and Washout Reviews is always independent of geofence feature controls. This architecture remains subordinate to [CTX-STD-001](../standards/cretexchange-platform-standards.md), [CTX-ARCH-002](./owner-operations-architecture.md), [CTX-ARCH-003](./driver-operations-architecture.md), [CTX-ARCH-013](./CTX-ARCH-013-notification-and-communication-center.md), [CTX-ARCH-015](./CTX-ARCH-015-photo-review-retention-and-integrity-routing.md), [PD-060](../product/PD-060-photo-review-retention-and-platform-rejection.md), and the [Development Protocol](../development-protocol.md).
 
 ## 2. Pre-implementation audit (historical baseline)
 
@@ -112,6 +112,8 @@ type FacilityGeofenceState =
   | "INSIDE_APPROVED_BOUNDARY"
   | "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE"
   | "OUTSIDE_EXCEPTION_ZONE"
+  | "LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY"
+  | "LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD"
   | "LOCATION_UNAVAILABLE"
   | "LOCATION_ACCURACY_INSUFFICIENT"
   | "GEOMETRY_UNAVAILABLE"
@@ -133,7 +135,7 @@ interface FacilityGeofenceResult {
 }
 ```
 
-Color is a presentation mapping, never a stored or authoritative state. `GEOMETRY_INVALID` is fail-closed and neutral to Drivers; it creates an operational configuration issue only through a separately authorized workflow, not through passive display.
+Color is a presentation mapping, never a stored or authoritative state. Green, yellow, and red each map to one canonical result. Gray is the governed neutral notification/presentation class for `LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY`, `LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD`, `LOCATION_UNAVAILABLE`, `LOCATION_ACCURACY_INSUFFICIENT`, `GEOMETRY_UNAVAILABLE`, and `GEOMETRY_INVALID`. Gray is not rejection, misconduct, or fraud. `GEOMETRY_INVALID` is fail-closed and neutral to Drivers; it creates an operational configuration issue only after a completed submission or an authorized configuration workflow, never from passive display.
 
 ## 8. Implemented Work Package 1 data model
 
@@ -210,12 +212,28 @@ Coordinates SHALL be sent in request bodies, never query strings. Driver respons
 
 - Selection guidance is advisory and side-effect free.
 - Check-in and submission evaluate again with fresh position and accuracy.
-- Green follows the ordinary workflow.
+- Owner access to deliveries and Washout Reviews is governed by ordinary Owner RBAC and Facility ownership, never by a geofence feature control.
+- Submission enforcement is an internal controlled-pilot routing policy for future completed submissions. It is not a delivery-visibility control and is not part of the ordinary Admin notification experience.
+- Geofence notifications are a separate completed-submission event workflow. Yellow and Gray notifications can operate independently of submission enforcement. Red quarantine routing inherently requires separately authorized enforcement.
+- Green follows the ordinary workflow and produces only the existing ordinary Owner pending-review notification. It produces no separate geofence notification and no Admin geofence workload.
 - Yellow requires explicit acknowledgement, a governed reason, required photo evidence, GPS timestamp/accuracy, evaluated boundary version, and an optional bounded note before the activity may enter ordinary Owner review. An incomplete yellow attempt returns corrective guidance and creates no incomplete activity.
-- During the controlled pilot, one complete yellow submission creates one idempotent combined pending-review/boundary-review Owner notification, one idempotent low-priority operational-exception Admin/Super Admin notification, and a neutral Driver confirmation. It does not enter active Admin Photo Review unless separately escalated, disputed, or independently failed by a governed evidence rule.
-- Red is a platform-detected integrity exception: atomically retain the supplied evidence, quarantine before Owner review, reuse the existing PD-060 active Admin Photo Review/integrity routing without a new classification, create idempotent Admin/Super Admin notifications, notify the Driver neutrally, and do not notify the Owner or label the Driver fraudulent.
-- Unavailable, insufficient-accuracy, unavailable-geometry, and invalid-geometry results fail safely with corrective or support guidance; no state may be silently converted to green.
+- A completed yellow submission creates one idempotent boundary-review Owner notification, one idempotent low-priority assistance notification for each approved Admin/Super Admin recipient, and a neutral Driver confirmation. The acknowledgement reason and bounded note are included when available; `BOUNDARY_APPEARS_INCORRECT` is explicitly identified as a boundary-correction request. Yellow does not enter active Admin Photo Review unless separately escalated, disputed, or independently failed by a governed evidence rule.
+- A completed Gray submission creates neutral Driver communication, an Owner uncertainty/configuration notice, and low-priority Admin/Super Admin assistance. The notice distinguishes GPS uncertainty, near-boundary uncertainty, near-advisory-limit uncertainty, missing Facility boundary, and invalid/unavailable Facility boundary and supplies the corresponding next action: review evidence, retry/verify operational location, correct the Facility boundary, or contact the Owner for assistance.
+- Under separately authorized enforcement, Red atomically retains and quarantines supplied evidence before Owner review, reuses the existing PD-060 active Admin Photo Review/integrity routing without a new classification, creates active Admin/Super Admin attention, notifies the Driver neutrally, and creates no Owner notification or ordinary Owner review item. It never labels the Driver fraudulent and creates no financial, reward, wallet, payment, competition, settlement, or operational-success result.
+- Uncertainty, unavailable, and invalid-geometry states fail safely; no state may be silently converted to green.
 - Earlier activity remains attached to the version used at evaluation even if a new boundary activates later.
+
+### 11.1 Canonical notification matrix
+
+| Event | Driver | Facility Owner | Admin/Super Admin | Persistence/routing rule |
+| --- | --- | --- | --- | --- |
+| Passive location activity | None | None | None | No notification or persisted notification side effect |
+| Green completed submission | Ordinary submission confirmation | Existing ordinary pending-review notification only | None | Never duplicate the ordinary Owner notice with a geofence notice |
+| Yellow completed submission | Neutral confirmation | Boundary-review notification | Low-priority assistance notification | One idempotent notice per approved recipient/event; ordinary Owner review remains available |
+| Gray completed submission | Neutral, state-specific guidance | Uncertainty or configuration notice | Low-priority assistance notification | One idempotent notice per approved recipient/event; no accusation or rejection language |
+| Red completed submission under authorized enforcement | Neutral quarantine/review communication | None | Active attention | Evidence retained and quarantined; no ordinary Owner review item |
+
+Notification intents are emitted only from the completed-submission event. Retry, refresh, or idempotent resubmission cannot create duplicates. Notification-delivery failure is recorded for recovery but must not roll back the canonical activity/evidence transaction. Deep links carry only safe references and remain subject to destination RBAC. Notification metadata excludes precise GPS, exact distance, polygon geometry, storage paths, contact details, financial data, and private analytics.
 
 ## 12. Performance, privacy, and security
 
@@ -238,7 +256,7 @@ Recommended rollout: deploy additive tables and disabled code only after separat
 
 ### 13.1 Facility-scoped pilot-control precedence
 
-The separately authorized Facility-control foundation introduces additive migration `0041_add_facility_scoped_geofence_feature_controls.sql` on the controlled feature branch. Its validated SHA-256 checksum is `01223adea3af146550bab3d925f12f367d14bbf832307c8a2a97de89fceca751`. It is limited to `geofence_submission_enforcement`, `geofence_notifications`, and the reserved `geofence_legacy_transition` control. The migration creates no override rows and performs no activation or backfill. Production execution requires separate Founder authorization.
+The Facility-control foundation uses additive migration `0041_add_facility_scoped_geofence_feature_controls.sql`, with validated SHA-256 checksum `01223adea3af146550bab3d925f12f367d14bbf832307c8a2a97de89fceca751`. It is limited to `geofence_submission_enforcement`, `geofence_notifications`, and the reserved `geofence_legacy_transition` control. The migration and default-off foundation are accepted in Production. Submission enforcement remains an internal controlled-pilot routing switch. `geofence_notifications` is a governed kill switch for the completed-submission notification workflow; it is not required for Owner delivery visibility. Notification and legacy controls must be omitted from the ordinary Facility pilot workflow or shown only as internal read-only/deferred state. Legacy transition remains unrelated to boundary notifications and deferred.
 
 Resolution is deterministic and fail-closed:
 
@@ -254,13 +272,13 @@ Recovery is non-destructive: set every Facility override and the three global co
 
 ## 14. Test strategy
 
-The implementation checkpoint SHALL cover radius/polygon interior, exact edge, immediately outside, exactly at the configured exception threshold, beyond threshold, unavailable and inaccurate GPS, stale observations, invalid/self-intersecting geometry, boundary revision during a workflow, complete and incomplete yellow submissions, combined Owner and low-priority Admin yellow notifications, red quarantine, notification routing, no passive side effects, RBAC, privacy, localization, accessibility, bounded performance, and Driver/Owner/Admin Photo Review/Administrative Review/Notification regressions. Financial execution must remain disabled.
+The notification implementation checkpoint SHALL cover passive no-side-effect behavior; ordinary green Owner-notification non-duplication; complete/incomplete yellow submissions; both uncertainty-overlap states; unavailable, inaccurate, missing, and invalid geometry Gray cases; separately authorized red quarantine; one idempotent notice per approved recipient/event; retry/resubmission deduplication; non-transactional notification-delivery failure; safe deep links; RBAC; privacy; English/Spanish; accessibility; bounded performance; and Driver/Owner/Admin Photo Review/Administrative Review/Notification regressions. Financial execution must remain disabled.
 
 ## 15. Founder decisions incorporated and remaining authority
 
-The Founder has approved the architecture direction recorded here: JSONB GeoJSON with one bounded server library, one active primary radius or polygon, the seven canonical states, one-mile platform-governed exception distance, proposed GPS and polygon limits as governed configuration, immutable versioning, yellow and red workflow routing, privacy/RBAC controls, feature-flagged legacy transition, additive migration direction, and the sequencing in the [discovery and validation plan](../project/geofence-architecture-discovery-and-validation-plan.md).
+The Founder has approved the architecture direction recorded here: JSONB GeoJSON with one bounded server library, one active primary radius or polygon, nine canonical states with six governed Gray states, one-mile platform-governed exception distance, proposed GPS and polygon limits as governed configuration, immutable versioning, completed-submission notification routing, privacy/RBAC controls, deferred feature-flagged legacy transition, additive migration direction, and the sequencing in the [discovery and validation plan](../project/geofence-architecture-discovery-and-validation-plan.md).
 
-Founder approval made this architecture effective as governance. Later Founder direction authorized the complete feature-branch vertical slice and focused commits without authorizing `main`, Production migration, Production feature activation, deployment, legacy retirement, or 2FA. Founder acceptance of the final branch checkpoint and every release action remain pending.
+Owner/Driver advisory scope and submission-time Owner context are Founder-accepted. Notification implementation and activation, the red enforcement pilot, and legacy transition require separate Founder authorization. Legacy transition is deferred, and Phase 5 Sprint 3 Two-Factor Authentication has not begun.
 
 ## 16. Change history
 
@@ -272,3 +290,4 @@ Founder approval made this architecture effective as governance. Later Founder d
 | 1.1 | 2026-08-04 | Recorded the separately authorized local Work Package 1 implementation, ADR-033 dependency selection, additive migration/schema, disabled controls, canonical service, and pending Founder acceptance; no Production change. |
 | 1.2 | 2026-08-04 | Recorded the authorized feature-branch Owner, Driver advisory, submission, notification, Admin context, and legacy-isolation vertical slice; release controls remain disabled and Production unchanged. |
 | 1.3 | 2026-08-07 | Recorded the additive Facility-scoped geofence control model, deterministic precedence, Admin/Super Admin audit requirements, fail-closed Facility context, and non-destructive recovery posture; migration `0041` and all Facility activations remain outside Production pending Founder approval. |
+| 1.4 | 2026-08-08 | Recorded the Founder-approved completed-submission notification matrix, required Gray states, control separation, idempotency/privacy safeguards, accepted advisory/Owner-context scope, and remaining inactive/deferred work. |

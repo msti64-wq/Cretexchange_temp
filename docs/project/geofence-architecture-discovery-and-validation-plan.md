@@ -1,16 +1,16 @@
 # Facility Geofence Architecture Discovery and Validation Plan
 
-- **Version:** 2.0
-- **Status:** Level 4 engineering checkpoint complete on the feature branch; controlled visual acceptance and release authorization pending; not released
+- **Version:** 2.1
+- **Status:** Advisory and submission-time Owner context accepted; notification implementation and red enforcement pilot pending; legacy transition deferred
 - **Owner:** CreteXchange Product and Engineering
-- **Date:** 2026-08-05
+- **Date:** 2026-08-08
 - **Classification:** Internal
 
 ## 1. Work-package boundary
 
-This record began as the documentation-first audit and sequencing for canonical Facility geofencing. The Founder subsequently authorized the implementation through the integrated Level 4 checkpoint on `feature/canonical-facility-geofence`. The complete feature-branch scope now includes the additive data foundation, canonical server evaluation, Owner boundary management, Driver advisory, submission enforcement, governed notifications, administrative context, and supporting documentation. All five Production controls remain disabled, migration `0040` has not been executed against Production, the feature branch has not been merged to `main`, and Production has not been deployed from it.
+This record began as the documentation-first audit and sequencing for canonical Facility geofencing. The additive geofence foundation, migrations `0040` and `0041`, Owner boundary management, Driver advisory evaluation, submission-time evidence capture, submission-time Owner review context, and default-off Facility-scoped control foundation were later released under bounded Founder authorizations. Owner/Driver advisory scope and submission-time Owner context are accepted.
 
-The preserved Photo Review retention work is commit `8c9b9d7b947bba766d3f6f670c27b0a6603cb91f`. Phase 5 Sprint 3 Two-Factor Authentication has not started. It remains the next mandatory major sprint only after geofencing is completed and Founder-accepted.
+The next bounded geofence work is the completed-submission notification workflow defined by the Founder on 2026-08-08. Notification implementation is not activated. The red submission-enforcement pilot is not activated. Legacy transition is unrelated to notifications and deferred. Owner delivery and Washout Review visibility is independent of all geofence controls. Phase 5 Sprint 3 Two-Factor Authentication has not begun.
 
 ## 2. Verified baseline
 
@@ -88,22 +88,23 @@ There is no repository four-mile constant. Any observed four-mile rejection is a
 
 ## 5. Approved development sequence
 
-The Founder has approved CTX-ARCH-016, PD-061, CTX-UX-009, CTX-RB-010, and this documentation set, and separately authorized implementation through the integrated Level 4 checkpoint. The approved sequence and current state are:
+The Founder has approved CTX-ARCH-016, PD-061, CTX-UX-009, CTX-RB-010, and this documentation set. The approved sequence and current state are:
 
 1. Governance-document approval
 2. Documentation-only commit
-3. Isolated migration and implementation design — complete on the feature branch
+3. Isolated migration and implementation design — complete
 4. Founder approval of migration/implementation design — complete
-5. Canonical server geofence service — complete behind disabled controls
-6. Owner boundary-management workflow — complete behind disabled controls
-7. Driver advisory indicator — complete behind disabled controls
-8. Check-in and submission enforcement — complete behind disabled controls
-9. Admin and operational integration — complete behind disabled controls
-10. Controlled automated testing — complete; controlled visual walkthrough remains pending
-11. Post-validation documentation and closeout — complete at the engineering checkpoint
-12. Production release verification — not begun
-13. Founder release acceptance — pending
-14. Phase 5 Sprint 3 — Two-Factor Authentication
+5. Canonical server geofence service — released
+6. Owner boundary-management workflow — released and Founder-accepted
+7. Driver advisory indicator — released and Founder-accepted
+8. Submission-time geofence evidence and Owner review context — released and Founder-accepted
+9. Facility-scoped default-off control foundation and Admin interface — released; control safety correction released
+10. Completed-submission notification documentation — current approved checkpoint
+11. Gray-capable notification implementation and isolated validation — not begun
+12. Controlled yellow/Gray notification release and Founder acceptance — pending separate authorization
+13. Controlled red submission-enforcement pilot — not activated; requires separate authorization after notification acceptance
+14. Legacy transition — deferred until configured Facilities complete acceptance
+15. Phase 5 Sprint 3 — Two-Factor Authentication — not begun
 
 Migration `0040` is additive and covers versioned boundary rows, revision events, durable activity evaluations, indexes, lifecycle/mode/uniqueness and idempotency constraints, feature flags, recovery evidence, and application rollback that retains additive data. It does not infer polygons or backfill active geometry. It must not reach Production without explicit Founder authorization and a recovery checkpoint.
 
@@ -114,14 +115,14 @@ Migration `0040` is additive and covers versioned boundary rows, revision events
 | Radius | Center/inside, exact circumference, just outside, exact exception threshold from radius edge, beyond threshold |
 | Polygon | Inside, exact edge/vertex, just outside, nearest edge not centroid, exact exception threshold, beyond threshold |
 | Geometry validation | Open ring normalization policy, fewer than 3 distinct points, non-finite/out-of-range coordinate, adjacent duplicate, collinear/near-zero area, self-intersection, vertex/area/extent limits, invalid JSON/type |
-| GPS | Permission denied, unavailable, stale, missing accuracy, accuracy above maximum, uncertainty crossing boundary, uncertainty crossing exception threshold |
+| GPS | Permission denied, unavailable, stale, missing accuracy, accuracy above maximum, `LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY`, `LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD` |
 | Versioning | Draft has no runtime effect, atomic activation, one active primary zone, active workflow retains earlier version, correction is prospective, invalidated boundary fails safely |
 | Driver advisory | Green/yellow/red/neutral, status loading/error/retry, nearest ordering unchanged, yellow/red selectable, no precise data/geometry, no passive notification/audit/analytics |
 | Yellow submission | Every reason code, acknowledgement required, optional bounded note, required photo, accuracy/timestamp, boundary version, incomplete attempt creates no activity, ordinary Owner queue, combined Owner notice, low-priority Admin/Super Admin notice, neutral Driver confirmation, idempotency, no active Photo Review by default |
 | Red submission | Retain/quarantine, bypass Owner, active Admin Photo Review, Driver neutral notice, Admin/Super Admin notices, exclusions from success/reward/settlement metrics |
 | Owner | Ownership enforcement, another Owner denied, radius/polygon draft, preview, server validation, activation, revision history, temporary context, correction, assistance request |
 | Admin and dispute | Existing Photo Review classifications preserved, evidence endpoint privacy, Administrative Review unchanged, no automatic fraud label |
-| Notification | Notification Service only, recipient scope, localized templates, deterministic idempotency, combined yellow Owner notice, low-priority yellow Admin/Super Admin notice, red no-Owner rule, delivery failure does not corrupt canonical workflow |
+| Notification | No passive side effects; ordinary green Owner notice not duplicated; yellow and all six Gray states; red no-Owner rule under authorized enforcement; Notification Service only; one idempotent notice per approved recipient/event; English/Spanish; safe RBAC deep links; delivery failure does not roll back canonical activity/evidence |
 | Accessibility/localization | English/Spanish parity, visible non-color label/icon, contrast, keyboard, screen reader, touch, reduced motion, map fallback/structured vertex editing |
 | Performance | Bounded location/vertex/request limits, bulk active-boundary query, no N+1, geometry cache, query plans, server evaluation budget |
 | Regression | Driver golden path, eligibility, GPS recovery, Owner verification/rejection, Admin Photo Review, Administrative Review, Notification Center |
@@ -131,7 +132,7 @@ Migration `0040` is additive and covers versioned boundary rows, revision events
 
 The original documentation package was assigned Development Protocol Level 2. Work Package 1 was Level 3 because it changed schema definitions, added a migration and persistent private evidence contract, and created authorization-sensitive server infrastructure. The integrated release checkpoint is Level 4.
 
-The Level 4 checkpoint passed TypeScript, Production build, one complete suite, the focused geofence/Owner/Driver/Admin/Notification/RBAC/privacy/localization/financial matrix, isolated PostgreSQL migration/rollback/reapplication, schema and immutability checks, and final privacy/performance/query-bounding review. A controlled non-Production browser environment with Owner, Driver, and Admin identities was unavailable, so real-device map, browser, and assistive-technology acceptance remains a release condition. Production database execution and deployment remain prohibited until separately authorized.
+The earlier Level 4 checkpoint passed TypeScript, Production build, one complete suite, the focused geofence/Owner/Driver/Admin/Notification/RBAC/privacy/localization/financial matrix, isolated PostgreSQL migration/rollback/reapplication, schema and immutability checks, and final privacy/performance/query-bounding review. Later bounded releases and Founder visual acceptance established the current advisory and submission-time Owner-context baseline. Those results do not validate the newly expanded Gray notification contract; the notification implementation requires its own focused Level 3 engineering checkpoint and a separately authorized Production release/acceptance sequence.
 
 ### Work Package 1 migration verification and recovery plan
 
@@ -149,18 +150,20 @@ The isolated validation test created only minimal prerequisite tables in a tempo
 
 1. Versioned GeoJSON `Polygon` in PostgreSQL JSONB with one bounded server geospatial library; server authority and deterministic tests; PostGIS deferred; custom/provider-authoritative classification rejected.
 2. One active primary configurable radius or Owner polygon per Facility, with compatible but deferred multi-zone evolution.
-3. Seven canonical states, exact-edge-inside semantics, nearest-polygon-edge and radius-edge distance, and a one-mile platform-governed exception zone that Owners cannot enlarge.
+3. Nine canonical states, including two explicit uncertainty-overlap states, exact-edge-inside semantics, nearest-polygon-edge and radius-edge distance, and a one-mile platform-governed exception zone that Owners cannot enlarge.
 4. Proposed controlled GPS defaults of no more than 60 seconds old and 100 meters or better, with insufficient-confidence classification when uncertainty overlaps a threshold.
 5. Proposed configurable polygon guardrails: WGS84, one closed exterior ring, at least three distinct non-collinear vertices, at most 200 distinct vertices, no self-intersection, valid ranges, two-square-mile maximum area, and five-mile maximum span.
 6. Draft-preview-validate activation, immutable versions, effective timestamps/checksums, prospective corrections, retained history, and activation only by an authorized Owner or separately authorized Admin process.
 7. Advisory Driver indicators with no passive side effects and authoritative reevaluation at check-in/submission.
 8. Complete yellow submissions enter ordinary Owner review with governed evidence; incomplete attempts receive corrective guidance and create no activity.
-9. Controlled-pilot yellow notifications: one combined Owner notice, one low-priority Admin/Super Admin notice, and neutral Driver confirmation; no active Photo Review by default.
-10. Red submissions use PD-060 atomic retention/quarantine, neutral Driver and active Admin routing, no Owner notice, no fraud label, and no success/reward/financial result.
-11. Feature-flagged existing-Facility transition with no inferred/backfilled geometry, explicit legacy 1-mile/3-mile and duplicated 500-foot treatment, and no automatic activation.
-12. Minimum-necessary privacy, Facility-scoped RBAC, safe payloads, append-only evidence, existing Photo Review controls, additive migration/rollback, and the fourteen-step sequence above.
+9. Completed yellow notifications: neutral Driver confirmation, one boundary-review Owner notice, and one low-priority Admin/Super Admin assistance notice per approved recipient/event; no active Photo Review by default.
+10. Completed Gray notifications: neutral, state-specific Driver communication, Owner uncertainty/configuration notice, and low-priority Admin/Super Admin assistance notice; no fraud/rejection language.
+11. Red submissions, only under authorized enforcement, use PD-060 atomic retention/quarantine, neutral Driver and active Admin routing, no Owner notice, no fraud label, and no success/reward/financial result.
+12. Passive Driver activity creates no notification side effect; green uses the ordinary Owner pending-review notice without a duplicate geofence notice.
+13. Submission enforcement is a future-submission routing switch; notifications are a separate completed-submission workflow; legacy transition is unrelated and deferred; none controls Owner delivery visibility.
+14. Minimum-necessary privacy, Facility-scoped RBAC, deterministic idempotency, safe payloads, append-only evidence, existing Photo Review controls, and delivery failure isolated from the canonical activity/evidence transaction.
 
-No policy conflict remains open in this approved documentation set. Exact library/package selection, migration DDL, feature-flag mechanics, recovery evidence, implementation details, pilot activation, and Production release evidence are intentionally deferred to the separately approved sequence.
+The prior seven-state contract conflict is resolved by adding the two explicit uncertainty-overlap states and governing all six uncertainty/unavailable/configuration results as Gray. PD-060 and PD-061 are reconciled: yellow and Gray are not platform rejections; red uses PD-060 only under separately authorized enforcement. No unresolved policy conflict remains. Runtime implementation and activation of the expanded notification matrix remain pending.
 
 ## 9. Change history
 
@@ -171,3 +174,4 @@ No policy conflict remains open in this approved documentation set. Exact librar
 | 1.0 | 2026-08-04 | Founder approved the final documentation package; migration design and implementation remain separately authorized. |
 | 1.1 | 2026-08-04 | Recorded the separately authorized, locally implemented Work Package 1 data foundation, disabled controls, canonical server service, ADR-033, isolated migration/recovery validation, and pending Founder acceptance. |
 | 2.0 | 2026-08-05 | Recorded the integrated Level 4 engineering checkpoint, isolated migration lifecycle, complete automated matrix, query-bounding hardening, Production isolation, and the remaining controlled visual acceptance gate. |
+| 2.1 | 2026-08-08 | Recorded accepted advisory/Owner-context scope, the completed-submission green/yellow/Gray/red notification matrix, control separation, PD-060/PD-061 reconciliation, and the remaining implementation/activation sequence. |
