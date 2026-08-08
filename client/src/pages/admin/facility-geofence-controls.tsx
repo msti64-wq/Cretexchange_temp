@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Building2, CheckCircle2, History, Loader2, RefreshCw, ShieldCheck, XCircle } from "lucide-react";
 import { MobileNav } from "@/components/MobileNav";
@@ -6,6 +6,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import {
   buildFacilityControlMutation,
+  CONTROLLED_NOTIFICATION_PILOT_FACILITY_ID,
   createFacilityControlRequestReference,
   facilityControlConfirmationText,
   resolveFacilityControlAction,
@@ -30,6 +32,7 @@ type FacilityOption = { id: string; name: string; state: string };
 type MutationDraft = {
   flagKey: FacilityScopedGeofenceFeatureFlag;
   enabled: boolean;
+  facilityConfirmed: boolean;
   reason: string;
   requestReference: string;
   confirmationText: string;
@@ -69,6 +72,7 @@ export default function AdminFacilityGeofenceControls() {
   const allowed = user?.role === "admin" || user?.role === "super_admin";
   const [facilityId, setFacilityId] = useState("");
   const [draft, setDraft] = useState<MutationDraft | null>(null);
+  const mutationTriggerRef = useRef<HTMLElement | null>(null);
 
   const facilities = useQuery<FacilityOption[]>({
     queryKey: ["/api/admin/locations", "geofence-control-options"],
@@ -91,6 +95,7 @@ export default function AdminFacilityGeofenceControls() {
     mutationFn: async (pending: MutationDraft) => {
       const request = buildFacilityControlMutation({
         facilityId,
+        facilityConfirmed: pending.facilityConfirmed,
         flagKey: pending.flagKey,
         enabled: pending.enabled,
         reason: pending.reason,
@@ -134,10 +139,12 @@ export default function AdminFacilityGeofenceControls() {
     ? validateFacilityControlDraft({ facilityId, ...draft })
     : null;
 
-  const openMutation = (control: FacilityControlState, enabled: boolean) => {
+  const openMutation = (control: FacilityControlState, enabled: boolean, trigger: HTMLElement) => {
+    mutationTriggerRef.current = trigger;
     setDraft({
       flagKey: control.flagKey,
       enabled,
+      facilityConfirmed: false,
       reason: "",
       requestReference: createFacilityControlRequestReference(),
       confirmationText: "",
@@ -184,6 +191,12 @@ export default function AdminFacilityGeofenceControls() {
             <p>{t("facilityControls.safety.legacy")}</p>
             <p>{t("facilityControls.safety.existingUnchanged")}</p>
             <p>{t("facilityControls.safety.authorization")}</p>
+            <p className="rounded-md border border-primary/20 bg-background/70 p-2 font-medium text-foreground" role="note" data-testid="notification-pilot-facility-scope">
+              {t("facilityControls.safety.notificationPilotScope", {
+                facility: "Revel Patio Grill",
+                facilityId: CONTROLLED_NOTIFICATION_PILOT_FACILITY_ID,
+              })}
+            </p>
             <p>{t("facilityControls.safety.noPageMutation")}</p>
           </CardContent>
         </Card>
@@ -236,7 +249,7 @@ export default function AdminFacilityGeofenceControls() {
               <div><h2 id="facility-control-state-heading" className="text-xl font-semibold">{t("facilityControls.controls.title")}</h2><p className="text-sm text-muted-foreground">{t("facilityControls.controls.description")}</p><p className="mt-1 text-xs text-muted-foreground">{t("facilityControls.controls.userOverrideNote")}</p></div>
               <div className="grid gap-4 lg:grid-cols-3">
                 {controls.data.controls.map((control) => {
-                  const action = resolveFacilityControlAction(control.flagKey, control.effectiveEnabled);
+                  const action = resolveFacilityControlAction(control.flagKey, control.effectiveEnabled, facilityId);
                   const phaseId = `facility-control-phase-${control.flagKey}`;
                   return (
                   <Card key={control.flagKey} data-testid={`facility-control-${control.flagKey}`}>
@@ -254,9 +267,9 @@ export default function AdminFacilityGeofenceControls() {
                       {control.overrideReason && <p className="rounded-md bg-muted p-2 text-xs text-muted-foreground"><span className="font-semibold">{t("facilityControls.lastReason")}:</span> {control.overrideReason}<br />{formatDate(control.overrideUpdatedAt)}</p>}
                       <p id={phaseId} className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground"><span className="font-semibold text-foreground">{t("facilityControls.phase.label")}:</span> {t(phaseKeyByFlag[control.flagKey])}</p>
                       {action.kind === "disable" ? (
-                        <Button type="button" variant="destructive" className="w-full" onClick={() => openMutation(control, false)} data-testid={`disable-${control.flagKey}`}>{t("facilityControls.disable")}</Button>
+                        <Button type="button" variant="destructive" className="w-full" onClick={(event) => openMutation(control, false, event.currentTarget)} data-testid={`disable-${control.flagKey}`}>{t("facilityControls.disable")}</Button>
                       ) : (
-                        <Button type="button" className="w-full" onClick={() => openMutation(control, true)} disabled={!action.available} aria-describedby={phaseId} data-testid={`enable-${control.flagKey}`}>{t("facilityControls.enable")}</Button>
+                        <Button type="button" className="w-full" onClick={(event) => openMutation(control, true, event.currentTarget)} disabled={!action.available} aria-describedby={phaseId} data-testid={`enable-${control.flagKey}`}>{t("facilityControls.enable")}</Button>
                       )}
                     </CardContent>
                   </Card>
@@ -286,17 +299,29 @@ export default function AdminFacilityGeofenceControls() {
         ) : null}
       </div>
 
-      <Dialog open={Boolean(draft)} onOpenChange={(open) => { if (!open && !mutation.isPending) setDraft(null); }}>
-        <DialogContent aria-describedby="facility-control-confirmation-description">
-          <DialogHeader>
+      <Dialog modal open={Boolean(draft)} onOpenChange={(open) => { if (!open && !mutation.isPending) setDraft(null); }}>
+        <DialogContent
+          aria-describedby="facility-control-confirmation-description"
+          className="flex max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] max-w-2xl flex-col gap-0 overflow-hidden overflow-x-hidden p-0 motion-reduce:animate-none motion-reduce:duration-0 sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100%-2rem)]"
+          style={{
+            maxHeight: "calc(100dvh - max(0.5rem, env(safe-area-inset-top)) - max(0.5rem, env(safe-area-inset-bottom)))",
+          }}
+          onCloseAutoFocus={(event) => {
+            if (!mutationTriggerRef.current) return;
+            event.preventDefault();
+            mutationTriggerRef.current.focus();
+          }}
+          data-testid="facility-control-confirmation-dialog"
+        >
+          <DialogHeader className="shrink-0 border-b px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))] pr-12 text-left sm:px-6 sm:pt-6">
             <DialogTitle>{t("facilityControls.confirm.title")}</DialogTitle>
             <DialogDescription id="facility-control-confirmation-description">{t("facilityControls.confirm.description")}</DialogDescription>
           </DialogHeader>
           {draft && selectedFacility && (
-            <div className="space-y-4">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-4 [scrollbar-gutter:stable] sm:px-6" data-testid="facility-control-dialog-scroll-region" tabIndex={0}>
               <div className="rounded-lg border bg-muted/30 p-3 text-sm">
                 <p className="font-semibold">{selectedFacility.name}</p>
-                <p className="break-all font-mono text-xs text-muted-foreground">{selectedFacility.id}</p>
+                <p className="break-all font-mono text-xs text-muted-foreground">{t("facilityControls.facility.id")}: {selectedFacility.id}</p>
                 <p className="mt-2 font-semibold">{t(labelKeyByFlag[draft.flagKey])}</p>
                 <p className="font-mono text-xs text-muted-foreground">{draft.flagKey}</p>
                 <p className="mt-2">{t("facilityControls.confirm.newState")}: <strong>{stateLabel(draft.enabled)}</strong></p>
@@ -305,7 +330,28 @@ export default function AdminFacilityGeofenceControls() {
               <p className="text-sm text-muted-foreground">{t(descriptionKeyByFlag[draft.flagKey])}</p>
               <p className="text-sm font-medium">{t("facilityControls.confirm.noDeliveryAccess")}</p>
               {draft.flagKey === "geofence_submission_enforcement" && <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm" role="alert">{t("facilityControls.confirm.enforcementWarning")}</p>}
-              {draft.flagKey !== "geofence_submission_enforcement" && <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm" role="alert">{t("facilityControls.confirm.authorizationWarning")}</p>}
+              {draft.flagKey === "geofence_notifications" && (
+                <div className="space-y-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm" role="alert" data-testid="notification-pilot-impact">
+                  <p className="font-semibold">{t("facilityControls.confirm.notificationPilotTitle")}</p>
+                  <p>{t("facilityControls.confirm.notificationYellowGray")}</p>
+                  <p>{t("facilityControls.confirm.notificationRecipients")}</p>
+                  <p>{t("facilityControls.confirm.notificationGreen")}</p>
+                  <p>{t("facilityControls.confirm.notificationRed")}</p>
+                  <p>{t("facilityControls.confirm.notificationExisting")}</p>
+                </div>
+              )}
+              {draft.flagKey === "geofence_legacy_transition" && <p className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm" role="alert">{t("facilityControls.confirm.authorizationWarning")}</p>}
+              <div className="flex items-start gap-3 rounded-lg border p-3">
+                <Checkbox
+                  id="facility-control-exact-facility"
+                  checked={draft.facilityConfirmed}
+                  onCheckedChange={(checked) => setDraft({ ...draft, facilityConfirmed: checked === true })}
+                  data-testid="facility-control-exact-facility"
+                />
+                <Label htmlFor="facility-control-exact-facility" className="min-w-0 leading-5">
+                  {t("facilityControls.confirm.exactFacility", { facility: selectedFacility.name, facilityId: selectedFacility.id })}
+                </Label>
+              </div>
               <div className="space-y-2"><Label htmlFor="facility-control-reason">{t("facilityControls.confirm.reason")}</Label><Textarea id="facility-control-reason" maxLength={500} value={draft.reason} onChange={(event) => setDraft({ ...draft, reason: event.target.value })} placeholder={t("facilityControls.confirm.reasonPlaceholder")} /><p className="text-xs text-muted-foreground">{draft.reason.trim().length}/500</p></div>
               <div className="space-y-2"><Label htmlFor="facility-control-request-reference">{t("facilityControls.confirm.requestReference")}</Label><Input id="facility-control-request-reference" maxLength={160} value={draft.requestReference} onChange={(event) => setDraft({ ...draft, requestReference: event.target.value })} /><p className="text-xs text-muted-foreground">{t("facilityControls.confirm.requestHelp")}</p></div>
               <div className="space-y-2 rounded-lg border p-3">
@@ -317,7 +363,7 @@ export default function AdminFacilityGeofenceControls() {
               {mutation.isError && <p className="text-sm text-destructive" role="alert">{t("facilityControls.mutation.inlineError")}</p>}
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="shrink-0 gap-2 border-t bg-background px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:pb-6">
             <Button type="button" variant="outline" autoFocus onClick={() => setDraft(null)} disabled={mutation.isPending}>{t("facilityControls.cancel")}</Button>
             <Button type="button" onClick={() => draft && mutation.mutate(draft)} disabled={!draft || Boolean(draftError) || mutation.isPending} data-testid="confirm-facility-control-mutation">
               {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t("facilityControls.confirm.apply")}

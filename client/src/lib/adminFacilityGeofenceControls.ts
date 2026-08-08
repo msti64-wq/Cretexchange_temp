@@ -6,6 +6,7 @@ import {
 export const FACILITY_CONTROL_REASON_MIN = 3;
 export const FACILITY_CONTROL_REASON_MAX = 500;
 export const FACILITY_CONTROL_REQUEST_MAX = 160;
+export const CONTROLLED_NOTIFICATION_PILOT_FACILITY_ID = "1367c68a-e12b-46a4-a417-6f21febe5640";
 
 export type FacilityControlSource = "facility" | "global" | "denied";
 
@@ -38,6 +39,7 @@ export type FacilityControlResponse = {
 
 export type FacilityControlDraftError =
   | "facility"
+  | "facilityConfirmation"
   | "flag"
   | "reason"
   | "requestReference"
@@ -58,8 +60,10 @@ export function createFacilityControlRequestReference(): string {
 
 export function isFacilityControlEnableAuthorized(
   flagKey: FacilityScopedGeofenceFeatureFlag,
+  facilityId: string,
 ): boolean {
-  return flagKey === "geofence_submission_enforcement";
+  return flagKey === "geofence_notifications"
+    && facilityId.toLowerCase() === CONTROLLED_NOTIFICATION_PILOT_FACILITY_ID;
 }
 
 export type FacilityControlAction = {
@@ -70,9 +74,10 @@ export type FacilityControlAction = {
 export function resolveFacilityControlAction(
   flagKey: FacilityScopedGeofenceFeatureFlag,
   effectiveEnabled: boolean,
+  facilityId: string,
 ): FacilityControlAction {
   if (effectiveEnabled) return { kind: "disable", available: true };
-  return { kind: "enable", available: isFacilityControlEnableAuthorized(flagKey) };
+  return { kind: "enable", available: isFacilityControlEnableAuthorized(flagKey, facilityId) };
 }
 
 export function facilityControlConfirmationText(enabled: boolean): "ENABLE" | "DISABLE" {
@@ -81,6 +86,7 @@ export function facilityControlConfirmationText(enabled: boolean): "ENABLE" | "D
 
 export function validateFacilityControlDraft(input: {
   facilityId: string;
+  facilityConfirmed: boolean;
   flagKey: string;
   enabled: boolean;
   reason: string;
@@ -90,6 +96,7 @@ export function validateFacilityControlDraft(input: {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.facilityId)) {
     return "facility";
   }
+  if (!input.facilityConfirmed) return "facilityConfirmation";
   if (!isGovernedFacilityControl(input.flagKey)) return "flag";
   const reasonLength = input.reason.trim().length;
   if (reasonLength < FACILITY_CONTROL_REASON_MIN || reasonLength > FACILITY_CONTROL_REASON_MAX) {
@@ -107,6 +114,7 @@ export function validateFacilityControlDraft(input: {
 
 export function buildFacilityControlMutation(input: {
   facilityId: string;
+  facilityConfirmed: boolean;
   flagKey: string;
   enabled: boolean;
   reason: string;
