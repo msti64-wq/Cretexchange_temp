@@ -4,43 +4,114 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
 
-type Migration = { id: "0013" | "0036" | "0037" | "0038" | "0039"; file: string; sha256: string; expectedObjects: number };
+type Migration = { id: "0013" | "0036" | "0037" | "0038" | "0039" | "0041"; file: string; sha256: string; expectedObjects: number };
 type MigrationState = "pending" | "applied";
 const CLIENT_CLOSE_TIMEOUT_MS = 5_000;
 
 // This is deliberately separate from the staging-only runner. It has a smaller,
 // production-authorized allowlist and refuses every environment other than the
 // explicitly identified Railway production deployment.
-const migrations: readonly Migration[] = [
+export const productionMigrations: readonly Migration[] = [
   { id: "0013", file: "migrations/0013_add_localized_terms_acceptance.sql", sha256: "21c04112cae0901781c0dfb572c3de88e4e8a3ff1bf09bdaeae6633d191dc22f", expectedObjects: 7 },
   { id: "0036", file: "migrations/0036_add_washout_activity_admin_reviews.sql", sha256: "81c8c5dbceb87ed0aa024d3a34b432a72825722703e53574af785cbc8a08fdb0", expectedObjects: 7 },
   { id: "0037", file: "migrations/0037_add_washout_photo_review_audit.sql", sha256: "5714306b60592c536dc9d1e5dbe71e20392faedde97fd06d2d4b180fb58c7e5b", expectedObjects: 4 },
   { id: "0038", file: "migrations/0038_add_platform_analytics_events.sql", sha256: "684a072dac88a16515118bfd7eb3e9208570b375f4dff3a3c632c6426fbee667", expectedObjects: 13 },
   { id: "0039", file: "migrations/0039_extend_notifications_for_communication_center.sql", sha256: "90d7ffe79169b3735f8af4cfa77805aac34def6f9afddf48d878abfbec9b4c79", expectedObjects: 23 },
+  { id: "0041", file: "migrations/0041_add_facility_scoped_geofence_feature_controls.sql", sha256: "01223adea3af146550bab3d925f12f367d14bbf832307c8a2a97de89fceca751", expectedObjects: 22 },
 ] as const;
 
 function fail(message: string): never { throw new Error(message); }
 function arg(name: string): string | undefined { const index = process.argv.indexOf(name); return index >= 0 ? process.argv[index + 1] : undefined; }
 function sha(value: string | undefined): string | null { return value && /^[a-f0-9]{40}$/i.test(value.trim()) ? value.trim().toLowerCase() : null; }
 
-function selectMigrations(from: string | undefined, to: string | undefined): readonly Migration[] {
-  const first = migrations.findIndex((migration) => migration.id === from);
-  const last = migrations.findIndex((migration) => migration.id === to);
-  if (first < 0 || last < first) fail("Only the ordered 0013 and 0036 through 0039 production allowlist is permitted.");
-  return migrations.slice(first, last + 1);
+export function selectMigrations(from: string | undefined, to: string | undefined): readonly Migration[] {
+  const first = productionMigrations.findIndex((migration) => migration.id === from);
+  const last = productionMigrations.findIndex((migration) => migration.id === to);
+  if (first < 0 || last < first) fail("Only the explicit ordered 0013, 0036 through 0039, and 0041 production allowlist is permitted.");
+  return productionMigrations.slice(first, last + 1);
+}
+
+export function assertMigrationChecksum(migration: Migration, contents: Buffer): string {
+  const actual = createHash("sha256").update(contents).digest("hex");
+  if (actual !== migration.sha256) fail(`Checksum mismatch for ${migration.id}.`);
+  return actual;
 }
 
 async function assertChecksums(selected: readonly Migration[]) {
   for (const migration of selected) {
     const contents = await readFile(path.resolve(migration.file));
-    const actual = createHash("sha256").update(contents).digest("hex");
-    if (actual !== migration.sha256) fail(`Checksum mismatch for ${migration.id}.`);
+    const actual = assertMigrationChecksum(migration, contents);
     console.log(`CHECKSUM ${migration.id} ${actual}`);
   }
 }
 
 async function count(client: pg.Client, text: string, values: string[]): Promise<number> {
   return Number((await client.query<{ value: number }>(text, values)).rows[0]?.value || 0);
+}
+
+async function requireCount(
+  client: pg.Client,
+  text: string,
+  values: string[],
+  expected: number,
+  label: string,
+): Promise<number> {
+  const actual = await count(client, text, values);
+  if (actual !== expected) fail(`${label} catalog verification failed (${actual}/${expected}).`);
+  return actual;
+}
+
+/**
+ * 0040 remains catalog-only here and is deliberately absent from the executable
+ * allowlist. 0041 may proceed only when the already-authorized canonical
+ * geofence foundation and all five canonical feature records are present.
+ */
+export async function assert0040Prerequisites(client: pg.Client): Promise<void> {
+  await requireCount(client,
+    "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name = ANY($2::text[])",
+    ["public", "{facility_geofence_boundaries,facility_geofence_revision_events,activity_geofence_evaluations}"], 3, "0040 prerequisite tables");
+  await requireCount(client,
+    "SELECT count(*)::int AS value FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname=$1 AND ((t.relname=$2 AND c.conname = ANY($3::text[])) OR (t.relname=$4 AND c.conname=$5) OR (t.relname=$6 AND c.conname=$7))",
+    ["public", "facility_geofence_boundaries", "{facility_geofence_boundaries_location_zone_version_unique,facility_geofence_boundaries_id_location_unique}", "facility_geofence_revision_events", "facility_geofence_revision_events_boundary_location_fk", "activity_geofence_evaluations", "activity_geofence_evaluations_boundary_location_fk"], 4, "0040 prerequisite constraints");
+  await requireCount(client,
+    "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])",
+    ["public", "{facility_geofence_boundaries_one_active_zone_unique,facility_geofence_boundaries_active_lookup_idx,facility_geofence_boundaries_previous_version_idx,facility_geofence_revision_events_boundary_created_idx,facility_geofence_revision_events_location_created_idx,activity_geofence_evaluations_activity_created_idx,activity_geofence_evaluations_location_evaluated_idx,activity_geofence_evaluations_boundary_evaluated_idx}"], 8, "0040 prerequisite indexes");
+  await requireCount(client,
+    "SELECT count(*)::int AS value FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=$1 AND p.proname = ANY($2::text[])",
+    ["public", "{prevent_activated_geofence_boundary_mutation,reject_geofence_append_only_mutation}"], 2, "0040 prerequisite functions");
+  await requireCount(client,
+    "SELECT count(*)::int AS value FROM pg_trigger tr JOIN pg_class t ON t.oid=tr.tgrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE NOT tr.tgisinternal AND n.nspname=$1 AND ((t.relname=$2 AND tr.tgname=$3) OR (t.relname=$4 AND tr.tgname=$5) OR (t.relname=$6 AND tr.tgname=$7))",
+    ["public", "facility_geofence_boundaries", "facility_geofence_boundaries_activated_immutable", "facility_geofence_revision_events", "facility_geofence_revision_events_append_only", "activity_geofence_evaluations", "activity_geofence_evaluations_append_only"], 3, "0040 prerequisite triggers");
+  await requireCount(client,
+    "SELECT count(*)::int AS value FROM feature_flags WHERE flag_key = ANY($1::text[])",
+    ["{geofence_advisory_evaluation,geofence_owner_boundary_management,geofence_submission_enforcement,geofence_notifications,geofence_legacy_transition}"], 5, "0040 prerequisite feature controls");
+}
+
+async function migration0041ObjectCount(client: pg.Client): Promise<number> {
+  const tables = await count(client,
+    "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name = ANY($2::text[])",
+    ["public", "{facility_feature_flag_overrides,facility_feature_flag_override_events}"]);
+  const constraints = await count(client,
+    "SELECT count(*)::int AS value FROM pg_constraint c WHERE c.conrelid = ANY(ARRAY[to_regclass($1),to_regclass($2)]) AND ((c.contype='p' AND c.conname = ANY($3::text[])) OR (c.contype='f' AND c.conname = ANY($4::text[])) OR (c.contype='u' AND c.conname = ANY($5::text[])) OR (c.contype='c' AND c.conname = ANY($6::text[])))",
+    ["public.facility_feature_flag_overrides", "public.facility_feature_flag_override_events", "{facility_feature_flag_overrides_pkey,facility_feature_flag_override_events_pkey}", "{facility_feature_flag_overrides_location_id_fkey,facility_feature_flag_overrides_flag_key_fkey,facility_feature_flag_overrides_updated_by_fkey,facility_feature_flag_override_events_location_id_fkey,facility_feature_flag_override_events_flag_key_fkey,facility_feature_flag_override_events_actor_user_id_fkey}", "{facility_feature_flag_overrides_location_flag_unique,facility_feature_flag_override_events_idempotency_key_key}", "{facility_feature_flag_overrides_flag_allowed,facility_feature_flag_overrides_reason_valid,facility_feature_flag_override_events_flag_allowed,facility_feature_flag_override_events_actor_role_valid,facility_feature_flag_override_events_reason_valid}"]);
+  const indexes = await count(client,
+    "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])",
+    ["public", "{facility_feature_flag_overrides_flag_enabled_idx,facility_feature_flag_override_events_location_created_idx,facility_feature_flag_override_events_flag_created_idx}"]);
+  const functions = await count(client,
+    "SELECT count(*)::int AS value FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=$1 AND p.proname=$2",
+    ["public", "reject_facility_feature_flag_audit_mutation"]);
+  const triggers = await count(client,
+    "SELECT count(*)::int AS value FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid WHERE NOT t.tgisinternal AND t.tgrelid=to_regclass($1) AND t.tgname=$2 AND p.proname=$3",
+    ["public.facility_feature_flag_override_events", "facility_feature_flag_override_events_append_only", "reject_facility_feature_flag_audit_mutation"]);
+  return tables + constraints + indexes + functions + triggers;
+}
+
+export async function verify0041Catalog(client: pg.Client): Promise<void> {
+  const actual = await migration0041ObjectCount(client);
+  if (actual !== 22) fail(`0041 catalog verification failed (${actual}/22).`);
+  await requireCount(client, "SELECT count(*)::int AS value FROM facility_feature_flag_overrides", [], 0, "0041 initial Facility override rows");
+  await requireCount(client, "SELECT count(*)::int AS value FROM facility_feature_flag_override_events", [], 0, "0041 initial audit-history rows");
+  console.log("NO_INFERRED_BACKFILL 0041 overrides=0 audit_events=0");
 }
 
 async function migrationObjectCount(client: pg.Client, migration: Migration): Promise<number> {
@@ -72,6 +143,7 @@ async function migrationObjectCount(client: pg.Client, migration: Migration): Pr
     const constraints = await count(client, "SELECT count(*)::int AS value FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname=$1 AND t.relname=$2 AND c.conname = ANY($3::text[])", ["public", "notifications", "{notifications_recipient_role_valid,notifications_category_valid,notifications_priority_valid,notifications_delivery_state_valid,notifications_schema_version_positive}"]);
     return columns + indexes + constraints;
   }
+  if (migration.id === "0041") return migration0041ObjectCount(client);
   const tables = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name=$2", ["public", "washout_photo_review_events"]);
   const indexes = await count(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])", ["public", "{washout_photo_review_events_photo_created_idx,washout_photo_review_events_activity_created_idx}"]);
   const constraints = await count(client, "SELECT count(*)::int AS value FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname=$1 AND t.relname=$2 AND c.conname=$3", ["public", "washout_photo_review_events", "washout_photo_review_events_rejection_reason_check"]);
@@ -90,6 +162,24 @@ async function legacyTermsCounts(client: pg.Client) {
   const drivers = await count(client, "SELECT count(*)::int AS value FROM drivers WHERE has_agreed_to_terms=true", []);
   const owners = await count(client, "SELECT count(*)::int AS value FROM owners WHERE has_agreed_to_terms=true", []);
   return { users, drivers, owners };
+}
+
+export async function executeMigrationTransaction(
+  client: pg.Client,
+  sqlText: string,
+  verify: () => Promise<void>,
+): Promise<void> {
+  await client.query("BEGIN");
+  try {
+    await client.query("SET LOCAL statement_timeout = '30s'");
+    await client.query("SET LOCAL lock_timeout = '5s'");
+    await client.query(sqlText);
+    await verify();
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  }
 }
 
 /**
@@ -144,24 +234,21 @@ async function main() {
     const lock = await client.query<{ acquired: boolean }>("SELECT pg_try_advisory_lock(hashtext('cretexchange:controlled-production-migrations')) AS acquired");
     if (!lock.rows[0]?.acquired) fail("Production migration advisory lock is unavailable.");
     for (const migration of selected) {
+      if (migration.id === "0041") await assert0040Prerequisites(client);
       const before = await state(client, migration);
       if (before === "applied") { console.log(`ALREADY_APPLIED ${migration.id}`); continue; }
       const legacyBefore = migration.id === "0013" ? await legacyTermsCounts(client) : null;
       const sql = await readFile(path.resolve(migration.file), "utf8");
-      await client.query("BEGIN");
-      try {
-        await client.query("SET LOCAL statement_timeout = '30s'");
-        await client.query("SET LOCAL lock_timeout = '5s'");
-        await client.query(sql);
-        if (await state(client, migration) !== "applied") fail(`Catalog verification failed for ${migration.id}.`);
+      await executeMigrationTransaction(client, sql, async () => {
+        if (migration.id === "0041") await verify0041Catalog(client);
+        else if (await state(client, migration) !== "applied") fail(`Catalog verification failed for ${migration.id}.`);
         if (legacyBefore) {
           const legacyAfter = await legacyTermsCounts(client);
           if (JSON.stringify(legacyAfter) !== JSON.stringify(legacyBefore)) fail("Legacy terms data changed while applying 0013.");
           console.log(`DATA_PRESERVED 0013 users=${legacyAfter.users} driver_terms=${legacyAfter.drivers} owner_terms=${legacyAfter.owners}`);
         }
-        await client.query("COMMIT");
-        console.log(`APPLIED ${migration.id}`);
-      } catch (error) { await client.query("ROLLBACK"); throw error; }
+      });
+      console.log(`APPLIED ${migration.id}`);
     }
   } finally {
     try { await client.query("SELECT pg_advisory_unlock(hashtext('cretexchange:controlled-production-migrations'))"); } catch {}
