@@ -236,6 +236,22 @@ The feature branch provides the additive migration file and matching repository 
 
 Recommended rollout: deploy additive tables and disabled code only after separate Founder authorization; validate catalog, constraints, indexes, backup, and recovery evidence; enable Owner draft/preview; activate selected pilot boundaries; enable advisory Driver reads; and enable check-in/submission enforcement only after acceptance. Application rollback disables reads/enforcement while retaining all additive boundary, revision, evaluation, notification, and review evidence. No destructive rollback is required or authorized.
 
+### 13.1 Facility-scoped pilot-control precedence
+
+The separately authorized Facility-control foundation introduces additive migration `0041_add_facility_scoped_geofence_feature_controls.sql` on the controlled feature branch. Its validated SHA-256 checksum is `01223adea3af146550bab3d925f12f367d14bbf832307c8a2a97de89fceca751`. It is limited to `geofence_submission_enforcement`, `geofence_notifications`, and the reserved `geofence_legacy_transition` control. The migration creates no override rows and performs no activation or backfill. Production execution requires separate Founder authorization.
+
+Resolution is deterministic and fail-closed:
+
+1. The request must contain a server-verified Facility identifier and the referenced Facility must exist. Missing or invalid Facility context returns disabled and never consults a Facility override.
+2. The feature must be one of the three approved geofence controls and the existing role allowlist must permit the requesting role. A denial stops evaluation.
+3. An explicit Facility override has precedence for that Facility only. This permits a single controlled pilot while the global default remains disabled and also permits an explicit Facility-level emergency disable.
+4. When no Facility override exists, an existing user override applies.
+5. When neither scoped override exists, the global feature state applies.
+
+Only Admin and Super Admin may create or change a Facility override. Each mutation requires a bounded reason and is committed atomically with an append-only event containing Facility, feature, actor, actor role, timestamp, prior value, new value, request reference, and idempotency key. Owner and Driver APIs cannot manage or read this administrative state. The control changes feature resolution only; it grants no Facility ownership, cross-Owner data access, photo access, or financial authority. Financial execution remains governed by its independent global fail-closed policy and is not an eligible Facility control.
+
+Recovery is non-destructive: set every Facility override and the three global controls to disabled, roll application code back if necessary, and retain the additive tables and append-only audit history. Destructive rollback is neither required nor recommended. Before a controlled pilot, Production must receive a separately approved recovery checkpoint, migration execution, zero-row verification, and explicit single-Facility activation authorization.
+
 ## 14. Test strategy
 
 The implementation checkpoint SHALL cover radius/polygon interior, exact edge, immediately outside, exactly at the configured exception threshold, beyond threshold, unavailable and inaccurate GPS, stale observations, invalid/self-intersecting geometry, boundary revision during a workflow, complete and incomplete yellow submissions, combined Owner and low-priority Admin yellow notifications, red quarantine, notification routing, no passive side effects, RBAC, privacy, localization, accessibility, bounded performance, and Driver/Owner/Admin Photo Review/Administrative Review/Notification regressions. Financial execution must remain disabled.
@@ -255,3 +271,4 @@ Founder approval made this architecture effective as governance. Later Founder d
 | 1.0 | 2026-08-04 | Founder-approved canonical Facility geofence architecture made effective as governance; implementation remains separately authorized. |
 | 1.1 | 2026-08-04 | Recorded the separately authorized local Work Package 1 implementation, ADR-033 dependency selection, additive migration/schema, disabled controls, canonical service, and pending Founder acceptance; no Production change. |
 | 1.2 | 2026-08-04 | Recorded the authorized feature-branch Owner, Driver advisory, submission, notification, Admin context, and legacy-isolation vertical slice; release controls remain disabled and Production unchanged. |
+| 1.3 | 2026-08-07 | Recorded the additive Facility-scoped geofence control model, deterministic precedence, Admin/Super Admin audit requirements, fail-closed Facility context, and non-destructive recovery posture; migration `0041` and all Facility activations remain outside Production pending Founder approval. |

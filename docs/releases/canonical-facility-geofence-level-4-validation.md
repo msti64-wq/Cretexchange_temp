@@ -1,6 +1,6 @@
 # Canonical Facility Geofence — Level 4 Validation Closeout
 
-- **Status:** Owner boundary-management and Google Maps Production rendering accepted; Driver advisory and overall geofence operational acceptance pending
+- **Status:** Owner boundary-management, Google Maps rendering, and the currently activated submission-context scope accepted; submission enforcement, geofence notifications, legacy transition, and overall geofence operational acceptance pending
 - **Date:** 2026-08-05
 - **Branch:** `feature/canonical-facility-geofence`
 - **Starting SHA:** `33d356acee69dac6d3218a4e6788f18d8dfb454f`
@@ -68,6 +68,21 @@ This acceptance closes the Google Maps loader/readiness visual gate and accepts 
 | Google Maps Production rendering | PASS |
 | Driver advisory visual acceptance | PENDING |
 | Overall geofence operational acceptance | PENDING |
+
+## Founder Production acceptance — activated submission-context scope
+
+**PASS — August 7, 2026.** The Founder authorized this durable acceptance record after completing the latest controlled post-deployment submission against Production SHA `4cfd02708ecb0f936edcfd6d8b1bffd366f48df4` and Railway deployment `1db63090-3307-4f60-8b23-5b9c0aaad88c`.
+
+The controlled submission confirmed:
+
+- fresh submission-time geofence evidence was persisted;
+- the Owner review card displayed the privacy-safe state, evaluation time, and boundary version;
+- historical records remained labeled **Location verification not recorded**;
+- retained photo evidence opened;
+- the Owner decision completed; and
+- the Driver received the corresponding result.
+
+This acceptance is deliberately limited to the controls and presentation already active at that SHA. It does not authorize or accept submission enforcement, geofence notifications, legacy transition, any Facility-scoped override, financial execution, or 2FA. Those gates remain separate and pending.
 
 The five Production controls remained staged as follows at acceptance:
 

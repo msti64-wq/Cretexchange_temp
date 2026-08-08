@@ -78,7 +78,10 @@ export function WashoutForm({ location, onSuccess }: WashoutFormProps) {
   const [geofenceNote, setGeofenceNote] = useState("");
   const submissionReference = useRef(createSubmissionReference());
   const { enabled: geofenceAdvisoryEnabled } = useFeatureFlag(FEATURE_FLAGS.GEOFENCE_ADVISORY_EVALUATION);
-  const { enabled: geofenceEnforcementEnabled } = useFeatureFlag(FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT);
+  const { enabled: geofenceEnforcementEnabled } = useFeatureFlag(
+    FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT,
+    location.id,
+  );
   const geofenceEvidenceCaptureEnabled = geofenceAdvisoryEnabled || geofenceEnforcementEnabled;
   const [gpsWarning, setGpsWarning] = useState<string | null>(null);
   const [pendingPhotoFiles, setPendingPhotoFiles] = useState<File[]>([]);

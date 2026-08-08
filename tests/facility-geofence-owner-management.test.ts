@@ -26,6 +26,7 @@ function harness(options: { locationOwnerId?: string; userRole?: string; feature
     storage: {
       getUser: async () => ({ id: "user-1", role: options.userRole || "owner" }),
       checkFeatureFlag: async () => options.featureEnabled !== false,
+      checkFacilityFeatureFlag: async () => options.featureEnabled !== false,
       getOwner: async () => ({ id: "owner-1", userId: "user-1" }),
       getWashoutLocation: async () => location,
       getWashoutActivity: async () => ({ id: "activity-1", locationId: location.id }),

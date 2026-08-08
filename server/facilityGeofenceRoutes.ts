@@ -318,7 +318,13 @@ export function registerFacilityGeofenceRoutes(
       idempotencyKey: `${id}:assistance:${boundary.id}`,
       safeMetadata: parsed.data.note ? { note: parsed.data.note } : {},
     });
-    const notificationsEnabled = await isGeofenceFeatureEnabled(storage, FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS, access.user.id, access.user.role);
+    const notificationsEnabled = await isGeofenceFeatureEnabled(
+      storage,
+      FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
+      access.user.id,
+      access.user.role,
+      access.location.id,
+    );
     if (notificationsEnabled) {
       await emitNotificationBestEffort({
         userId: access.user.id,
@@ -435,7 +441,13 @@ export function registerFacilityGeofenceRoutes(
     try {
       const user = await storage.getUser(req.user.id);
       if (!user || user.role !== "driver") return res.status(403).json({ message: "Driver access required" });
-      const enabled = await isGeofenceFeatureEnabled(storage, FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT, user.id, user.role);
+      const enabled = await isGeofenceFeatureEnabled(
+        storage,
+        FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT,
+        user.id,
+        user.role,
+        req.params.locationId,
+      );
       if (!enabled) return res.status(404).json({ message: "Facility boundary enforcement is not available" });
       const parsed = submissionPreflightSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: "Current location evidence is invalid" });
@@ -486,10 +498,16 @@ export function registerFacilityGeofenceRoutes(
     try {
       const user = await storage.getUser(req.user.id);
       if (!user || !["admin", "super_admin"].includes(user.role)) return res.status(403).json({ message: "Admin access required" });
-      const enabled = await isGeofenceFeatureEnabled(storage, FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS, user.id, user.role);
-      if (!enabled) return res.status(404).json({ message: "Facility boundary context is not available" });
       const evaluation = await repository.getLatestActivityEvaluation(req.params.activityId);
       if (!evaluation) return res.status(404).json({ message: "Facility boundary context not found" });
+      const enabled = await isGeofenceFeatureEnabled(
+        storage,
+        FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
+        user.id,
+        user.role,
+        evaluation.locationId,
+      );
+      if (!enabled) return res.status(404).json({ message: "Facility boundary context is not available" });
       res.json({
         activityId: req.params.activityId,
         state: evaluation.resultState,

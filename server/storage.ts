@@ -33,6 +33,8 @@ import {
   washoutPaymentBatches,
   featureFlags,
   featureFlagOverrides,
+  facilityFeatureFlagOverrides,
+  facilityFeatureFlagOverrideEvents,
   systemSettings,
   materials,
   locationMaterialIntents,
@@ -85,6 +87,8 @@ import {
   type FeatureFlag,
   type InsertFeatureFlag,
   type FeatureFlagOverride,
+  type FacilityFeatureFlagOverride,
+  type FacilityFeatureFlagOverrideEvent,
   type InsertDriver,
   type InsertOwner,
   type InsertWashoutLocation,
@@ -158,6 +162,8 @@ import { alias } from "drizzle-orm/pg-core";
 import { formatAddress } from "@shared/addressUtils";
 import type { PhotoFingerprintCandidate } from "@shared/photoFingerprint";
 import { recordPlatformAnalyticsEvent } from "./platformAnalytics";
+import { isFacilityScopedGeofenceFeatureFlag, type FacilityScopedGeofenceFeatureFlag } from "@shared/featureFlags";
+import { resolveFacilityFeatureControl } from "./facilityFeatureControl";
 import {
   listAdminPhotoReviewRetentionItems,
   type AdminPhotoReviewFilter,
@@ -561,6 +567,20 @@ export interface IStorage {
   getFeatureFlagOverride(flagKey: string, userId: string): Promise<any | undefined>;
   setFeatureFlagOverride(flagKey: string, userId: string, enabled: boolean): Promise<any>;
   checkFeatureFlag(flagKey: string, userId: string, userRole: string): Promise<boolean>;
+  getFacilityFeatureFlagOverride(flagKey: FacilityScopedGeofenceFeatureFlag, locationId: string): Promise<FacilityFeatureFlagOverride | undefined>;
+  listFacilityFeatureFlagOverrides(locationId: string): Promise<FacilityFeatureFlagOverride[]>;
+  listFacilityFeatureFlagOverrideEvents(locationId: string, limit?: number): Promise<FacilityFeatureFlagOverrideEvent[]>;
+  setFacilityFeatureFlagOverride(input: {
+    flagKey: FacilityScopedGeofenceFeatureFlag;
+    locationId: string;
+    enabled: boolean;
+    actorUserId: string;
+    actorRole: "admin" | "super_admin";
+    reason: string;
+    requestId: string;
+    idempotencyKey: string;
+  }): Promise<{ override: FacilityFeatureFlagOverride; event: FacilityFeatureFlagOverrideEvent; reused: boolean }>;
+  checkFacilityFeatureFlag(flagKey: FacilityScopedGeofenceFeatureFlag, userId: string, userRole: string, verifiedFacilityId: string): Promise<boolean>;
 
   // System settings operations
   getSystemSettings(): Promise<SystemSettings>;
@@ -7409,6 +7429,156 @@ export class DatabaseStorage implements IStorage {
 
     // Fall back to global flag setting
     return flag.enabled;
+  }
+
+  async getFacilityFeatureFlagOverride(
+    flagKey: FacilityScopedGeofenceFeatureFlag,
+    locationId: string,
+  ): Promise<FacilityFeatureFlagOverride | undefined> {
+    const [override] = await db
+      .select()
+      .from(facilityFeatureFlagOverrides)
+      .where(and(
+        eq(facilityFeatureFlagOverrides.flagKey, flagKey),
+        eq(facilityFeatureFlagOverrides.locationId, locationId),
+      ))
+      .limit(1);
+    return override;
+  }
+
+  async listFacilityFeatureFlagOverrides(locationId: string): Promise<FacilityFeatureFlagOverride[]> {
+    return db
+      .select()
+      .from(facilityFeatureFlagOverrides)
+      .where(eq(facilityFeatureFlagOverrides.locationId, locationId))
+      .orderBy(facilityFeatureFlagOverrides.flagKey);
+  }
+
+  async listFacilityFeatureFlagOverrideEvents(
+    locationId: string,
+    limit = 100,
+  ): Promise<FacilityFeatureFlagOverrideEvent[]> {
+    return db
+      .select()
+      .from(facilityFeatureFlagOverrideEvents)
+      .where(eq(facilityFeatureFlagOverrideEvents.locationId, locationId))
+      .orderBy(desc(facilityFeatureFlagOverrideEvents.createdAt))
+      .limit(Math.max(1, Math.min(limit, 100)));
+  }
+
+  async setFacilityFeatureFlagOverride(input: {
+    flagKey: FacilityScopedGeofenceFeatureFlag;
+    locationId: string;
+    enabled: boolean;
+    actorUserId: string;
+    actorRole: "admin" | "super_admin";
+    reason: string;
+    requestId: string;
+    idempotencyKey: string;
+  }): Promise<{ override: FacilityFeatureFlagOverride; event: FacilityFeatureFlagOverrideEvent; reused: boolean }> {
+    if (!isFacilityScopedGeofenceFeatureFlag(input.flagKey)) {
+      throw new Error("FACILITY_FEATURE_CONTROL_NOT_ALLOWED");
+    }
+    if (!['admin', 'super_admin'].includes(input.actorRole)) {
+      throw new Error("FACILITY_FEATURE_CONTROL_ADMIN_REQUIRED");
+    }
+    const reason = input.reason.trim();
+    if (reason.length < 3 || reason.length > 500) {
+      throw new Error("FACILITY_FEATURE_CONTROL_REASON_INVALID");
+    }
+
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`${input.locationId}:${input.flagKey}`}))`);
+
+      const [existingEvent] = await tx
+        .select()
+        .from(facilityFeatureFlagOverrideEvents)
+        .where(eq(facilityFeatureFlagOverrideEvents.idempotencyKey, input.idempotencyKey))
+        .limit(1);
+      if (existingEvent) {
+        if (
+          existingEvent.locationId !== input.locationId
+          || existingEvent.flagKey !== input.flagKey
+          || existingEvent.actorUserId !== input.actorUserId
+          || existingEvent.newEnabled !== input.enabled
+        ) {
+          throw new Error("FACILITY_FEATURE_CONTROL_IDEMPOTENCY_CONFLICT");
+        }
+        const [existingOverride] = await tx
+          .select()
+          .from(facilityFeatureFlagOverrides)
+          .where(and(
+            eq(facilityFeatureFlagOverrides.locationId, input.locationId),
+            eq(facilityFeatureFlagOverrides.flagKey, input.flagKey),
+          ))
+          .limit(1);
+        if (!existingOverride) throw new Error("FACILITY_FEATURE_CONTROL_AUDIT_WITHOUT_OVERRIDE");
+        return { override: existingOverride, event: existingEvent, reused: true };
+      }
+
+      const [[facility], [flag], [current]] = await Promise.all([
+        tx.select({ id: washoutLocations.id }).from(washoutLocations).where(eq(washoutLocations.id, input.locationId)).limit(1),
+        tx.select({ flagKey: featureFlags.flagKey }).from(featureFlags).where(eq(featureFlags.flagKey, input.flagKey)).limit(1),
+        tx.select().from(facilityFeatureFlagOverrides).where(and(
+          eq(facilityFeatureFlagOverrides.locationId, input.locationId),
+          eq(facilityFeatureFlagOverrides.flagKey, input.flagKey),
+        )).limit(1),
+      ]);
+      if (!facility) throw new Error("FACILITY_FEATURE_CONTROL_FACILITY_NOT_FOUND");
+      if (!flag) throw new Error("FACILITY_FEATURE_CONTROL_FLAG_NOT_FOUND");
+
+      const now = new Date();
+      const [override] = await tx
+        .insert(facilityFeatureFlagOverrides)
+        .values({
+          locationId: input.locationId,
+          flagKey: input.flagKey,
+          enabled: input.enabled,
+          reason,
+          updatedBy: input.actorUserId,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [facilityFeatureFlagOverrides.locationId, facilityFeatureFlagOverrides.flagKey],
+          set: {
+            enabled: input.enabled,
+            reason,
+            updatedBy: input.actorUserId,
+            updatedAt: now,
+          },
+        })
+        .returning();
+      const [event] = await tx
+        .insert(facilityFeatureFlagOverrideEvents)
+        .values({
+          locationId: input.locationId,
+          flagKey: input.flagKey,
+          actorUserId: input.actorUserId,
+          actorRole: input.actorRole,
+          reason,
+          priorEnabled: current?.enabled ?? false,
+          newEnabled: input.enabled,
+          requestId: input.requestId,
+          idempotencyKey: input.idempotencyKey,
+        })
+        .returning();
+      return { override, event, reused: false };
+    });
+  }
+
+  async checkFacilityFeatureFlag(
+    flagKey: FacilityScopedGeofenceFeatureFlag,
+    userId: string,
+    userRole: string,
+    verifiedFacilityId: string,
+  ): Promise<boolean> {
+    const resolution = await resolveFacilityFeatureControl(this, {
+      flagKey,
+      userId,
+      userRole,
+      verifiedFacilityId,
+    });
+    return resolution.enabled;
   }
 
   // System settings operations

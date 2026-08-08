@@ -6,6 +6,7 @@ interface FeatureFlagCheckResponse {
   globalEnabled?: boolean;
   overrideEnabled?: boolean | null;
   effectiveEnabled?: boolean;
+  facilityContextVerified?: boolean;
 }
 
 interface FeatureFlag {
@@ -31,9 +32,10 @@ interface FeatureFlag {
  * 
  * return <RubbleServiceUI />;
  */
-export function useFeatureFlag(flagKey: FeatureFlagKey) {
+export function useFeatureFlag(flagKey: FeatureFlagKey, facilityId?: string | null) {
+  const endpoint = `/api/feature-flags/${flagKey}/check${facilityId ? `?facilityId=${encodeURIComponent(facilityId)}` : ""}`;
   const { data, isLoading, error } = useQuery<FeatureFlagCheckResponse>({
-    queryKey: [`/api/feature-flags/${flagKey}/check`],
+    queryKey: [endpoint],
     enabled: !!flagKey,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     retry: 1,
@@ -44,6 +46,7 @@ export function useFeatureFlag(flagKey: FeatureFlagKey) {
     globalEnabled: data?.globalEnabled,
     overrideEnabled: data?.overrideEnabled,
     effectiveEnabled: data?.effectiveEnabled,
+    facilityContextVerified: data?.facilityContextVerified,
     isLoading,
     error,
   };

@@ -48,6 +48,20 @@ export const FEATURE_FLAGS = {
 
 export type FeatureFlagKey = typeof FEATURE_FLAGS[keyof typeof FEATURE_FLAGS];
 
+export const FACILITY_SCOPED_GEOFENCE_FEATURE_FLAGS = [
+  FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT,
+  FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
+  FEATURE_FLAGS.GEOFENCE_LEGACY_TRANSITION,
+] as const satisfies readonly FeatureFlagKey[];
+
+export type FacilityScopedGeofenceFeatureFlag = typeof FACILITY_SCOPED_GEOFENCE_FEATURE_FLAGS[number];
+
+export function isFacilityScopedGeofenceFeatureFlag(
+  flagKey: string,
+): flagKey is FacilityScopedGeofenceFeatureFlag {
+  return (FACILITY_SCOPED_GEOFENCE_FEATURE_FLAGS as readonly string[]).includes(flagKey);
+}
+
 // Feature flag metadata for initial setup
 export interface FeatureFlagDefinition {
   key: FeatureFlagKey;

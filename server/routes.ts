@@ -89,8 +89,13 @@ import {
   getPaymentDriverIncentiveCents,
   getPaymentPlatformFeeCents,
 } from "../shared/paymentAccounting";
-import { FEATURE_FLAGS, FEATURE_FLAG_DEFINITIONS } from "../shared/featureFlags";
+import {
+  FEATURE_FLAGS,
+  FEATURE_FLAG_DEFINITIONS,
+  isFacilityScopedGeofenceFeatureFlag,
+} from "../shared/featureFlags";
 import { registerFacilityGeofenceRoutes } from "./facilityGeofenceRoutes";
+import { registerFacilityFeatureControlRoutes } from "./facilityFeatureControlRoutes";
 import { FacilityGeofenceService, type FacilityGeofenceResult } from "./facilityGeofenceService";
 import { DrizzleFacilityGeofenceRepository } from "./facilityGeofenceRepository";
 import { isGeofenceFeatureEnabled } from "./geofenceFeatureFlags";
@@ -2400,6 +2405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
   registerFacilityGeofenceRoutes(app);
+  registerFacilityFeatureControlRoutes(app);
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -17131,6 +17137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT,
         userId,
         "driver",
+        activityResult.data.locationId,
       );
       const geofenceAdvisoryEnabled = await isGeofenceFeatureEnabled(
         storage,
@@ -17484,6 +17491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
           userId,
           "driver",
+          activityResult.data.locationId,
         );
         await runNotificationDeliveryBestEffort(result.activity.id, async () => {
       if (platformIntegrityDetected) {
@@ -17813,6 +17821,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           overrideEnabled: state.overrideEnabled,
           effectiveEnabled: state.effectiveEnabled,
         });
+      }
+
+      if (isFacilityScopedGeofenceFeatureFlag(flagKey)) {
+        const facilityId = z.string().uuid().safeParse(req.query.facilityId);
+        if (!facilityId.success) {
+          return res.json({ enabled: false, facilityContextVerified: false });
+        }
+        const enabled = await isGeofenceFeatureEnabled(
+          storage,
+          flagKey,
+          user.id,
+          user.role,
+          facilityId.data,
+        );
+        return res.json({ enabled, facilityContextVerified: true });
       }
 
       const enabled = await storage.checkFeatureFlag(flagKey, user.id, user.role);

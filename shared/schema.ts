@@ -2125,6 +2125,45 @@ export const featureFlagOverrides = pgTable("feature_flag_overrides", {
   uniqueIndex("unique_flag_user").on(table.flagId, table.userId),
 ]);
 
+// Facility-scoped pilot controls are intentionally limited to the three
+// governed geofence rollout controls. They do not generalize Facility
+// overrides to financial or unrelated platform capabilities.
+export const facilityFeatureFlagOverrides = pgTable("facility_feature_flag_overrides", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  locationId: varchar("location_id").notNull().references(() => washoutLocations.id, { onDelete: "restrict" }),
+  flagKey: varchar("flag_key").notNull().references(() => featureFlags.flagKey, { onDelete: "restrict" }),
+  enabled: boolean("enabled").default(false).notNull(),
+  reason: text("reason").notNull(),
+  updatedBy: varchar("updated_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("facility_feature_flag_overrides_location_flag_unique").on(table.locationId, table.flagKey),
+  index("facility_feature_flag_overrides_flag_enabled_idx").on(table.flagKey, table.enabled, table.locationId),
+  check("facility_feature_flag_overrides_flag_allowed", sql`${table.flagKey} IN ('geofence_submission_enforcement', 'geofence_notifications', 'geofence_legacy_transition')`),
+  check("facility_feature_flag_overrides_reason_valid", sql`char_length(btrim(${table.reason})) BETWEEN 3 AND 500`),
+]);
+
+export const facilityFeatureFlagOverrideEvents = pgTable("facility_feature_flag_override_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  locationId: varchar("location_id").notNull().references(() => washoutLocations.id, { onDelete: "restrict" }),
+  flagKey: varchar("flag_key").notNull().references(() => featureFlags.flagKey, { onDelete: "restrict" }),
+  actorUserId: varchar("actor_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  actorRole: varchar("actor_role").notNull(),
+  reason: text("reason").notNull(),
+  priorEnabled: boolean("prior_enabled").notNull(),
+  newEnabled: boolean("new_enabled").notNull(),
+  requestId: varchar("request_id", { length: 160 }).notNull(),
+  idempotencyKey: varchar("idempotency_key", { length: 240 }).notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("facility_feature_flag_override_events_location_created_idx").on(table.locationId, table.createdAt),
+  index("facility_feature_flag_override_events_flag_created_idx").on(table.flagKey, table.createdAt),
+  check("facility_feature_flag_override_events_flag_allowed", sql`${table.flagKey} IN ('geofence_submission_enforcement', 'geofence_notifications', 'geofence_legacy_transition')`),
+  check("facility_feature_flag_override_events_actor_role_valid", sql`${table.actorRole} IN ('admin', 'super_admin')`),
+  check("facility_feature_flag_override_events_reason_valid", sql`char_length(btrim(${table.reason})) BETWEEN 3 AND 500`),
+]);
+
 // Feature flag schemas
 export const insertFeatureFlagSchema = createInsertSchema(featureFlags).omit({
   id: true,
@@ -2268,6 +2307,8 @@ export type FeatureFlag = typeof featureFlags.$inferSelect;
 export type InsertFeatureFlag = z.infer<typeof insertFeatureFlagSchema>;
 export type FeatureFlagOverride = typeof featureFlagOverrides.$inferSelect;
 export type InsertFeatureFlagOverride = z.infer<typeof insertFeatureFlagOverrideSchema>;
+export type FacilityFeatureFlagOverride = typeof facilityFeatureFlagOverrides.$inferSelect;
+export type FacilityFeatureFlagOverrideEvent = typeof facilityFeatureFlagOverrideEvents.$inferSelect;
 
 // System Settings - Global configuration that can be changed at runtime
 export const systemSettings = pgTable("system_settings", {
