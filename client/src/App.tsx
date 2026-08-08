@@ -56,6 +56,7 @@ const AdminFees = lazy(() => import("@/pages/admin/fees"));
 const AdminProfile = lazy(() => import("@/pages/admin/profile"));
 const ServiceAccountsPage = lazy(() => import("@/pages/admin/service-accounts"));
 const AdminFeatureFlags = lazy(() => import("@/pages/admin/feature-flags"));
+const AdminFacilityGeofenceControls = lazy(() => import("@/pages/admin/facility-geofence-controls"));
 const AdminSettings = lazy(() => import("@/pages/admin/settings"));
 const AdminBatchPayments = lazy(() => import("@/pages/admin/batch-payments"));
 const AdminReconciliation = lazy(() => import("@/pages/admin/reconciliation"));
@@ -198,6 +199,7 @@ function Router() {
             <Route path="/subscriptions" component={AdminSubscriptions} />
             <Route path="/fees" component={AdminFees} />
             <Route path="/feature-flags" component={AdminFeatureFlags} />
+            <Route path="/admin/facility-geofence-controls" component={AdminFacilityGeofenceControls} />
             <Route path="/billing-settings" component={AdminBillingSettings} />
             <Route path="/billing" component={AdminBilling} />
             <Route path="/lottery" component={AdminLottery} />

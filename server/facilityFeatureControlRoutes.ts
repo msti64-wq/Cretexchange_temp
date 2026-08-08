@@ -1,13 +1,22 @@
 import { randomUUID } from "node:crypto";
 import type { Express } from "express";
 import { z } from "zod";
-import { isFacilityScopedGeofenceFeatureFlag } from "@shared/featureFlags";
+import {
+  FACILITY_SCOPED_GEOFENCE_FEATURE_FLAGS,
+  isFacilityScopedGeofenceFeatureFlag,
+} from "@shared/featureFlags";
+import type {
+  FacilityFeatureFlagOverride,
+  FacilityFeatureFlagOverrideEvent,
+  FeatureFlag,
+} from "@shared/schema";
 import { isAuthenticated } from "./tokenAuth";
 import { storage as defaultStorage, type IStorage } from "./storage";
 
 type FacilityFeatureControlStorage = Pick<IStorage,
   | "getUser"
   | "getWashoutLocation"
+  | "getFeatureFlag"
   | "listFacilityFeatureFlagOverrides"
   | "listFacilityFeatureFlagOverrideEvents"
   | "setFacilityFeatureFlagOverride"
@@ -44,7 +53,45 @@ export function registerFacilityFeatureControlRoutes(
         storage.listFacilityFeatureFlagOverrides(locationId.data),
         storage.listFacilityFeatureFlagOverrideEvents(locationId.data, 100),
       ]);
-      return res.json({ facilityId: locationId.data, overrides, history });
+      const globalFlags = await Promise.all(
+        FACILITY_SCOPED_GEOFENCE_FEATURE_FLAGS.map((flagKey) => storage.getFeatureFlag(flagKey)),
+      );
+      const overrideByFlag = new Map<string, FacilityFeatureFlagOverride>(
+        overrides.map((override: FacilityFeatureFlagOverride) => [override.flagKey, override]),
+      );
+      const globalByFlag = new Map<string, FeatureFlag>(
+        globalFlags
+          .filter((flag): flag is FeatureFlag => Boolean(flag))
+          .map((flag) => [flag.flagKey, flag]),
+      );
+
+      return res.json({
+        facility: { id: location.id, name: location.name },
+        controls: FACILITY_SCOPED_GEOFENCE_FEATURE_FLAGS.map((flagKey) => {
+          const override = overrideByFlag.get(flagKey);
+          const globalFlag = globalByFlag.get(flagKey);
+          const globalEnabled = globalFlag?.enabled === true;
+          return {
+            flagKey,
+            globalEnabled,
+            overrideEnabled: override?.enabled ?? null,
+            effectiveEnabled: override ? override.enabled : globalEnabled,
+            source: override ? "facility" : globalFlag ? "global" : "denied",
+            overrideReason: override?.reason ?? null,
+            overrideUpdatedAt: override?.updatedAt ?? null,
+          };
+        }),
+        history: history.map((event: FacilityFeatureFlagOverrideEvent) => ({
+          id: event.id,
+          flagKey: event.flagKey,
+          actorRole: event.actorRole,
+          reason: event.reason,
+          priorEnabled: event.priorEnabled,
+          newEnabled: event.newEnabled,
+          requestId: event.requestId,
+          createdAt: event.createdAt,
+        })),
+      });
     } catch (error) {
       console.error("Facility geofence control read failed", {
         locationId: req.params.locationId,
@@ -84,7 +131,25 @@ export function registerFacilityFeatureControlRoutes(
         requestId,
         idempotencyKey: `${requestId}:${locationId.data}:${req.params.flagKey}`,
       });
-      return res.status(result.reused ? 200 : 201).json(result);
+      return res.status(result.reused ? 200 : 201).json({
+        reused: result.reused,
+        override: {
+          flagKey: result.override.flagKey,
+          enabled: result.override.enabled,
+          reason: result.override.reason,
+          updatedAt: result.override.updatedAt,
+        },
+        event: {
+          id: result.event.id,
+          flagKey: result.event.flagKey,
+          actorRole: result.event.actorRole,
+          reason: result.event.reason,
+          priorEnabled: result.event.priorEnabled,
+          newEnabled: result.event.newEnabled,
+          requestId: result.event.requestId,
+          createdAt: result.event.createdAt,
+        },
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown";
       if (message === "FACILITY_FEATURE_CONTROL_FACILITY_NOT_FOUND") {

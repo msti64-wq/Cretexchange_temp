@@ -130,7 +130,8 @@ function routeHarness(role: string) {
   registerFacilityFeatureControlRoutes(app as any, {
     storage: {
       getUser: async () => ({ id: `${role}-1`, role }),
-      getWashoutLocation: async () => ({ id: FACILITY_A, ownerId: "owner-a" }),
+      getWashoutLocation: async () => ({ id: FACILITY_A, ownerId: "owner-a", name: "Controlled Facility" }),
+      getFeatureFlag: async (flagKey: string) => ({ flagKey, enabled: false }),
       listFacilityFeatureFlagOverrides: async () => [],
       listFacilityFeatureFlagOverrideEvents: async () => [],
       setFacilityFeatureFlagOverride: async (input: any) => {
@@ -167,6 +168,48 @@ test("Admin and Super Admin may govern a Facility override with an auditable rea
     assert.equal(h.writes[0].actorRole, role);
     assert.equal(h.writes[0].reason, "Founder-authorized controlled pilot");
   }
+});
+
+test("Admin read model exposes only governed Facility states and privacy-safe history", async () => {
+  const h = routeHarness("admin");
+  const res = response();
+  await h.gets.get("/api/admin/facilities/:locationId/geofence-controls")!({
+    user: { id: "admin-1" },
+    params: { locationId: FACILITY_A },
+  }, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body.facility, { id: FACILITY_A, name: "Controlled Facility" });
+  assert.deepEqual(
+    res.body.controls.map((control: any) => control.flagKey),
+    [
+      FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT,
+      FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
+      FEATURE_FLAGS.GEOFENCE_LEGACY_TRANSITION,
+    ],
+  );
+  assert.ok(res.body.controls.every((control: any) =>
+    control.globalEnabled === false
+    && control.overrideEnabled === null
+    && control.effectiveEnabled === false
+    && control.source === "global"));
+  assert.equal(JSON.stringify(res.body).includes("ownerId"), false);
+  assert.equal(JSON.stringify(res.body).includes("actorUserId"), false);
+});
+
+test("Admin can submit an explicit disable through the governed API without removing history", async () => {
+  const h = routeHarness("admin");
+  const res = response();
+  await h.puts.get("/api/admin/facilities/:locationId/geofence-controls/:flagKey")!({
+    user: { id: "admin-1" },
+    params: { locationId: FACILITY_A, flagKey: FEATURE_FLAGS.GEOFENCE_SUBMISSION_ENFORCEMENT },
+    body: { enabled: false, reason: "Controlled recovery disable" },
+    header: () => "request-disable-1",
+  }, res);
+  assert.equal(res.statusCode, 201);
+  assert.equal(h.writes.length, 1);
+  assert.equal(h.writes[0].enabled, false);
+  assert.equal(h.writes[0].requestId, "request-disable-1");
+  assert.equal(res.body.event.newEnabled, false);
 });
 
 test("Owner and Driver are denied Facility override reads and writes before storage mutation", async () => {

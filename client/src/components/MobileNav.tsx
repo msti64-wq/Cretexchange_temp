@@ -1,4 +1,4 @@
-import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag, RefreshCw, Wrench, Clock, Trophy, ClipboardList, Images, Globe2, Medal } from "lucide-react";
+import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag, RefreshCw, Wrench, Clock, Trophy, ClipboardList, Images, Globe2, Medal, ShieldCheck } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -61,6 +61,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/admin/financial-operations", icon: ClipboardList, label: t("adminNav.financialOperations"), testIdLabel: "financial-operations" },
           { path: "/admin/administration-repository", icon: FileText, label: t("adminNav.operationsLibrary"), testIdLabel: "administration-repository" },
           { path: "/admin/photo-review", icon: Images, label: t("adminNav.photoReview"), testIdLabel: "photo-review" },
+          { path: "/admin/facility-geofence-controls", icon: ShieldCheck, label: t("adminNav.facilityGeofenceControls"), testIdLabel: "facility-geofence-controls" },
           { path: "/notifications", icon: Bell, label: t("nav.alerts"), testIdLabel: "alerts" },
           { path: "/profile", icon: Settings, label: t("adminNav.profile") },
         ];
@@ -75,6 +76,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/admin/financial-operations", icon: ClipboardList, label: t("adminNav.financialOperations"), testIdLabel: "financial-operations" },
           { path: "/admin/administration-repository", icon: FileText, label: t("adminNav.operationsLibrary"), testIdLabel: "administration-repository" },
           { path: "/admin/photo-review", icon: Images, label: t("adminNav.photoReview"), testIdLabel: "photo-review" },
+          { path: "/admin/facility-geofence-controls", icon: ShieldCheck, label: t("adminNav.facilityGeofenceControls"), testIdLabel: "facility-geofence-controls" },
           { path: "/notifications", icon: Bell, label: t("nav.alerts"), testIdLabel: "alerts" },
           { path: "/lottery", icon: Trophy, label: t("adminNav.rewardsProgram") },
           { path: "/reconciliation", icon: RefreshCw, label: t("adminNav.reconcile") },

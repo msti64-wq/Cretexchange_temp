@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { LogoutButton } from "@/components/LogoutButton";
 import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
-import { ShieldAlert, UsersRound } from "lucide-react";
+import { ShieldAlert, ShieldCheck, UsersRound } from "lucide-react";
 import { buildAdminPlatformGrowth, type PlatformGrowthRange } from "@/lib/adminPlatformGrowth";
 import { buildAdminTrustVerification } from "@/lib/adminTrustVerification";
 import {
@@ -194,6 +194,7 @@ function AdministrativeReviewQueue() {
 export default function AdminDashboard() {
   const { toast } = useToast();
   const { logout, user } = useAuth();
+  const { t } = useLanguage();
   const queryClient = useQueryClient();
   const [dateRange, setDateRange] = useState("30");
   const [growthRange, setGrowthRange] = useState<PlatformGrowthRange>("last_30_days");
@@ -595,6 +596,16 @@ export default function AdminDashboard() {
                 <Building className="h-5 w-5 text-secondary" />
                 <span className="text-sm font-semibold">Locations</span>
                 <span className="text-xs text-muted-foreground">Monitor site network</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                onClick={() => window.location.href = '/admin/facility-geofence-controls'}
+                data-testid="button-facility-geofence-controls-hero"
+              >
+                <ShieldCheck className="h-5 w-5 text-sky-500" />
+                <span className="text-sm font-semibold">{t("facilityControls.nav")}</span>
+                <span className="text-xs text-muted-foreground">{t("facilityControls.dashboardActionDescription")}</span>
               </Button>
               {user?.role === 'super_admin' && (
                 <Button
@@ -2082,6 +2093,19 @@ export default function AdminDashboard() {
             <div>
               <div className="text-sm font-semibold">Locations</div>
               <div className="text-xs text-muted-foreground">Monitor sites</div>
+            </div>
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
+            onClick={() => window.location.href = '/admin/facility-geofence-controls'}
+            data-testid="button-facility-geofence-controls"
+          >
+            <ShieldCheck className="h-5 w-5 text-sky-500" />
+            <div>
+              <div className="text-sm font-semibold">{t("facilityControls.nav")}</div>
+              <div className="text-xs text-muted-foreground">{t("facilityControls.dashboardActionDescription")}</div>
             </div>
           </Button>
 
