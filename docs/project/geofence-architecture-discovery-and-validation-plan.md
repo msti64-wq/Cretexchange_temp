@@ -1,6 +1,6 @@
 # Facility Geofence Architecture Discovery and Validation Plan
 
-- **Version:** 2.1
+- **Version:** 2.2
 - **Status:** Advisory and submission-time Owner context accepted; notification implementation and red enforcement pilot pending; legacy transition deferred
 - **Owner:** CreteXchange Product and Engineering
 - **Date:** 2026-08-08
@@ -115,14 +115,14 @@ Migration `0040` is additive and covers versioned boundary rows, revision events
 | Radius | Center/inside, exact circumference, just outside, exact exception threshold from radius edge, beyond threshold |
 | Polygon | Inside, exact edge/vertex, just outside, nearest edge not centroid, exact exception threshold, beyond threshold |
 | Geometry validation | Open ring normalization policy, fewer than 3 distinct points, non-finite/out-of-range coordinate, adjacent duplicate, collinear/near-zero area, self-intersection, vertex/area/extent limits, invalid JSON/type |
-| GPS | Permission denied, unavailable, stale, missing accuracy, accuracy above maximum, `LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY`, `LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD` |
+| GPS | Permission denied, unavailable, stale, missing accuracy, accuracy above maximum, and `LOCATION_ACCURACY_INSUFFICIENT` with reason code `LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY` or `LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD` |
 | Versioning | Draft has no runtime effect, atomic activation, one active primary zone, active workflow retains earlier version, correction is prospective, invalidated boundary fails safely |
 | Driver advisory | Green/yellow/red/neutral, status loading/error/retry, nearest ordering unchanged, yellow/red selectable, no precise data/geometry, no passive notification/audit/analytics |
 | Yellow submission | Every reason code, acknowledgement required, optional bounded note, required photo, accuracy/timestamp, boundary version, incomplete attempt creates no activity, ordinary Owner queue, combined Owner notice, low-priority Admin/Super Admin notice, neutral Driver confirmation, idempotency, no active Photo Review by default |
 | Red submission | Retain/quarantine, bypass Owner, active Admin Photo Review, Driver neutral notice, Admin/Super Admin notices, exclusions from success/reward/settlement metrics |
 | Owner | Ownership enforcement, another Owner denied, radius/polygon draft, preview, server validation, activation, revision history, temporary context, correction, assistance request |
 | Admin and dispute | Existing Photo Review classifications preserved, evidence endpoint privacy, Administrative Review unchanged, no automatic fraud label |
-| Notification | No passive side effects; ordinary green Owner notice not duplicated; yellow and all six Gray states; red no-Owner rule under authorized enforcement; Notification Service only; one idempotent notice per approved recipient/event; English/Spanish; safe RBAC deep links; delivery failure does not roll back canonical activity/evidence |
+| Notification | No passive side effects; ordinary green Owner notice not duplicated; yellow and all six Gray conditions derived from state plus reason code; red no-Owner rule under authorized enforcement; Notification Service only; one idempotent notice per approved recipient/event; English/Spanish; safe RBAC deep links; delivery failure does not roll back canonical activity/evidence |
 | Accessibility/localization | English/Spanish parity, visible non-color label/icon, contrast, keyboard, screen reader, touch, reduced motion, map fallback/structured vertex editing |
 | Performance | Bounded location/vertex/request limits, bulk active-boundary query, no N+1, geometry cache, query plans, server evaluation budget |
 | Regression | Driver golden path, eligibility, GPS recovery, Owner verification/rejection, Admin Photo Review, Administrative Review, Notification Center |
@@ -150,7 +150,7 @@ The isolated validation test created only minimal prerequisite tables in a tempo
 
 1. Versioned GeoJSON `Polygon` in PostgreSQL JSONB with one bounded server geospatial library; server authority and deterministic tests; PostGIS deferred; custom/provider-authoritative classification rejected.
 2. One active primary configurable radius or Owner polygon per Facility, with compatible but deferred multi-zone evolution.
-3. Nine canonical states, including two explicit uncertainty-overlap states, exact-edge-inside semantics, nearest-polygon-edge and radius-edge distance, and a one-mile platform-governed exception zone that Owners cannot enlarge.
+3. Exactly seven canonical states. Near-boundary and near-advisory-limit uncertainty remain reason codes under `LOCATION_ACCURACY_INSUFFICIENT`; exact-edge-inside semantics, nearest-polygon-edge and radius-edge distance, and a one-mile platform-governed exception zone remain unchanged.
 4. Proposed controlled GPS defaults of no more than 60 seconds old and 100 meters or better, with insufficient-confidence classification when uncertainty overlaps a threshold.
 5. Proposed configurable polygon guardrails: WGS84, one closed exterior ring, at least three distinct non-collinear vertices, at most 200 distinct vertices, no self-intersection, valid ranges, two-square-mile maximum area, and five-mile maximum span.
 6. Draft-preview-validate activation, immutable versions, effective timestamps/checksums, prospective corrections, retained history, and activation only by an authorized Owner or separately authorized Admin process.
@@ -163,7 +163,7 @@ The isolated validation test created only minimal prerequisite tables in a tempo
 13. Submission enforcement is a future-submission routing switch; notifications are a separate completed-submission workflow; legacy transition is unrelated and deferred; none controls Owner delivery visibility.
 14. Minimum-necessary privacy, Facility-scoped RBAC, deterministic idempotency, safe payloads, append-only evidence, existing Photo Review controls, and delivery failure isolated from the canonical activity/evidence transaction.
 
-The prior seven-state contract conflict is resolved by adding the two explicit uncertainty-overlap states and governing all six uncertainty/unavailable/configuration results as Gray. PD-060 and PD-061 are reconciled: yellow and Gray are not platform rejections; red uses PD-060 only under separately authorized enforcement. No unresolved policy conflict remains. Runtime implementation and activation of the expanded notification matrix remain pending.
+The canonical contract remains exactly seven states. The two overlap conditions are reason codes under `LOCATION_ACCURACY_INSUFFICIENT`, and the six Gray presentation/routing conditions are derived from state plus reason code. PD-060 and PD-061 are reconciled: yellow and Gray are not platform rejections; red uses PD-060 only under separately authorized enforcement. No unresolved policy conflict remains. Runtime implementation and activation of the notification matrix remain pending; no new canonical state is required.
 
 ## 9. Change history
 
@@ -175,3 +175,4 @@ The prior seven-state contract conflict is resolved by adding the two explicit u
 | 1.1 | 2026-08-04 | Recorded the separately authorized, locally implemented Work Package 1 data foundation, disabled controls, canonical server service, ADR-033, isolated migration/recovery validation, and pending Founder acceptance. |
 | 2.0 | 2026-08-05 | Recorded the integrated Level 4 engineering checkpoint, isolated migration lifecycle, complete automated matrix, query-bounding hardening, Production isolation, and the remaining controlled visual acceptance gate. |
 | 2.1 | 2026-08-08 | Recorded accepted advisory/Owner-context scope, the completed-submission green/yellow/Gray/red notification matrix, control separation, PD-060/PD-061 reconciliation, and the remaining implementation/activation sequence. |
+| 2.2 | 2026-08-08 | Corrected the notification scope to retain exactly seven canonical states and derive six Gray conditions from state plus reason code; no runtime state expansion is required. |

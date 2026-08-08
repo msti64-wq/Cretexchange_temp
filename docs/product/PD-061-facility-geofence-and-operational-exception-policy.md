@@ -1,7 +1,7 @@
 # PD-061 — Facility Geofence and Operational Exception Policy
 
 - **Document ID:** PD-061
-- **Version:** 1.2
+- **Version:** 1.3
 - **Status:** Active — advisory and submission-time Owner context accepted; notification implementation and red enforcement pilot not activated
 - **Owner:** CreteXchange Product
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
@@ -41,10 +41,8 @@ The Founder has approved this product policy as effective governance. Owner/Driv
 | `INSIDE_APPROVED_BOUNDARY` | Green — “Inside facility boundary” | Reliable position is inside or exactly on the active approved radius/polygon. |
 | `OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE` | Yellow — “Outside boundary — confirm location” | Position is outside but no more than the configured exception distance from the nearest edge. It is not approved Facility area. |
 | `OUTSIDE_EXCEPTION_ZONE` | Red — “Too far from facility — review selection” | Position is beyond the configured exception zone. |
-| `LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY` | Gray — “Location needs review” | GPS uncertainty overlaps the approved boundary. |
-| `LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD` | Gray — “Location needs review” | GPS uncertainty overlaps the advisory-limit threshold. |
 | `LOCATION_UNAVAILABLE` | Neutral — “Location could not be confirmed” | GPS is unavailable or permission is denied. |
-| `LOCATION_ACCURACY_INSUFFICIENT` | Neutral — “Location could not be confirmed” | GPS is stale, less accurate than the configured maximum, or its uncertainty materially overlaps a threshold. |
+| `LOCATION_ACCURACY_INSUFFICIENT` | Neutral/Gray — “Location needs review” or “Location could not be confirmed” | GPS is stale, less accurate than the configured maximum, or its uncertainty materially overlaps a threshold. The reason code distinguishes the condition. |
 | `GEOMETRY_UNAVAILABLE` | Neutral — “Location could not be confirmed” | No active governed geometry is available for canonical evaluation. |
 | `GEOMETRY_INVALID` | Neutral — “Location could not be confirmed” | Geometry cannot be evaluated safely and cannot be activated. |
 
@@ -69,12 +67,12 @@ Yellow is an operational exception, not a platform-integrity rejection. It does 
 
 ## 5. Governed Gray workflow
 
-Gray is a required neutral notification class for completed submissions whose canonical result is:
+Gray is a required neutral presentation/routing classification derived from canonical state plus reason code. It is not an additional canonical state. Its six completed-submission conditions are:
 
-- `LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY` — near-boundary uncertainty;
-- `LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD` — near-advisory-limit uncertainty;
+- state `LOCATION_ACCURACY_INSUFFICIENT` with reason code `LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY` — near-boundary uncertainty;
+- state `LOCATION_ACCURACY_INSUFFICIENT` with reason code `LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD` — near-advisory-limit uncertainty;
 - `LOCATION_UNAVAILABLE` — GPS unavailable;
-- `LOCATION_ACCURACY_INSUFFICIENT` — GPS unavailable, stale, or insufficiently accurate;
+- `LOCATION_ACCURACY_INSUFFICIENT` with another governed reason code — GPS stale or insufficiently accurate;
 - `GEOMETRY_UNAVAILABLE` — missing Facility boundary; or
 - `GEOMETRY_INVALID` — invalid or unavailable Facility boundary.
 
@@ -98,20 +96,20 @@ This reuses the existing Admin Photo Review/integrity classification and require
 
 PD-060 remains authoritative for routine Owner rejection and platform-detected integrity rejection. Yellow and Gray are operational or uncertainty workflows, not PD-060 platform rejections. Red uses PD-060 retention/quarantine only when separately authorized submission enforcement routes a completed `OUTSIDE_EXCEPTION_ZONE` submission before Owner review.
 
-| Event | Owner workflow/notice | Admin/Super Admin workload | Driver communication | Governing rule |
-| --- | --- | --- | --- | --- |
-| Passive `/locations`, Facility selection, GPS acquisition/retry, or advisory change | None | None | Advisory UI only | No notification and no persisted notification side effect |
-| Green completed submission | Ordinary Owner queue and existing pending-review notice | None | Ordinary confirmation | No separate geofence notice; do not duplicate the Owner notice |
-| Yellow completed submission | Ordinary Owner queue and boundary-review notice | Low-priority assistance notice; no active Photo Review by default | Neutral confirmation | Include governed acknowledgement reason/note when available; identify boundary-correction requests |
-| Gray: GPS unavailable/insufficient | Owner uncertainty notice | Low-priority assistance notice | Neutral retry/verify guidance | No rejection or accusation |
-| Gray: uncertainty overlaps boundary | Owner near-boundary uncertainty notice | Low-priority assistance notice | Neutral evidence-review guidance | No rejection or accusation |
-| Gray: uncertainty overlaps exception threshold | Owner near-advisory-limit notice | Low-priority assistance notice | Neutral evidence-review guidance | No rejection or accusation |
-| Gray: missing Facility boundary | Owner configuration notice | Low-priority assistance notice | Neutral contact-Owner guidance | Correct/configure the Facility boundary |
-| Gray: invalid/unavailable Facility boundary | Owner configuration notice | Low-priority assistance notice | Neutral contact-Owner guidance | Correct the Facility boundary |
-| Red completed submission under authorized enforcement | No Owner notice or ordinary review item | Active Admin/Super Admin attention | Neutral retained/quarantine communication | PD-060 retention; no fraud label or financial/success outcome |
-| Routine Owner rejection | Already reviewed; no new notice | None unless disputed/escalated | Existing rejection notice | PD-060 ordinary rejection rule |
-| Driver Administrative Review request | Existing governed behavior | Existing governed dispute attention | Existing review notice | Existing dispute path |
-| Owner requests boundary assistance | No activity reclassification | Assistance item, separate from Photo Review unless an activity is involved | None | Request confirmation to the Owner |
+| Event | Driver | Owner | Admin/Super Admin |
+| --- | --- | --- | --- |
+| Passive `/locations`, Facility selection, GPS acquisition/retry, or advisory change | Advisory UI only; no notification | No notification | No notification |
+| Green completed submission | Ordinary confirmation | Ordinary queue and existing pending-review notice; no duplicate geofence notice | No geofence workload |
+| Yellow completed submission | Neutral confirmation; acknowledgement reason/note when available | Ordinary queue and boundary-review notice; boundary-correction requests identified | Low-priority assistance; no active Photo Review by default |
+| Gray: GPS unavailable/insufficient | Neutral retry/verify guidance; no rejection or accusation | Uncertainty notice | Low-priority assistance |
+| Gray: uncertainty overlaps boundary | Neutral evidence-review guidance; no rejection or accusation | Near-boundary uncertainty notice | Low-priority assistance |
+| Gray: uncertainty overlaps exception threshold | Neutral evidence-review guidance; no rejection or accusation | Near-advisory-limit notice | Low-priority assistance |
+| Gray: missing Facility boundary | Neutral contact-Owner guidance | Configuration notice to correct/configure the boundary | Low-priority assistance |
+| Gray: invalid/unavailable Facility boundary | Neutral contact-Owner guidance | Configuration notice to correct the boundary | Low-priority assistance |
+| Red completed submission under authorized enforcement | Neutral retained/quarantine communication; no fraud or financial/success result | No notification or ordinary review item | Active attention under PD-060 retention |
+| Routine Owner rejection | Existing rejection notice | Already reviewed; no new notice | None unless disputed/escalated |
+| Driver Administrative Review request | Existing review notice | Existing governed behavior | Existing governed dispute attention |
+| Owner requests boundary assistance | None | Request confirmation; no activity reclassification | Assistance item, separate from Photo Review unless an activity is involved |
 
 All new notifications must use `server/notificationService.ts`, governed English/Spanish templates, safe metadata, role-scoped deep links, and deterministic idempotency keys. Exactly one notification is permitted per approved recipient/event. Retry, refresh, or idempotent resubmission must not duplicate it. Notification delivery does not replace operational audit evidence, and a delivery failure must not roll back the canonical activity/evidence transaction.
 
@@ -170,3 +168,4 @@ Owner/Driver advisory scope and submission-time Owner context are accepted. The 
 | 1.0 | 2026-08-04 | Founder-approved product policy made effective as governance; implementation remains separately authorized. |
 | 1.1 | 2026-08-04 | Recorded the separately authorized controlled feature-branch implementation; migration, activation, merge, deployment, and Production acceptance remain pending. |
 | 1.2 | 2026-08-08 | Established the completed-submission notification matrix, required Gray class, control independence, non-duplication/privacy safeguards, and current accepted/inactive/deferred scope. |
+| 1.3 | 2026-08-08 | Restored the exact seven-state contract and defined the two uncertainty-overlap conditions as reason codes under `LOCATION_ACCURACY_INSUFFICIENT`; Gray remains a six-condition presentation/routing classification. |

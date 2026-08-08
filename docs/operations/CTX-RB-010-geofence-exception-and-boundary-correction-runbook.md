@@ -1,7 +1,7 @@
 # CTX-RB-010 — Geofence Exception and Boundary Correction Runbook
 
 - **Document ID:** CTX-RB-010
-- **Version:** 1.2
+- **Version:** 1.3
 - **Status:** Approved — advisory and submission-time Owner context operational; notification workflow and red enforcement pilot not activated
 - **Owner:** Platform Operations
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
@@ -52,7 +52,7 @@ This procedure applies only after separate Founder authorization activates submi
 
 ## 5. Gray uncertainty/configuration procedure
 
-1. Confirm a completed submission produced one of the six governed Gray states; passive advisory evaluation never enters this procedure.
+1. Confirm a completed submission produced one of the six governed Gray conditions derived from canonical state plus reason code; passive advisory evaluation never enters this procedure.
 2. Distinguish GPS unavailable/insufficient, near-boundary uncertainty, near-advisory-limit uncertainty, missing Facility boundary, and invalid/unavailable Facility boundary.
 3. Send neutral Driver guidance appropriate to the state: review evidence, retry/verify operational location, correct the Facility boundary, or contact the Owner for assistance.
 4. When the notification workflow is separately activated, create one idempotent Owner uncertainty/configuration notice and one low-priority assistance notice for each approved Admin/Super Admin recipient.
@@ -79,19 +79,19 @@ This procedure applies only after separate Founder authorization activates submi
 
 ## 8. Notification behavior
 
-| Trigger | Driver | Owner | Admin/Super Admin | Rule |
-| --- | --- | --- | --- | --- |
-| Passive viewing/selection/GPS/retry/advisory change | None | None | None | No notification or persisted notification side effect |
-| Green completed submission | Ordinary confirmation | Existing ordinary pending-review notice | None | No separate geofence notice; do not duplicate the Owner notice |
-| Yellow completed submission | Neutral confirmation | Boundary-review notice | Low-priority assistance notice | Include acknowledgement reason/note when available; identify boundary-correction requests |
-| Gray — GPS unavailable/insufficient | Neutral retry/verify guidance | Uncertainty notice | Low-priority assistance | No rejection or accusation |
-| Gray — near-boundary uncertainty | Neutral evidence-review guidance | Near-boundary notice | Low-priority assistance | No rejection or accusation |
-| Gray — near-advisory-limit uncertainty | Neutral evidence-review guidance | Near-limit notice | Low-priority assistance | No rejection or accusation |
-| Gray — missing Facility boundary | Neutral contact-Owner guidance | Configuration notice | Low-priority assistance | Correct/configure the boundary |
-| Gray — invalid/unavailable boundary | Neutral contact-Owner guidance | Configuration notice | Low-priority assistance | Correct the boundary |
-| Red completed submission under authorized enforcement | Neutral retained/quarantine communication | None | Active attention | No ordinary Owner review item, fraud label, or financial/success outcome |
-| Owner assistance request | None | Request confirmation | Authorized assistance notice | Notification Service, idempotent, safe metadata |
-| Boundary activation | None | Confirmation | None | No Driver broadcast unless separately approved |
+| Event | Driver | Owner | Admin/Super Admin |
+| --- | --- | --- | --- |
+| Passive viewing/selection/GPS/retry/advisory change | No notification | No notification | No notification or persisted notification side effect |
+| Green completed submission | Ordinary confirmation | Existing ordinary pending-review notice; no duplicate geofence notice | No geofence workload |
+| Yellow completed submission | Neutral confirmation with acknowledgement context when available | Boundary-review notice; boundary-correction requests identified | Low-priority assistance notice |
+| Gray — GPS unavailable/insufficient | Neutral retry/verify guidance; no rejection or accusation | Uncertainty notice | Low-priority assistance |
+| Gray — near-boundary uncertainty | Neutral evidence-review guidance; no rejection or accusation | Near-boundary notice | Low-priority assistance |
+| Gray — near-advisory-limit uncertainty | Neutral evidence-review guidance; no rejection or accusation | Near-limit notice | Low-priority assistance |
+| Gray — missing Facility boundary | Neutral contact-Owner guidance | Configuration notice to correct/configure the boundary | Low-priority assistance |
+| Gray — invalid/unavailable boundary | Neutral contact-Owner guidance | Configuration notice to correct the boundary | Low-priority assistance |
+| Red completed submission under authorized enforcement | Neutral retained/quarantine communication; no fraud or financial/success result | No notification or ordinary review item | Active attention |
+| Owner assistance request | None | Request confirmation | Authorized assistance notice through the idempotent Notification Service |
+| Boundary activation | None | Confirmation | No Admin notice unless separately approved |
 
 Exactly one idempotent notification is allowed per approved recipient/event. Refresh, retry, or idempotent resubmission creates no duplicate. Delivery failures are recoverable notification failures and do not undo the canonical activity/evidence transaction. Facility/activity deep links remain RBAC-protected.
 
@@ -139,3 +139,4 @@ The advisory and submission-time Owner-context portions are Founder-accepted. No
 | 1.0 | 2026-08-04 | Founder-approved runbook made effective as governance; procedure remains non-operational until separately authorized implementation. |
 | 1.1 | 2026-08-04 | Recorded the controlled feature-branch yellow/red routing, Owner correction and assistance workflow, and remaining operational release gates. |
 | 1.2 | 2026-08-08 | Added the completed-submission notification matrix, Gray handling, control separation, idempotency/privacy safeguards, and current accepted/inactive/deferred scope. |
+| 1.3 | 2026-08-08 | Corrected Gray to six conditions derived from the seven-state contract and reason codes, and normalized the notification matrix to four columns. |

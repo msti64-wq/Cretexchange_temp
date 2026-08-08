@@ -1,7 +1,7 @@
 # CTX-UX-009 — Driver and Owner Geofence Experience
 
 - **Document ID:** CTX-UX-009
-- **Version:** 1.2
+- **Version:** 1.3
 - **Status:** Approved — Owner/Driver advisory and submission-time Owner context accepted; notification experience not activated
 - **Owner:** CreteXchange Product and Experience
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
@@ -132,7 +132,7 @@ Owner access to deliveries and Washout Reviews is always available under ordinar
 
 ## 6. Completed-submission notification experience
 
-| Completed result | Driver experience | Owner experience | Admin/Super Admin experience |
+| Event | Driver | Owner | Admin/Super Admin |
 | --- | --- | --- | --- |
 | Green | Ordinary confirmation | Existing pending-review notice only | No geofence workload |
 | Yellow | Neutral confirmation | Boundary-review notice with acknowledgement context | Low-priority assistance notice |
@@ -164,7 +164,7 @@ Submission Enforcement is labeled as an internal controlled-pilot routing switch
 2. Exact boundary contact follows the documented inside rule.
 3. Outside within the configured exception distance shows yellow.
 4. Beyond the exception distance shows red.
-5. Both uncertainty-overlap states plus unavailable, inaccurate, stale, missing-boundary, and invalid-boundary states show governed Gray guidance.
+5. `LOCATION_ACCURACY_INSUFFICIENT` with either uncertainty-overlap reason code, plus unavailable, otherwise-inaccurate, stale, missing-boundary, and invalid-boundary conditions, shows governed Gray guidance without adding a canonical state.
 6. Yellow/red Facilities remain selectable.
 7. Passive display/selection creates no notifications or workflow records.
 8. Check-in/submission reevaluates with fresh evidence.
@@ -198,3 +198,4 @@ Submission Enforcement is labeled as an internal controlled-pilot routing switch
 | 1.0 | 2026-08-04 | Founder-approved Driver and Owner geofence experience made effective as governance; implementation remains separately authorized. |
 | 1.1 | 2026-08-04 | Recorded the controlled feature-branch Driver advisory, submission guidance, Owner boundary management, bilingual copy, and pending release gates. |
 | 1.2 | 2026-08-08 | Added the Founder-approved completed-submission matrix, required Gray experience, control separation, idempotency/privacy safeguards, and accepted/inactive/deferred scope. |
+| 1.3 | 2026-08-08 | Clarified that Gray is derived from the seven-state contract plus reason codes and corrected the notification matrix to the canonical four-column form. |

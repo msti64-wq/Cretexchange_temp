@@ -1,7 +1,7 @@
 # CTX-ARCH-016 — Canonical Facility Geofence Architecture
 
 - **Document ID:** CTX-ARCH-016
-- **Version:** 1.4
+- **Version:** 1.5
 - **Status:** Approved and effective — Owner/Driver advisory and submission-time Owner context accepted; notification workflow and red enforcement pilot not activated
 - **Owner:** CreteXchange Product and Engineering
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
@@ -112,8 +112,6 @@ type FacilityGeofenceState =
   | "INSIDE_APPROVED_BOUNDARY"
   | "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE"
   | "OUTSIDE_EXCEPTION_ZONE"
-  | "LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY"
-  | "LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD"
   | "LOCATION_UNAVAILABLE"
   | "LOCATION_ACCURACY_INSUFFICIENT"
   | "GEOMETRY_UNAVAILABLE"
@@ -135,7 +133,16 @@ interface FacilityGeofenceResult {
 }
 ```
 
-Color is a presentation mapping, never a stored or authoritative state. Green, yellow, and red each map to one canonical result. Gray is the governed neutral notification/presentation class for `LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY`, `LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD`, `LOCATION_UNAVAILABLE`, `LOCATION_ACCURACY_INSUFFICIENT`, `GEOMETRY_UNAVAILABLE`, and `GEOMETRY_INVALID`. Gray is not rejection, misconduct, or fraud. `GEOMETRY_INVALID` is fail-closed and neutral to Drivers; it creates an operational configuration issue only after a completed submission or an authorized configuration workflow, never from passive display.
+Color is a presentation mapping, never a stored or authoritative state. The contract retains exactly seven canonical states. Green, yellow, and red each map to one canonical state. Gray is a governed neutral notification/presentation classification derived from canonical state plus reason code, not an additional state. Its six conditions are:
+
+1. `LOCATION_ACCURACY_INSUFFICIENT` with reason code `LOCATION_UNCERTAINTY_OVERLAPS_BOUNDARY`;
+2. `LOCATION_ACCURACY_INSUFFICIENT` with reason code `LOCATION_UNCERTAINTY_OVERLAPS_EXCEPTION_THRESHOLD`;
+3. `LOCATION_UNAVAILABLE`;
+4. `LOCATION_ACCURACY_INSUFFICIENT` with another governed accuracy reason;
+5. `GEOMETRY_UNAVAILABLE`; and
+6. `GEOMETRY_INVALID`.
+
+Gray is not rejection, misconduct, or fraud. `GEOMETRY_INVALID` is fail-closed and neutral to Drivers; it creates an operational configuration issue only after a completed submission or an authorized configuration workflow, never from passive display.
 
 ## 8. Implemented Work Package 1 data model
 
@@ -225,13 +232,13 @@ Coordinates SHALL be sent in request bodies, never query strings. Driver respons
 
 ### 11.1 Canonical notification matrix
 
-| Event | Driver | Facility Owner | Admin/Super Admin | Persistence/routing rule |
-| --- | --- | --- | --- | --- |
-| Passive location activity | None | None | None | No notification or persisted notification side effect |
-| Green completed submission | Ordinary submission confirmation | Existing ordinary pending-review notification only | None | Never duplicate the ordinary Owner notice with a geofence notice |
-| Yellow completed submission | Neutral confirmation | Boundary-review notification | Low-priority assistance notification | One idempotent notice per approved recipient/event; ordinary Owner review remains available |
-| Gray completed submission | Neutral, state-specific guidance | Uncertainty or configuration notice | Low-priority assistance notification | One idempotent notice per approved recipient/event; no accusation or rejection language |
-| Red completed submission under authorized enforcement | Neutral quarantine/review communication | None | Active attention | Evidence retained and quarantined; no ordinary Owner review item |
+| Event | Driver | Owner | Admin/Super Admin |
+| --- | --- | --- | --- |
+| Passive location activity | No notification | No notification | No notification |
+| Green completed submission | Ordinary submission confirmation | Existing ordinary pending-review notification only; never duplicate it with a geofence notice | No geofence workload |
+| Yellow completed submission | Neutral confirmation | Boundary-review notification; ordinary Owner review remains available | Low-priority assistance notification |
+| Gray completed submission | Neutral, condition-specific guidance; no accusation or rejection language | Uncertainty or configuration notice | Low-priority assistance notification |
+| Red completed submission under authorized enforcement | Neutral quarantine/review communication | No notification or ordinary review item | Active attention; evidence retained and quarantined |
 
 Notification intents are emitted only from the completed-submission event. Retry, refresh, or idempotent resubmission cannot create duplicates. Notification-delivery failure is recorded for recovery but must not roll back the canonical activity/evidence transaction. Deep links carry only safe references and remain subject to destination RBAC. Notification metadata excludes precise GPS, exact distance, polygon geometry, storage paths, contact details, financial data, and private analytics.
 
@@ -272,11 +279,11 @@ Recovery is non-destructive: set every Facility override and the three global co
 
 ## 14. Test strategy
 
-The notification implementation checkpoint SHALL cover passive no-side-effect behavior; ordinary green Owner-notification non-duplication; complete/incomplete yellow submissions; both uncertainty-overlap states; unavailable, inaccurate, missing, and invalid geometry Gray cases; separately authorized red quarantine; one idempotent notice per approved recipient/event; retry/resubmission deduplication; non-transactional notification-delivery failure; safe deep links; RBAC; privacy; English/Spanish; accessibility; bounded performance; and Driver/Owner/Admin Photo Review/Administrative Review/Notification regressions. Financial execution must remain disabled.
+The notification implementation checkpoint SHALL cover passive no-side-effect behavior; ordinary green Owner-notification non-duplication; complete/incomplete yellow submissions; `LOCATION_ACCURACY_INSUFFICIENT` with each uncertainty-overlap reason code; unavailable, otherwise-inaccurate, missing-geometry, and invalid-geometry Gray conditions; separately authorized red quarantine; one idempotent notice per approved recipient/event; retry/resubmission deduplication; non-transactional notification-delivery failure; safe deep links; RBAC; privacy; English/Spanish; accessibility; bounded performance; and Driver/Owner/Admin Photo Review/Administrative Review/Notification regressions. Financial execution must remain disabled.
 
 ## 15. Founder decisions incorporated and remaining authority
 
-The Founder has approved the architecture direction recorded here: JSONB GeoJSON with one bounded server library, one active primary radius or polygon, nine canonical states with six governed Gray states, one-mile platform-governed exception distance, proposed GPS and polygon limits as governed configuration, immutable versioning, completed-submission notification routing, privacy/RBAC controls, deferred feature-flagged legacy transition, additive migration direction, and the sequencing in the [discovery and validation plan](../project/geofence-architecture-discovery-and-validation-plan.md).
+The Founder has approved the architecture direction recorded here: JSONB GeoJSON with one bounded server library, one active primary radius or polygon, exactly seven canonical states with six governed Gray conditions derived from state plus reason code, one-mile platform-governed exception distance, proposed GPS and polygon limits as governed configuration, immutable versioning, completed-submission notification routing, privacy/RBAC controls, deferred feature-flagged legacy transition, additive migration direction, and the sequencing in the [discovery and validation plan](../project/geofence-architecture-discovery-and-validation-plan.md).
 
 Owner/Driver advisory scope and submission-time Owner context are Founder-accepted. Notification implementation and activation, the red enforcement pilot, and legacy transition require separate Founder authorization. Legacy transition is deferred, and Phase 5 Sprint 3 Two-Factor Authentication has not begun.
 
@@ -290,4 +297,5 @@ Owner/Driver advisory scope and submission-time Owner context are Founder-accept
 | 1.1 | 2026-08-04 | Recorded the separately authorized local Work Package 1 implementation, ADR-033 dependency selection, additive migration/schema, disabled controls, canonical service, and pending Founder acceptance; no Production change. |
 | 1.2 | 2026-08-04 | Recorded the authorized feature-branch Owner, Driver advisory, submission, notification, Admin context, and legacy-isolation vertical slice; release controls remain disabled and Production unchanged. |
 | 1.3 | 2026-08-07 | Recorded the additive Facility-scoped geofence control model, deterministic precedence, Admin/Super Admin audit requirements, fail-closed Facility context, and non-destructive recovery posture; migration `0041` and all Facility activations remain outside Production pending Founder approval. |
-| 1.4 | 2026-08-08 | Recorded the Founder-approved completed-submission notification matrix, required Gray states, control separation, idempotency/privacy safeguards, accepted advisory/Owner-context scope, and remaining inactive/deferred work. |
+| 1.4 | 2026-08-08 | Recorded the Founder-approved completed-submission notification matrix, required Gray conditions, control separation, idempotency/privacy safeguards, accepted advisory/Owner-context scope, and remaining inactive/deferred work. |
+| 1.5 | 2026-08-08 | Corrected Gray as six presentation/routing conditions derived from the existing seven-state contract and reason codes; no new canonical state is introduced. |
