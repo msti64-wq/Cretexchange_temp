@@ -20,6 +20,9 @@ export const notificationTemplateDefinitions = {
   geofence_exception_submitted: { category: "operational", roles: ["driver"] },
   owner_geofence_exception_review: { category: "operational", roles: ["owner"] },
   admin_geofence_exception_attention: { category: "administrative", roles: ["admin", "super_admin"] },
+  geofence_uncertainty_submitted: { category: "operational", roles: ["driver"] },
+  owner_geofence_uncertainty_review: { category: "operational", roles: ["owner"] },
+  admin_geofence_uncertainty_attention: { category: "administrative", roles: ["admin", "super_admin"] },
   owner_geofence_assistance_recorded: { category: "operational", roles: ["owner"] },
   admin_geofence_assistance_requested: { category: "administrative", roles: ["admin", "super_admin"] },
   achievement_earned: { category: "achievement", roles: ["driver"] },
@@ -30,13 +33,40 @@ export const notificationTemplateDefinitions = {
 export type NotificationTemplateKey = keyof typeof notificationTemplateDefinitions;
 
 const forbiddenMetadataKey = /(email|phone|password|token|secret|address|latitude|longitude|gps|storage|path|stripe|payment|amount|balance)/i;
-const allowedMetadataKeys = new Set(["facilityName", "status", "achievementName", "milestoneName", "announcementText", "month", "year", "authored"]);
+const allowedMetadataKeys = new Set([
+  "facilityName",
+  "status",
+  "acknowledgementReasonCode",
+  "driverNote",
+  "boundaryCorrection",
+  "achievementName",
+  "milestoneName",
+  "announcementText",
+  "month",
+  "year",
+  "authored",
+]);
+
+export function sanitizeNotificationTextSnippet(value: unknown, maximumLength = 240): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, "[contact detail removed]")
+    .replace(/https?:\/\/\S+|www\.\S+/gi, "[link removed]")
+    .replace(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}/g, "[contact detail removed]")
+    .replace(/(?:s3|gs):\/\/\S+|\/?(?:objects|photos|uploads)\/\S+/gi, "[private path removed]")
+    .replace(/\b(?:latitude|longitude|coordinates?|gps)\b\s*[:=]?\s*[-+]?\d+(?:\.\d+)?(?:\s*[,/]\s*[-+]?\d+(?:\.\d+)?)?/gi, "[precise location removed]")
+    .replace(/\$\s*\d+(?:[.,]\d{1,2})?/g, "[financial detail removed]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, Math.max(0, maximumLength));
+}
 
 export function sanitizeNotificationMetadata(input: unknown): Record<string, string> {
   if (!input || typeof input !== "object" || Array.isArray(input)) return {};
   return Object.fromEntries(Object.entries(input as Record<string, unknown>)
     .filter(([key, value]) => allowedMetadataKeys.has(key) && !forbiddenMetadataKey.test(key) && ["string", "number", "boolean"].includes(typeof value))
-    .map(([key, value]) => [key, String(value).slice(0, 240)]));
+    .map(([key, value]) => [key, key === "driverNote" ? sanitizeNotificationTextSnippet(value) : String(value).slice(0, 240)])
+    .filter(([, value]) => value.length > 0));
 }
 
 const safePaths: Record<NotificationRole, RegExp[]> = {

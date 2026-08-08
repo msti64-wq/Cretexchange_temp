@@ -1,4 +1,5 @@
 import type { AppLanguage } from "@/lib/i18n";
+import { localizeCenterNotification } from "@/lib/notificationLocalization";
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 
@@ -19,6 +20,24 @@ export function localizeDriverNotification(
   if (language === "en") return original;
 
   const data = notification.data || {};
+  if ([
+    "geofence_exception_submitted",
+    "geofence_uncertainty_submitted",
+  ].includes(notification.type || "")) {
+    return localizeCenterNotification({
+      id: "driver-notification",
+      title: original.title,
+      message: original.message,
+      type: notification.type || "notification",
+      category: "operational",
+      templateKey: notification.type || null,
+      isRead: false,
+      deepLink: null,
+      priority: "normal",
+      metadata: Object.fromEntries(Object.entries(data).map(([key, value]) => [key, String(value)])),
+      createdAt: null,
+    }, language, t);
+  }
   if (notification.type === "lottery_winner") {
     return {
       title: t("messages.system.rewardWinnerTitle"),

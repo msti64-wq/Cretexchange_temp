@@ -101,6 +101,7 @@ import { DrizzleFacilityGeofenceRepository } from "./facilityGeofenceRepository"
 import { isGeofenceFeatureEnabled } from "./geofenceFeatureFlags";
 import { GEOFENCE_EXCEPTION_REASON_CODES, resolveGeofenceSubmissionDecision } from "./geofenceSubmissionPolicy";
 import { resolveSubmissionGeofenceRouting, shouldCaptureSubmissionGeofenceEvidence } from "./geofenceSubmissionCapture";
+import { deliverCompletedSubmissionGeofenceNotifications } from "./geofenceCompletedSubmissionNotifications";
 import { projectOwnerGeofenceContext, stripPrivateOwnerActivityEvidence } from "./ownerGeofenceContext";
 import { buildOwnerBillingReceivablesOverview } from "./ownerBillingReceivables";
 import { buildCanonicalObligationCreationReason, createDatabaseFinancialObligationRepository, createFinancialObligationForVerifiedActivity, FinancialObligationError, isPlatformFinancialOperationsRole, previewFinancialObligationForVerifiedActivity } from "./financialObligations";
@@ -17130,7 +17131,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let geofenceResult: FacilityGeofenceResult | null = null;
       let geofenceEvaluationEvidence = null;
-      let geofenceYellow = false;
       let geofenceRed = false;
       const geofenceEnforcementEnabled = await isGeofenceFeatureEnabled(
         storage,
@@ -17180,7 +17180,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               allowedReasons: geofenceDecision.code === "GEOFENCE_EXCEPTION_ACKNOWLEDGEMENT_REQUIRED" ? GEOFENCE_EXCEPTION_REASON_CODES : undefined,
             });
         }
-        geofenceYellow = geofenceRouting.yellowOwnerReview;
         geofenceRed = geofenceRouting.redPlatformQuarantine;
         geofenceEvaluationEvidence = submissionGeofenceService.prepareActivityEvaluation({
           result: geofenceResult,
@@ -17485,7 +17484,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      if (!result.reused) {
+      // Replays may retry best-effort delivery after the canonical aggregate is
+      // committed. Deterministic Notification Service keys prevent duplicates.
+      {
         const geofenceNotificationsEnabled = await isGeofenceFeatureEnabled(
           storage,
           FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
@@ -17507,27 +17508,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           metadata: { facilityName: location.name, status: 'needs_review' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
           idempotencyKey: `activity:${result.activity.id}:photo-review:${recipientRole}`, priority: 'high',
         })));
-      } else if (geofenceYellow && geofenceNotificationsEnabled) {
-        const locationOwner = await storage.getOwnerById(location.ownerId);
-        await emitNotificationBestEffort({
-          userId, recipientRole: 'driver', templateKey: 'geofence_exception_submitted', title: 'Boundary exception submitted',
-          message: `Your Material Recovery Activity at ${location.name} was submitted with your boundary confirmation and is awaiting Facility review.`, deepLink: '/activity',
-          metadata: { facilityName: location.name, status: 'pending' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
-          idempotencyKey: `activity:${result.activity.id}:geofence-exception:driver`,
-        });
-        if (locationOwner) await emitNotificationBestEffort({
-          userId: locationOwner.userId, recipientRole: 'owner', templateKey: 'owner_geofence_exception_review', title: 'Activity and boundary confirmation ready for review',
-          message: `A Material Recovery Activity at ${location.name} includes a Driver boundary confirmation and is awaiting your review.`, deepLink: '/dashboard',
-          metadata: { facilityName: location.name, status: 'pending' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
-          idempotencyKey: `activity:${result.activity.id}:geofence-exception:owner`, priority: 'high',
-        });
-        await Promise.all((['admin', 'super_admin'] as const).map((recipientRole) => emitRoleNotificationBestEffort({
-          recipientRole, templateKey: 'admin_geofence_exception_attention', title: 'Facility boundary exception recorded',
-          message: 'A complete Material Recovery Activity entered ordinary Facility review with a governed boundary exception.', deepLink: '/notifications',
-          metadata: { facilityName: location.name, status: 'pending' }, sourceEntityType: 'washout_activity', sourceEntityId: result.activity.id,
-          idempotencyKey: `activity:${result.activity.id}:geofence-exception:${recipientRole}`,
-        })));
       } else {
+        const governedGeofenceDelivery = await deliverCompletedSubmissionGeofenceNotifications({
+          enabled: geofenceNotificationsEnabled,
+          activity: { id: result.activity.id, status: result.activity.status, driverUserId: userId },
+          facility: {
+            id: location.id,
+            name: location.name,
+            resolveOwnerUserId: async () => (await storage.getOwnerById(location.ownerId))?.userId ?? null,
+          },
+          retainedPhotoCount: result.photos.length,
+          evaluation: result.geofenceEvaluation,
+          emitUser: emitNotificationBestEffort,
+          emitRole: emitRoleNotificationBestEffort,
+          recordFailure: (evidence) => console.error("[GEOFENCE_NOTIFICATION_DELIVERY_FAILED]", evidence),
+        });
+        if (governedGeofenceDelivery.handled) return;
         const locationOwner = await storage.getOwnerById(location.ownerId);
         await emitNotificationBestEffort({
           userId, recipientRole: 'driver', templateKey: 'activity_submitted', title: 'Recovery activity submitted',
