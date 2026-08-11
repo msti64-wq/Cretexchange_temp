@@ -272,6 +272,7 @@ const prizeCatalogStatusSchema = z.object({
 const adminPhotoReviewListSchema = z.object({
   view: z.enum(["needs_review", "rejected_by_owner", "escalated_disputed", "completed", "all"]).optional(),
   state: z.enum(["pending", "approved", "rejected", "all"]).optional(),
+  activityId: z.string().uuid().optional(),
   driverId: z.string().uuid().optional(),
   facilityId: z.string().uuid().optional(),
   activityStatus: z.enum(["pending", "verified", "rejected"]).optional(),

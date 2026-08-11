@@ -5,6 +5,7 @@ import {
   assertTemplateForRole,
   isSafeNotificationDeepLink,
   notificationTemplateDefinitions,
+  resolveNotificationCenterDeepLink,
   sanitizeNotificationMetadata,
   type NotificationCategory,
   type NotificationRole,
@@ -57,7 +58,16 @@ function toItem(row: Notification): NotificationCenterItem {
     templateVersion: row.templateVersion,
     isRead: row.isRead,
     readAt: row.readAt,
-    deepLink: row.deepLink,
+    // Re-project historical Yellow/Gray Admin notices from their already
+    // persisted washout_activity reference. This makes the existing records
+    // actionable without mutating or backfilling Production notification rows.
+    deepLink: resolveNotificationCenterDeepLink({
+      recipientRole: row.recipientRole,
+      templateKey: row.templateKey,
+      sourceEntityType: row.sourceEntityType,
+      sourceEntityId: row.sourceEntityId,
+      storedDeepLink: row.deepLink,
+    }),
     priority: row.priority,
     metadata,
     data: metadata,

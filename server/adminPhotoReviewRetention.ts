@@ -6,6 +6,7 @@ export type AdminPhotoReviewEscalationState = "none" | "open" | "resolved" | "an
 export type AdminPhotoReviewFilter = {
   view: AdminPhotoReviewView;
   photoId?: string;
+  activityId?: string;
   driverId?: string;
   facilityId?: string;
   activityStatus?: "pending" | "verified" | "rejected";
@@ -130,6 +131,7 @@ function viewCondition(view: AdminPhotoReviewView) {
 function filterConditions(filter: AdminPhotoReviewFilter, includeView: boolean) {
   const conditions = includeView ? [viewCondition(filter.view)] : [];
   if (filter.photoId) conditions.push(sql`p.id = ${filter.photoId}`);
+  if (filter.activityId) conditions.push(sql`p.activity_id = ${filter.activityId}`);
   if (filter.driverId) conditions.push(sql`p.driver_id = ${filter.driverId}`);
   if (filter.facilityId) conditions.push(sql`p.location_id = ${filter.facilityId}`);
   if (filter.activityStatus) conditions.push(sql`a.status = ${filter.activityStatus}`);

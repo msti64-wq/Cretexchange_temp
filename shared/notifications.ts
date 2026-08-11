@@ -72,12 +72,46 @@ export function sanitizeNotificationMetadata(input: unknown): Record<string, str
 const safePaths: Record<NotificationRole, RegExp[]> = {
   driver: [/^\/$/, /^\/dashboard$/, /^\/activity(?:\?.*)?$/, /^\/rewards$/, /^\/driver\/competition$/, /^\/messages$/, /^\/profile$/],
   owner: [/^\/$/, /^\/dashboard$/, /^\/dashboard\/reviews\?facilityId=[0-9a-f-]{36}&activityId=([0-9a-f-]{36})#activity-\1$/, /^\/intelligence(?:\?facilityId=[0-9a-f-]{36})?$/, /^\/locations\/[0-9a-f-]{36}\/geofence$/, /^\/notifications$/],
-  admin: [/^\/$/, /^\/notifications$/, /^\/admin\/photo-review$/, /^\/network-intelligence$/, /^\/reports$/, /^\/admin\/administration-repository$/],
-  super_admin: [/^\/$/, /^\/notifications$/, /^\/admin\/photo-review$/, /^\/network-intelligence$/, /^\/reports$/, /^\/admin\/administration-repository$/],
+  admin: [/^\/$/, /^\/notifications$/, /^\/admin\/photo-review$/, /^\/admin\/photo-review\?view=all&activityId=([0-9a-f-]{36})#activity-\1$/, /^\/network-intelligence$/, /^\/reports$/, /^\/admin\/administration-repository$/],
+  super_admin: [/^\/$/, /^\/notifications$/, /^\/admin\/photo-review$/, /^\/admin\/photo-review\?view=all&activityId=([0-9a-f-]{36})#activity-\1$/, /^\/network-intelligence$/, /^\/reports$/, /^\/admin\/administration-repository$/],
 };
 
 export function isSafeNotificationDeepLink(role: NotificationRole, value: string | null | undefined): value is string {
   return !!value && value.startsWith("/") && !value.startsWith("//") && safePaths[role].some((rule) => rule.test(value));
+}
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const adminGeofenceEvidenceTemplates = new Set([
+  "admin_geofence_exception_attention",
+  "admin_geofence_uncertainty_attention",
+]);
+
+export function adminPhotoReviewActivityLink(activityId: string): string | null {
+  if (!uuidPattern.test(activityId)) return null;
+  const encodedActivityId = encodeURIComponent(activityId);
+  return `/admin/photo-review?view=all&activityId=${encodedActivityId}#activity-${encodedActivityId}`;
+}
+
+export function resolveNotificationCenterDeepLink(input: {
+  recipientRole: string | null;
+  templateKey: string | null;
+  sourceEntityType: string | null;
+  sourceEntityId: string | null;
+  storedDeepLink: string | null;
+}): string | null {
+  const role = notificationRoles.includes(input.recipientRole as NotificationRole)
+    ? input.recipientRole as NotificationRole
+    : null;
+  if (!role) return null;
+  if (
+    (role === "admin" || role === "super_admin")
+    && adminGeofenceEvidenceTemplates.has(input.templateKey || "")
+    && input.sourceEntityType === "washout_activity"
+  ) {
+    const evidenceLink = adminPhotoReviewActivityLink(input.sourceEntityId || "");
+    return evidenceLink && isSafeNotificationDeepLink(role, evidenceLink) ? evidenceLink : null;
+  }
+  return isSafeNotificationDeepLink(role, input.storedDeepLink) ? input.storedDeepLink : null;
 }
 
 export const notificationListQuerySchema = z.object({

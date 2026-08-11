@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import { FEATURE_FLAGS } from "@shared/featureFlags";
+import { sanitizeNotificationTextSnippet } from "@shared/notifications";
 import type { FacilityGeofenceBoundary } from "@shared/schema";
 import { isAuthenticated } from "./tokenAuth";
 import { storage as defaultStorage, type IStorage } from "./storage";
@@ -498,23 +499,17 @@ export function registerFacilityGeofenceRoutes(
     try {
       const user = await storage.getUser(req.user.id);
       if (!user || !["admin", "super_admin"].includes(user.role)) return res.status(403).json({ message: "Admin access required" });
-      const evaluation = await repository.getLatestActivityEvaluation(req.params.activityId);
+      const activityId = z.string().uuid().safeParse(req.params.activityId);
+      if (!activityId.success) return res.status(400).json({ message: "Activity reference is invalid" });
+      const evaluation = await repository.getLatestActivityEvaluation(activityId.data);
       if (!evaluation) return res.status(404).json({ message: "Facility boundary context not found" });
-      const enabled = await isGeofenceFeatureEnabled(
-        storage,
-        FEATURE_FLAGS.GEOFENCE_NOTIFICATIONS,
-        user.id,
-        user.role,
-        evaluation.locationId,
-      );
-      if (!enabled) return res.status(404).json({ message: "Facility boundary context is not available" });
       res.json({
-        activityId: req.params.activityId,
+        activityId: activityId.data,
         state: evaluation.resultState,
         reasonCode: evaluation.reasonCode,
         boundaryVersion: evaluation.boundaryVersion,
         acknowledgementCode: evaluation.exceptionAcknowledgementCode,
-        driverNote: evaluation.driverNote,
+        driverNote: sanitizeNotificationTextSnippet(evaluation.driverNote) || null,
         evidenceComplete: evaluation.evidenceComplete,
         evaluatedAt: evaluation.evaluatedAt,
       });

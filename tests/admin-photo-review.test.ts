@@ -64,6 +64,10 @@ test("the Admin Photo Review UI uses the existing authorized photo endpoint, pra
   assert.match(page, /value=\{facilityId\}/);
   assert.match(page, /value=\{from\}/);
   assert.match(page, /value=\{to\}/);
+  assert.match(page, /query\.set\("activityId", linkedActivityId\)/);
+  assert.match(page, /currentItems\.find\(\(item\) => item\.submission\.id === linkedActivityId\)/);
+  assert.match(page, /id=\{`activity-\$\{item\.submission\.id\}`\}/);
+  assert.match(page, /linkedActivityTriggerRef\.current\?\.focus\(\)/);
   assert.match(page, /t\("photoReview\.rejectEvidence"\)/);
   assert.match(page, /expectedStatus: selected!\.photo\.verificationStatus/);
   assert.match(page, /t\("photoReview\.confirmation"\)/);
@@ -79,8 +83,60 @@ test("retained evidence views distinguish routine Owner rejection from active or
   assert.equal(isActiveAdminPhotoReview({ activityStatus: "rejected", rejectedBy: null, photoStatus: "needs_review", hasOpenAdministrativeReview: false }), true);
   assert.equal(isActiveAdminPhotoReview({ activityStatus: "rejected", rejectedBy: null, photoStatus: "failed", hasOpenAdministrativeReview: false }), false);
   assert.match(retention, /a\.status = 'rejected' and a\.rejected_by is not null/);
+  assert.match(retention, /p\.activity_id = \$\{filter\.activityId\}/);
   assert.match(retention, /washout_activity_admin_reviews/);
   assert.match(retention, /limit \$\{filter\.pageSize\} offset \$\{offset\}/);
+});
+
+test("an exact Gray activity stays in All History without contaminating the active queue", async () => {
+  const { listAdminPhotoReviewRetentionItems } = await import("../server/adminPhotoReviewRetention");
+  let call = 0;
+  const database = {
+    execute: async () => {
+      call += 1;
+      if (call === 1) return { rows: [{ total: 1 }] };
+      if (call === 2) return { rows: [{ active_count: 0 }] };
+      if (call === 3) return { rows: [{
+        photo_id: "43646520-c341-4f52-b2e4-281810da3fef",
+        activity_id: "323528bb-bc19-4e88-9f66-ce383ab591cf",
+        verification_status: "verified",
+        verification_reason: null,
+        photo_taken_at: new Date("2026-08-11T18:54:00Z"),
+        uploaded_at: new Date("2026-08-11T18:54:09Z"),
+        content_type: "image/jpeg",
+        activity_status: "pending",
+        check_in_time: new Date("2026-08-11T18:53:00Z"),
+        submitted_at: new Date("2026-08-11T18:54:09Z"),
+        rejection_reason: null,
+        rejected_at: null,
+        rejected_by: null,
+        service_type: "washout",
+        material_custom_label: null,
+        material_display_name: "Concrete Washout",
+        facility_id: "1367c68a-e12b-46a4-a417-6f21febe5640",
+        facility_name: "Revel Patio Grill",
+        facility_city: null,
+        facility_state: null,
+        driver_id: "driver-1",
+        driver_first_name: "Driver",
+        driver_last_name: "One",
+        has_administrative_review: false,
+        has_open_administrative_review: false,
+      }] };
+      return { rows: [] };
+    },
+  };
+  const result = await listAdminPhotoReviewRetentionItems(database, {
+    view: "all",
+    activityId: "323528bb-bc19-4e88-9f66-ce383ab591cf",
+    sort: "newest",
+    page: 1,
+    pageSize: 20,
+  });
+  assert.equal(result.total, 1);
+  assert.equal(result.activeCount, 0);
+  assert.equal(result.items[0].activity.id, "323528bb-bc19-4e88-9f66-ce383ab591cf");
+  assert.equal(result.items[0].activeAdminAction, false);
 });
 
 test("platform-detected evidence failures are retained outside Owner review and use governed notifications", () => {
@@ -99,7 +155,7 @@ test("platform-detected evidence failures are retained outside Owner review and 
 });
 
 test("Photo Review workflow strings exist in English and Spanish", () => {
-  for (const key of ["photoReview.title", "photoReview.evidenceOnly", "photoReview.rejectEvidence", "photoReview.confirmation", "photoReview.queueError"]) {
+  for (const key of ["photoReview.title", "photoReview.evidenceOnly", "photoReview.rejectEvidence", "photoReview.confirmation", "photoReview.queueError", "photoReview.linkedActivityMissing", "photoReview.geofenceContextLoading", "photoReview.geofenceContextUnavailable", "geofence.admin.presentation.gray.nearBoundary", "geofence.admin.guidance.gray.nearBoundary"]) {
     assert.equal(translations.split(`\"${key}\"`).length - 1, 2, `${key} must be translated in both locales`);
   }
 });
@@ -137,9 +193,11 @@ test("Photo Review list enforces Admin RBAC and returns bounded projected result
   const originalList = (storage as any).listAdminPhotoReviewItems;
   try {
     let listCalls = 0;
-    (storage as any).getUser = async (id: string) => id === "admin-user" ? { id, role: "admin" } : { id, role: "driver" };
-    (storage as any).listAdminPhotoReviewItems = async () => {
+    let lastFilter: any = null;
+    (storage as any).getUser = async (id: string) => id === "admin-user" ? { id, role: "admin" } : id === "super-user" ? { id, role: "super_admin" } : { id, role: "driver" };
+    (storage as any).listAdminPhotoReviewItems = async (filter: any) => {
       listCalls += 1;
+      lastFilter = filter;
       return { total: 1, activeCount: 1, items: [{
         photo: { id: "photo-1", activityId: "activity-1", verificationStatus: "needs_review", verificationReason: "Timestamp requires review", photoTakenAt: new Date(), uploadedAt: new Date(), contentType: "image/jpeg" },
         activity: { id: "activity-1", status: "pending", checkInTime: new Date(), submittedAt: new Date(), rejectionReason: null, rejectedAt: null },
@@ -152,13 +210,23 @@ test("Photo Review list enforces Admin RBAC and returns bounded projected result
     await route!({ user: { id: "driver-user" }, query: {} }, denied);
     assert.equal(denied.statusCode, 403);
     assert.equal(listCalls, 0);
+    const activityId = "323528bb-bc19-4e88-9f66-ce383ab591cf";
     const allowed = response();
-    await route!({ user: { id: "admin-user" }, query: { page: "1", pageSize: "20", state: "pending" } }, allowed);
+    await route!({ user: { id: "admin-user" }, query: { page: "1", pageSize: "20", view: "all", activityId } }, allowed);
     assert.equal(allowed.statusCode, 200);
     assert.equal((allowed.body as any).items[0].photo.id, "photo-1");
     assert.equal("storageKey" in (allowed.body as any).items[0].photo, false);
     assert.equal((allowed.body as any).pagination.pageSize, 20);
     assert.equal((allowed.body as any).summary.activeCount, 1);
+    assert.equal(lastFilter.activityId, activityId);
+    assert.equal(lastFilter.view, "all");
+    const superAllowed = response();
+    await route!({ user: { id: "super-user" }, query: { view: "all", activityId } }, superAllowed);
+    assert.equal(superAllowed.statusCode, 200);
+    const malformed = response();
+    await route!({ user: { id: "admin-user" }, query: { view: "all", activityId: "malformed" } }, malformed);
+    assert.equal(malformed.statusCode, 400);
+    assert.equal(listCalls, 2);
   } finally {
     (storage as any).getUser = originalUser;
     (storage as any).listAdminPhotoReviewItems = originalList;

@@ -17,6 +17,9 @@ import {
 import type { CreateStructuredNotification } from "../server/notificationService";
 
 type Captured = CreateStructuredNotification | (Omit<CreateStructuredNotification, "userId" | "recipientRole"> & { recipientRole: NotificationRole });
+const ACTIVITY_ID = "323528bb-bc19-4e88-9f66-ce383ab591cf";
+const FACILITY_ID = "1367c68a-e12b-46a4-a417-6f21febe5640";
+const ADMIN_EVIDENCE_LINK = `/admin/photo-review?view=all&activityId=${ACTIVITY_ID}#activity-${ACTIVITY_ID}`;
 
 function evaluation(
   resultState: string,
@@ -25,9 +28,9 @@ function evaluation(
 ): ActivityGeofenceEvaluation {
   return {
     id: "evaluation-1",
-    activityId: "activity-1",
+    activityId: ACTIVITY_ID,
     workflowReference: null,
-    locationId: "facility-1",
+    locationId: FACILITY_ID,
     boundaryVersionId: "boundary-1",
     boundaryVersion: 3,
     evaluationPurpose: "submission",
@@ -55,8 +58,8 @@ function harness(currentEvaluation: ActivityGeofenceEvaluation | null, enabled =
   const failures: unknown[] = [];
   const input = {
     enabled,
-    activity: { id: "activity-1", status: "pending", driverUserId: "driver-user-1" },
-    facility: { id: "facility-1", name: "Controlled Facility", resolveOwnerUserId: async () => "owner-user-1" },
+    activity: { id: ACTIVITY_ID, status: "pending", driverUserId: "driver-user-1" },
+    facility: { id: FACILITY_ID, name: "Controlled Facility", resolveOwnerUserId: async () => "owner-user-1" },
     retainedPhotoCount: 1,
     evaluation: currentEvaluation,
     emitUser: async (notification: CreateStructuredNotification) => { captured.push(notification); },
@@ -109,7 +112,7 @@ test("yellow routes once to Driver, Owner, Admin, and Super Admin with safe ackn
   assert.deepEqual(notification.captured.map((item) => item.recipientRole).sort(), ["admin", "driver", "owner", "super_admin"]);
   assert.equal(new Set(notification.captured.map((item) => item.idempotencyKey)).size, 4);
   for (const item of notification.captured) {
-    assert.equal(item.sourceEntityId, "activity-1");
+    assert.equal(item.sourceEntityId, ACTIVITY_ID);
     assert.doesNotMatch(JSON.stringify(item), /512-555-1212|s3:\/\/private|\$25/);
     const safe = sanitizeNotificationMetadata(item.metadata);
     assert.equal(safe.boundaryCorrection, "true");
@@ -183,7 +186,7 @@ test("notification delivery failure is isolated after canonical evidence persist
   assert.equal(result.handled, true);
   assert.equal(result.failed, 1);
   assert.equal(notification.failures.length, 1);
-  assert.deepEqual(notification.input.activity, { id: "activity-1", status: "pending", driverUserId: "driver-user-1" });
+  assert.deepEqual(notification.input.activity, { id: ACTIVITY_ID, status: "pending", driverUserId: "driver-user-1" });
 });
 
 test("templates, deep links, metadata, English, and Spanish remain role- and privacy-safe", async () => {
@@ -202,9 +205,10 @@ test("templates, deep links, metadata, English, and Spanish remain role- and pri
   const spanish = localizeCenterNotification(centerItem, "es", (key, values) => translate(key, "es", values));
   assert.match(english.title, /boundary needed correction/i);
   assert.match(spanish.title, /límite necesitaba corrección/i);
-  assert.equal(driver.deepLink, "/activity?submittedActivityId=activity-1");
-  assert.equal(notification.captured.find((item) => item.recipientRole === "owner")!.deepLink, "/dashboard/reviews?facilityId=facility-1&activityId=activity-1#activity-activity-1");
-  assert.equal(notification.captured.find((item) => item.recipientRole === "admin")!.deepLink, "/notifications");
+  assert.equal(driver.deepLink, `/activity?submittedActivityId=${ACTIVITY_ID}`);
+  assert.equal(notification.captured.find((item) => item.recipientRole === "owner")!.deepLink, `/dashboard/reviews?facilityId=${FACILITY_ID}&activityId=${ACTIVITY_ID}#activity-${ACTIVITY_ID}`);
+  assert.equal(notification.captured.find((item) => item.recipientRole === "admin")!.deepLink, ADMIN_EVIDENCE_LINK);
+  assert.equal(notification.captured.find((item) => item.recipientRole === "super_admin")!.deepLink, ADMIN_EVIDENCE_LINK);
 });
 
 test("route trigger occurs only after atomic activity, photo, and evaluation persistence and is independent of enforcement", async () => {

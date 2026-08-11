@@ -14,6 +14,7 @@ import { MobileNav } from "@/components/MobileNav";
 type Role = "driver" | "owner" | "admin" | "super_admin";
 type Page = { items: CenterNotification[]; pagination: { page: number; pageSize: number; total: number; hasMore: boolean } };
 const categories = ["all", "operational", "achievement", "competition", "administrative", "system", "announcement"] as const;
+const adminGeofenceEvidenceTemplates = new Set(["admin_geofence_exception_attention", "admin_geofence_uncertainty_attention"]);
 
 export function NotificationCenter({ role }: { role: Role }) {
   const [, navigate] = useLocation();
@@ -41,8 +42,12 @@ export function NotificationCenter({ role }: { role: Role }) {
   const archive = useMutation({ mutationFn: (id: string) => apiRequest(`/api/notifications/${id}/archive`, { method: "POST" }), onSuccess: refresh });
 
   const openNotification = async (item: CenterNotification) => {
-    if (!item.isRead) await markRead.mutateAsync(item.id);
-    if (item.deepLink) navigate(item.deepLink);
+    if (!item.deepLink) return;
+    try {
+      if (!item.isRead) await markRead.mutateAsync(item.id);
+    } finally {
+      navigate(item.deepLink);
+    }
   };
 
   return (
@@ -80,9 +85,12 @@ export function NotificationCenter({ role }: { role: Role }) {
             {notifications.map((item) => {
               const localized = localizeCenterNotification(item, language, t);
               const Icon = item.category === "achievement" || item.category === "competition" ? Trophy : item.category === "announcement" ? Megaphone : Bell;
+              const activityEvidenceAction = (role === "admin" || role === "super_admin") && adminGeofenceEvidenceTemplates.has(item.templateKey || "");
+              const openLabel = activityEvidenceAction ? t("notification.center.viewActivityEvidence") : t("notification.center.open");
               return <li key={item.id}>
-                <Card className={item.isRead ? "border-border bg-card/75" : "border-sky-500/40 bg-card ring-1 ring-sky-500/20"}>
-                  <CardContent className="flex gap-3 p-4 sm:p-5">
+                <Card className={`relative ${item.isRead ? "border-border bg-card/75" : "border-sky-500/40 bg-card ring-1 ring-sky-500/20"}`}>
+                  {item.deepLink && <button type="button" className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" aria-label={`${openLabel}: ${localized.title}`} onClick={() => void openNotification(item)}><span className="sr-only">{openLabel}</span></button>}
+                  <CardContent className="pointer-events-none relative z-10 flex gap-3 p-4 sm:p-5">
                     <Icon className="mt-1 h-5 w-5 shrink-0 text-sky-400" aria-hidden="true" />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -90,11 +98,11 @@ export function NotificationCenter({ role }: { role: Role }) {
                         <time dateTime={item.createdAt ?? undefined} className="text-xs text-foreground/60">{item.createdAt ? formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: language === "es" ? es : undefined }) : ""}</time>
                       </div>
                       <p className="mt-1 text-sm leading-6 text-foreground/75">{localized.message}</p>
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <div className="pointer-events-auto mt-3 flex flex-wrap items-center gap-2">
                         <span className="rounded-full border border-border px-2 py-1 text-xs">{t(`notification.category.${item.category}`)}</span>
                         <span className="text-xs font-medium">{item.isRead ? t("notification.center.read") : t("notification.center.unread")}</span>
                         {!item.isRead && <Button variant="outline" size="sm" className="min-h-11" onClick={() => markRead.mutate(item.id)} disabled={markRead.isPending}><Check className="mr-1 h-4 w-4" />{t("notification.center.markRead")}</Button>}
-                        {item.deepLink && <Button variant="outline" size="sm" className="min-h-11" onClick={() => void openNotification(item)}><ChevronRight className="mr-1 h-4 w-4" />{t("notification.center.open")}</Button>}
+                        {item.deepLink && <Button variant="outline" size="sm" className="min-h-11" onClick={() => void openNotification(item)}><ChevronRight className="mr-1 h-4 w-4" />{openLabel}</Button>}
                         <Button variant="ghost" size="sm" className="min-h-11" onClick={() => archive.mutate(item.id)} disabled={archive.isPending}><Archive className="mr-1 h-4 w-4" />{t("notification.center.archive")}</Button>
                       </div>
                     </div>

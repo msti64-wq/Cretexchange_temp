@@ -5,8 +5,9 @@ import { registerFacilityGeofenceRoutes } from "../server/facilityGeofenceRoutes
 import { calculateFacilityGeofenceChecksum } from "../server/facilityGeofenceService";
 
 type Handler = (req: any, res: any) => Promise<unknown>;
+const ACTIVITY_ID = "323528bb-bc19-4e88-9f66-ce383ab591cf";
 
-function harness(options: { locationOwnerId?: string; userRole?: string; featureEnabled?: boolean } = {}) {
+function harness(options: { locationOwnerId?: string; userRole?: string; featureEnabled?: boolean; hasEvaluation?: boolean; driverNote?: string } = {}) {
   const gets = new Map<string, Handler>();
   const posts = new Map<string, Handler>();
   const app = {
@@ -29,7 +30,7 @@ function harness(options: { locationOwnerId?: string; userRole?: string; feature
       checkFacilityFeatureFlag: async () => options.featureEnabled !== false,
       getOwner: async () => ({ id: "owner-1", userId: "user-1" }),
       getWashoutLocation: async () => location,
-      getWashoutActivity: async () => ({ id: "activity-1", locationId: location.id }),
+      getWashoutActivity: async () => ({ id: ACTIVITY_ID, locationId: location.id }),
       getDriver: async () => undefined,
       getActiveLocationsAcceptingMaterial: async () => [],
     } as any,
@@ -37,10 +38,10 @@ function harness(options: { locationOwnerId?: string; userRole?: string; feature
       listBoundaryVersions: async () => { repositoryReads += 1; return [radius]; },
       listRevisionEvents: async () => [],
       getBoundaryVersion: async () => radius,
-      getLatestActivityEvaluation: async () => ({
-        activityId: "activity-1", locationId: location.id, boundaryVersionId: radius.id, boundaryVersion: 1,
+      getLatestActivityEvaluation: async () => options.hasEvaluation === false ? null : ({
+        activityId: ACTIVITY_ID, locationId: location.id, boundaryVersionId: radius.id, boundaryVersion: 1,
         resultState: "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE", reasonCode: "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE",
-        exceptionAcknowledgementCode: "FACILITY_PERSONNEL_DIRECTED", driverNote: "Directed here", evidenceComplete: true,
+        exceptionAcknowledgementCode: "FACILITY_PERSONNEL_DIRECTED", driverNote: options.driverNote || "Directed here", evidenceComplete: true,
         evaluatedAt: new Date("2026-08-01T01:00:00Z"), observationLatitude: "30.2", observationLongitude: "-97.8", accuracyMeters: "5",
       }),
       createDraft: async () => ({ ...radius, status: "draft", activatedAt: null, activatedBy: null, effectiveFrom: null }),
@@ -114,14 +115,32 @@ test("temporary context is denied before evaluation access for another Owner", a
 });
 
 test("Admin context is role-protected and privacy-reduced", async () => {
-  const h = harness({ userRole: "admin" });
+  const h = harness({ userRole: "admin", featureEnabled: false, driverNote: "Call 512-555-1212; photo s3://private/key" });
   const res = response();
-  await h.gets.get("/api/admin/geofence/activities/:activityId/context")!({ user: { id: "admin-user" }, params: { activityId: "activity-1" } }, res);
+  await h.gets.get("/api/admin/geofence/activities/:activityId/context")!({ user: { id: "admin-user" }, params: { activityId: ACTIVITY_ID } }, res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.state, "OUTSIDE_BOUNDARY_WITHIN_EXCEPTION_ZONE");
+  assert.doesNotMatch(res.body.driverNote, /512-555-1212|s3:\/\//);
   for (const forbidden of ["observationLatitude", "observationLongitude", "accuracyMeters", "outsideDistanceMeters", "geometry"]) {
     assert.equal(forbidden in res.body, false, forbidden);
   }
+});
+
+test("Admin evidence context fails closed for denied roles and invalid or missing activities", async () => {
+  for (const userRole of ["owner", "driver"]) {
+    const deniedHarness = harness({ userRole });
+    const denied = response();
+    await deniedHarness.gets.get("/api/admin/geofence/activities/:activityId/context")!({ user: { id: `${userRole}-user` }, params: { activityId: ACTIVITY_ID } }, denied);
+    assert.equal(denied.statusCode, 403);
+  }
+  const adminHarness = harness({ userRole: "super_admin" });
+  const malformed = response();
+  await adminHarness.gets.get("/api/admin/geofence/activities/:activityId/context")!({ user: { id: "super-user" }, params: { activityId: "malformed" } }, malformed);
+  assert.equal(malformed.statusCode, 400);
+  const missingHarness = harness({ userRole: "admin", hasEvaluation: false });
+  const missing = response();
+  await missingHarness.gets.get("/api/admin/geofence/activities/:activityId/context")!({ user: { id: "admin-user" }, params: { activityId: ACTIVITY_ID } }, missing);
+  assert.equal(missing.statusCode, 404);
 });
 
 test("Owner boundary history and status metadata are bilingual and expose an on-page language control", async () => {

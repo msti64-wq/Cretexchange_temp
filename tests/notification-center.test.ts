@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 import {
+  adminPhotoReviewActivityLink,
   assertTemplateForRole,
   isSafeNotificationDeepLink,
   notificationCategories,
   notificationTemplateDefinitions,
+  resolveNotificationCenterDeepLink,
   sanitizeNotificationMetadata,
 } from "../shared/notifications";
 import { translate, translations } from "../client/src/lib/i18n";
@@ -36,14 +38,52 @@ test("metadata projection excludes private and financial fields", () => {
 });
 
 test("deep links are same-origin and role governed", () => {
+  const activityId = "323528bb-bc19-4e88-9f66-ce383ab591cf";
+  const evidenceLink = `/admin/photo-review?view=all&activityId=${activityId}#activity-${activityId}`;
   assert.equal(isSafeNotificationDeepLink("driver", "/activity"), true);
   assert.equal(isSafeNotificationDeepLink("owner", "/dashboard/reviews?facilityId=1367c68a-e12b-46a4-a417-6f21febe5640&activityId=323528bb-bc19-4e88-9f66-ce383ab591cf#activity-323528bb-bc19-4e88-9f66-ce383ab591cf"), true);
   assert.equal(isSafeNotificationDeepLink("owner", "/dashboard/reviews?facilityId=1367c68a-e12b-46a4-a417-6f21febe5640&activityId=323528bb-bc19-4e88-9f66-ce383ab591cf#activity-ff18a63c-48ff-4f17-808f-31a84da639b7"), false);
   assert.equal(isSafeNotificationDeepLink("owner", "/intelligence?facilityId=1367c68a-e12b-46a4-a417-6f21febe5640"), true);
   assert.equal(isSafeNotificationDeepLink("admin", "/admin/photo-review"), true);
+  assert.equal(isSafeNotificationDeepLink("admin", evidenceLink), true);
+  assert.equal(isSafeNotificationDeepLink("super_admin", evidenceLink), true);
+  assert.equal(isSafeNotificationDeepLink("owner", evidenceLink), false);
+  assert.equal(isSafeNotificationDeepLink("admin", `${evidenceLink.slice(0, -36)}ff18a63c-48ff-4f17-808f-31a84da639b7`), false);
   assert.equal(isSafeNotificationDeepLink("driver", "/admin/photo-review"), false);
   assert.equal(isSafeNotificationDeepLink("owner", "https://example.com"), false);
   assert.equal(isSafeNotificationDeepLink("owner", "//example.com"), false);
+});
+
+test("existing Admin geofence notifications derive exact evidence links without a data backfill", () => {
+  const activityId = "323528bb-bc19-4e88-9f66-ce383ab591cf";
+  const expected = adminPhotoReviewActivityLink(activityId);
+  assert.equal(resolveNotificationCenterDeepLink({
+    recipientRole: "admin",
+    templateKey: "admin_geofence_uncertainty_attention",
+    sourceEntityType: "washout_activity",
+    sourceEntityId: activityId,
+    storedDeepLink: "/notifications",
+  }), expected);
+  assert.equal(resolveNotificationCenterDeepLink({
+    recipientRole: "super_admin",
+    templateKey: "admin_geofence_exception_attention",
+    sourceEntityType: "washout_activity",
+    sourceEntityId: activityId,
+    storedDeepLink: "/notifications",
+  }), expected);
+  for (const invalid of [
+    { recipientRole: "owner", sourceEntityId: activityId },
+    { recipientRole: "admin", sourceEntityId: "malformed" },
+    { recipientRole: "admin", sourceEntityId: null },
+  ]) {
+    assert.equal(resolveNotificationCenterDeepLink({
+      recipientRole: invalid.recipientRole,
+      templateKey: "admin_geofence_uncertainty_attention",
+      sourceEntityType: "washout_activity",
+      sourceEntityId: invalid.sourceEntityId,
+      storedDeepLink: "/notifications",
+    }), invalid.recipientRole === "owner" ? "/notifications" : null);
+  }
 });
 
 test("structured notifications localize in English and Spanish with legacy fallback", () => {
@@ -75,6 +115,9 @@ test("service enforces recipient scope, bounded pagination, idempotency, archive
   assert.match(service, /\.limit\(pageSize\)\.offset/);
   assert.match(service, /async unreadCount/);
   assert.match(service, /select\(\{ value: count\(\) \}\)/);
+  assert.match(service, /resolveNotificationCenterDeepLink/);
+  assert.match(service, /sourceEntityType: row\.sourceEntityType/);
+  assert.match(service, /sourceEntityId: row\.sourceEntityId/);
   assert.doesNotMatch(service, /stripe|wallet|payment|payout/i);
 });
 
@@ -111,6 +154,9 @@ test("shared center provides role routes, category filters, explicit read/archiv
   assert.match(center, /role="alert"/);
   assert.match(center, /notification\.center\.archive/);
   assert.match(center, /notification\.center\.markAll/);
+  assert.match(center, /notification\.center\.viewActivityEvidence/);
+  assert.match(center, /className="absolute inset-0/);
+  assert.match(center, /finally \{\s*navigate\(item\.deepLink\)/);
   assert.match(app, /path="\/messages" component=\{DriverNotifications\}/);
   assert.match(app, /path="\/notifications" component=\{AdminNotifications\}/);
   assert.equal((nav.match(/path: "\/notifications", icon: Bell/g) || []).length >= 3, true);

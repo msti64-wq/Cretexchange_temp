@@ -5,7 +5,7 @@ import type {
 import type {
   NotificationRole,
 } from "@shared/notifications";
-import { sanitizeNotificationTextSnippet } from "@shared/notifications";
+import { adminPhotoReviewActivityLink, sanitizeNotificationTextSnippet } from "@shared/notifications";
 
 export const GEOFENCE_GRAY_NOTIFICATION_CONDITIONS = [
   "gps_unavailable",
@@ -201,7 +201,7 @@ export async function deliverCompletedSubmissionGeofenceNotifications(
     for (const recipientRole of ["admin", "super_admin"] as const) {
       deliveries.push({ recipientRole, templateKey: "admin_geofence_exception_attention", deliver: () => input.emitRole({
         recipientRole, templateKey: "admin_geofence_exception_attention", title: "Facility boundary review assistance",
-        message: yellowMessage(input, recipientRole), deepLink: "/notifications", metadata: safeMetadata,
+        message: yellowMessage(input, recipientRole), deepLink: adminPhotoReviewActivityLink(input.activity.id) || undefined, metadata: safeMetadata,
         sourceEntityType: "washout_activity", sourceEntityId: input.activity.id,
         idempotencyKey: `activity:${input.activity.id}:geofence:${eventKey}:${recipientRole}:admin_geofence_exception_attention`,
         priority: "normal",
@@ -229,7 +229,7 @@ export async function deliverCompletedSubmissionGeofenceNotifications(
     for (const recipientRole of ["admin", "super_admin"] as const) {
       deliveries.push({ recipientRole, templateKey: "admin_geofence_uncertainty_attention", deliver: () => input.emitRole({
         recipientRole, templateKey: "admin_geofence_uncertainty_attention", title: copy.admin.title,
-        message: `${copy.admin.message} Facility: ${input.facility.name}.`, deepLink: "/notifications",
+        message: `${copy.admin.message} Facility: ${input.facility.name}.`, deepLink: adminPhotoReviewActivityLink(input.activity.id) || undefined,
         metadata: safeMetadata, sourceEntityType: "washout_activity", sourceEntityId: input.activity.id,
         idempotencyKey: `activity:${input.activity.id}:geofence:${eventKey}:${recipientRole}:admin_geofence_uncertainty_attention`,
         priority: "normal",
