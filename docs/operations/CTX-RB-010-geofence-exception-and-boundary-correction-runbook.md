@@ -1,20 +1,20 @@
 # CTX-RB-010 — Geofence Exception and Boundary Correction Runbook
 
 - **Document ID:** CTX-RB-010
-- **Version:** 1.3
-- **Status:** Approved — advisory and submission-time Owner context operational; notification workflow and red enforcement pilot not activated
+- **Version:** 1.4
+- **Status:** Approved — advisory, submission-time Owner context, and controlled Revel Yellow/Gray notifications operational and Founder-accepted; red enforcement inactive; legacy transition deferred
 - **Owner:** Platform Operations
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Product:** CreteXchange
 - **Classification:** Internal
 - **Effective Date:** 2026-08-04
 - **Review Frequency:** Quarterly and after a material geofence, exception, or authorization change
-- **Last Reviewed:** 2026-08-08
-- **Next Review:** Before notification implementation or red enforcement-pilot authorization
+- **Last Reviewed:** 2026-08-11
+- **Next Review:** Before red enforcement-pilot authorization or any notification-pilot scope expansion
 
 ## 1. Purpose and scope
 
-This approved runbook defines safe handling of geofence exceptions, Gray uncertainty/configuration states, Owner boundary-correction requests, and Admin assistance. Owner/Driver advisory scope and submission-time Owner context are accepted. The completed-submission notification workflow and red enforcement pilot are not activated; legacy transition is deferred; and 2FA has not begun.
+This approved runbook defines safe handling of geofence exceptions, Gray uncertainty/configuration states, Owner boundary-correction requests, and Admin assistance. Owner/Driver advisory scope, submission-time Owner context, and the controlled Revel Patio Grill Yellow/Gray completed-submission notification pilot are Founder-accepted. Red submission enforcement is not accepted or activated; legacy transition is deferred; and 2FA has not begun.
 
 It does not authorize direct database edits, geometry modification, account restriction, evidence deletion, Facility disabling, payment action, or a fraud finding.
 
@@ -55,7 +55,7 @@ This procedure applies only after separate Founder authorization activates submi
 1. Confirm a completed submission produced one of the six governed Gray conditions derived from canonical state plus reason code; passive advisory evaluation never enters this procedure.
 2. Distinguish GPS unavailable/insufficient, near-boundary uncertainty, near-advisory-limit uncertainty, missing Facility boundary, and invalid/unavailable Facility boundary.
 3. Send neutral Driver guidance appropriate to the state: review evidence, retry/verify operational location, correct the Facility boundary, or contact the Owner for assistance.
-4. When the notification workflow is separately activated, create one idempotent Owner uncertainty/configuration notice and one low-priority assistance notice for each approved Admin/Super Admin recipient.
+4. At a Facility where the governed notification control is effectively enabled, create one idempotent Owner uncertainty/configuration notice and one low-priority assistance notice for each eligible Admin/Super Admin recipient.
 5. Do not create a rejection, fraud finding, or active Photo Review item solely because the state is Gray.
 6. Preserve the completed submission and its governed evidence. Notification-delivery failure must not roll back the canonical activity/evidence transaction.
 
@@ -103,6 +103,12 @@ Exactly one idempotent notification is allowed per approved recipient/event. Ref
 - Legacy Transition is unrelated to notifications and remains deferred.
 - Notification and legacy controls are omitted from the ordinary Facility pilot workflow or shown only as internal read-only/deferred state.
 
+### 8.2 Accepted controlled-pilot state
+
+Founder Production acceptance passed on August 11, 2026, at Revel Patio Grill against Production SHA `10da694837b03078e9c25430ca203f125b3791f2`. Yellow and Gray notifications, Owner evidence presentation, and Admin/Super Admin protected evidence access through Photo Review **All History** are operational for that controlled Facility. Gray and routine yellow items remain outside active **Needs Review** unless a separate governed Photo Review or administrative escalation condition exists.
+
+The Revel notification override remains enabled. Submission enforcement and legacy transition remain disabled. No other Facility has a geofence-control override. This state does not authorize a new Facility, red routing, a control change, or a financial outcome.
+
 ## 9. Evidence, privacy, and audit
 
 Record safe Facility/activity/boundary-version identifiers, result/reason code, actor, timestamp, action, and idempotency identity. Boundary, evaluation, notification, and review evidence is append-only. Precise Driver coordinates, raw polygon geometry, credentials, contact data, storage paths, financial data, and internal analytics payloads must not appear in notification metadata, list payloads, or general logs. Preserve existing Photo Review privacy and evidence-access controls.
@@ -119,7 +125,7 @@ Do not infer, backfill, or automatically activate a polygon or radius. New enfor
 
 An incorrect activation is corrected by activating a new version or, under separately authorized recovery, restoring an earlier valid geometry as a new version. Do not rewrite history. Application rollback disables new reads/enforcement while retaining additive boundary, revision, evaluation, notification, and review evidence. No destructive rollback or Production recovery is authorized without an explicit Founder recovery checkpoint.
 
-The advisory and submission-time Owner-context portions are Founder-accepted. Notification procedures cannot be used until implementation, validation, release, and explicit activation are separately authorized. Red handling cannot be piloted until submission enforcement is separately authorized for the controlled Facility. Legacy transition remains deferred.
+The advisory, submission-time Owner-context, and controlled Revel Yellow/Gray notification portions are Founder-accepted. Notification procedures remain limited to Facilities with an explicit governed effective notification state. Red handling cannot be piloted until submission enforcement is separately authorized for the controlled Facility. Legacy transition remains deferred.
 
 ## 12. Related documents
 
@@ -140,3 +146,4 @@ The advisory and submission-time Owner-context portions are Founder-accepted. No
 | 1.1 | 2026-08-04 | Recorded the controlled feature-branch yellow/red routing, Owner correction and assistance workflow, and remaining operational release gates. |
 | 1.2 | 2026-08-08 | Added the completed-submission notification matrix, Gray handling, control separation, idempotency/privacy safeguards, and current accepted/inactive/deferred scope. |
 | 1.3 | 2026-08-08 | Corrected Gray to six conditions derived from the seven-state contract and reason codes, and normalized the notification matrix to four columns. |
+| 1.4 | 2026-08-11 | Recorded Founder acceptance of the controlled Revel Yellow/Gray notification pilot, protected Admin/Super Admin All History evidence access, unchanged Needs Review classification, and the remaining red-enforcement and legacy-transition gates. |
