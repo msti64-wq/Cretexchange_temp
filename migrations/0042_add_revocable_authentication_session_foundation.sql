@@ -1,6 +1,9 @@
 -- Phase 5 Sprint 3 Work Package 0: revocable session and authentication-security foundation.
 -- Additive and default-off. No user is enrolled in 2FA, no session is created,
 -- and no existing JWT or password-reset row is inferred or backfilled.
+-- PostgreSQL 17 provides gen_random_uuid() as a core UUID function. This
+-- migration deliberately creates and requires no extension; authentication
+-- secrets are generated and hashed only by the governed application layer.
 
 CREATE TABLE IF NOT EXISTS auth_sessions (
   id varchar PRIMARY KEY DEFAULT gen_random_uuid(),

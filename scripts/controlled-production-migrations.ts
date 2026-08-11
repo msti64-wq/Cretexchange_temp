@@ -18,7 +18,7 @@ export const productionMigrations: readonly Migration[] = [
   { id: "0038", file: "migrations/0038_add_platform_analytics_events.sql", sha256: "684a072dac88a16515118bfd7eb3e9208570b375f4dff3a3c632c6426fbee667", expectedObjects: 13 },
   { id: "0039", file: "migrations/0039_extend_notifications_for_communication_center.sql", sha256: "90d7ffe79169b3735f8af4cfa77805aac34def6f9afddf48d878abfbec9b4c79", expectedObjects: 23 },
   { id: "0041", file: "migrations/0041_add_facility_scoped_geofence_feature_controls.sql", sha256: "01223adea3af146550bab3d925f12f367d14bbf832307c8a2a97de89fceca751", expectedObjects: 22 },
-  { id: "0042", file: "migrations/0042_add_revocable_authentication_session_foundation.sql", sha256: "7e01dfc555d524224423e56c79eda2560ecc6b7fae25e4bdbb6556b6dce7eeff", expectedObjects: 43 },
+  { id: "0042", file: "migrations/0042_add_revocable_authentication_session_foundation.sql", sha256: "21188aa927540d4f21b5d5ed16fe9f41819544867162def14d52e59e6b1a3b0e", expectedObjects: 43 },
 ] as const;
 
 function fail(message: string): never { throw new Error(message); }
@@ -135,7 +135,6 @@ async function migration0042ObjectCount(client: pg.Client): Promise<number> {
 }
 
 export async function assert0042Prerequisites(client: pg.Client): Promise<void> {
-  await requireCount(client, "SELECT count(*)::int AS value FROM pg_extension WHERE extname=$1", ["pgcrypto"], 1, "0042 prerequisite pgcrypto extension");
   await requireCount(client,
     "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid=to_regclass($1) AND contype='p' AND conname=$2",
     ["public.users", "users_pkey"], 1, "0042 prerequisite users primary key");

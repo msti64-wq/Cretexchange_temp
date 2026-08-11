@@ -103,11 +103,12 @@ test("controlled production runner accepts only the checksum-approved 0042 artif
   assert.deepEqual(selected[0], {
     id: "0042",
     file: "migrations/0042_add_revocable_authentication_session_foundation.sql",
-    sha256: "7e01dfc555d524224423e56c79eda2560ecc6b7fae25e4bdbb6556b6dce7eeff",
+    sha256: "21188aa927540d4f21b5d5ed16fe9f41819544867162def14d52e59e6b1a3b0e",
     expectedObjects: 43,
   });
   const contents = await readFile(new URL("../migrations/0042_add_revocable_authentication_session_foundation.sql", import.meta.url));
   assert.equal(assertMigrationChecksum(selected[0], contents), selected[0].sha256);
+  assert.doesNotMatch(contents.toString("utf8"), /CREATE\s+EXTENSION|pgcrypto/i);
   assert.throws(
     () => assertMigrationChecksum(selected[0], Buffer.from(`${contents.toString("utf8")}\n-- tampered`)),
     /Checksum mismatch for 0042/,
@@ -159,7 +160,7 @@ test("0041 verification requires zero initial override rows and zero initial aud
 });
 
 test("0042 prerequisites require the exact prior catalog without executing prior migrations", async () => {
-  const expected = [1, 1, 1, 0, 3, 4, 8, 2, 3, 5, 2, 15, 3, 1, 1];
+  const expected = [1, 1, 0, 3, 4, 8, 2, 3, 5, 2, 15, 3, 1, 1];
   for (let missing = 0; missing < expected.length; missing += 1) {
     const observed = [...expected];
     observed[missing] = expected[missing] === 0 ? 1 : expected[missing] - 1;
@@ -235,6 +236,7 @@ test("runner introduces no generic migration discovery or execution bypass", asy
   assert.match(script, /pg_try_advisory_lock/);
   assert.match(script, /SET LOCAL statement_timeout/);
   assert.match(script, /SET LOCAL lock_timeout/);
+  assert.doesNotMatch(script, /pgcrypto/i);
 });
 
 test("0042 runner catalog checks pass against disposable PostgreSQL after catalog-only prerequisites", {
@@ -247,7 +249,6 @@ test("0042 runner catalog checks pass against disposable PostgreSQL after catalo
   await client.connect();
   try {
     await client.query(`
-      CREATE EXTENSION IF NOT EXISTS pgcrypto;
       CREATE TABLE users (id varchar PRIMARY KEY);
       CREATE TABLE owners (id varchar PRIMARY KEY, user_id varchar NOT NULL REFERENCES users(id));
       CREATE TABLE washout_locations (id varchar PRIMARY KEY, owner_id varchar NOT NULL REFERENCES owners(id));
@@ -262,6 +263,7 @@ test("0042 runner catalog checks pass against disposable PostgreSQL after catalo
         updated_at timestamp DEFAULT now()
       );
     `);
+    assert.equal(Number((await client.query("SELECT count(*) AS value FROM pg_extension WHERE extname='pgcrypto'")).rows[0].value), 0);
     const migration0032 = await readFile(new URL("../migrations/0032_add_user_auth_token_version.sql", import.meta.url), "utf8");
     await client.query(migration0032);
     const migration0040 = await readFile(new URL("../migrations/0040_add_canonical_facility_geofence_foundation.sql", import.meta.url), "utf8");
@@ -275,6 +277,7 @@ test("0042 runner catalog checks pass against disposable PostgreSQL after catalo
     const migration0042 = await readFile(new URL("../migrations/0042_add_revocable_authentication_session_foundation.sql", import.meta.url), "utf8");
     await executeMigrationTransaction(client, migration0042, () => verify0042Catalog(client));
     await verify0042Catalog(client);
+    assert.equal(Number((await client.query("SELECT count(*) AS value FROM pg_extension WHERE extname='pgcrypto'")).rows[0].value), 0);
     await assert.rejects(assert0042Pending(client), /duplicate execution/i);
   } finally {
     await client.end();

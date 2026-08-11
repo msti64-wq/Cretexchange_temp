@@ -65,7 +65,7 @@ test("default-off runtime foundation persists, authenticates, rotates, revokes, 
   const setup = new Client({ connectionString: databaseUrl });
   await setup.connect();
   await setup.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public");
-  await setup.query("CREATE EXTENSION IF NOT EXISTS pgcrypto");
+  assert.equal(Number((await setup.query("SELECT count(*) AS value FROM pg_extension WHERE extname='pgcrypto'")).rows[0].value), 0);
   await setup.query(`CREATE TABLE users (
     id varchar PRIMARY KEY DEFAULT gen_random_uuid(), username varchar UNIQUE NOT NULL, email varchar UNIQUE NOT NULL,
     password_hash varchar NOT NULL, first_name varchar NOT NULL, last_name varchar NOT NULL, profile_image_url varchar,
@@ -75,6 +75,7 @@ test("default-off runtime foundation persists, authenticates, rotates, revokes, 
     auth_token_version integer NOT NULL DEFAULT 0, created_at timestamp DEFAULT now(), updated_at timestamp DEFAULT now()
   )`);
   await setup.query(migration);
+  assert.equal(Number((await setup.query("SELECT count(*) AS value FROM pg_extension WHERE extname='pgcrypto'")).rows[0].value), 0);
   const userId = "00000000-0000-4000-8000-000000000101";
   const legacyPassword = "Legacy complete Unicode password café 🧱";
   const legacyPasswordHash = await bcrypt.hash(legacyPassword, 4);

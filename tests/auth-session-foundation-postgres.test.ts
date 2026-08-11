@@ -24,7 +24,7 @@ test("0042 validates rollback, clean reapplication, constraints, append-only aud
   await client.connect();
   try {
     await client.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public");
-    await client.query("CREATE EXTENSION IF NOT EXISTS pgcrypto");
+    assert.equal(Number((await client.query("SELECT count(*) AS value FROM pg_extension WHERE extname='pgcrypto'")).rows[0].value), 0);
     await client.query("CREATE TABLE users (id varchar PRIMARY KEY DEFAULT gen_random_uuid())");
 
     await client.query("BEGIN");
@@ -35,6 +35,7 @@ test("0042 validates rollback, clean reapplication, constraints, append-only aud
 
     await client.query(migration);
     await client.query(migration);
+    assert.equal(Number((await client.query("SELECT count(*) AS value FROM pg_extension WHERE extname='pgcrypto'")).rows[0].value), 0);
 
     const tables = await client.query("SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'auth_%' ORDER BY table_name");
     assert.deepEqual(tables.rows.map((row) => row.table_name), [

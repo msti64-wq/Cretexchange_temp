@@ -122,6 +122,7 @@ test("0042 is additive, zero-backfill, append-only, retention-governed, and fina
   assert.match(migration, /minimize_expired_auth_event_network_metadata/);
   assert.match(migration, /purge_expired_auth_security_events/);
   assert.match(migration, /purge_expired_auth_rate_limit_buckets/);
+  assert.doesNotMatch(migration, /CREATE\s+EXTENSION|pgcrypto/i);
   assert.doesNotMatch(migration, /INSERT INTO\s+(?:auth_sessions|auth_password_reset_tokens|auth_security_events|auth_rate_limit_buckets)/i);
   assert.doesNotMatch(migration, /(?:INSERT INTO|UPDATE|ALTER TABLE)\s+(?:payments|wallet_transactions|driver_lottery_entries|notifications|washout_activities|washout_photos)/i);
   assert.doesNotMatch(migration, /totp|mfa_factor|recovery_code/i);
