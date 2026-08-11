@@ -27,24 +27,19 @@ const COMMON_OR_COMPROMISED_PASSWORDS = new Set([
   "secret", "changeme", "default", "temp1234", "test1234", "asdfghjkl",
   "1q2w3e4r", "1q2w3e4r5t", "zaq12wsx", "qazwsx", "123qwe", "654321",
   "superman", "michael", "jennifer", "charlie", "donald", "pokemon",
+  "contraseña12345",
 ]);
 
 export function normalizePasswordForStorage(password: string): string {
-  return password.normalize("NFKC");
-}
-
-function comparable(value: string): string {
-  return Array.from(normalizePasswordForStorage(value).toLocaleLowerCase("en-US"))
-    .filter((character) => /[a-z0-9]/i.test(character) || character.toLocaleLowerCase() !== character.toLocaleUpperCase())
-    .join("");
+  return password.normalize("NFC");
 }
 
 function contextTokens(context: PasswordPolicyContext): string[] {
   const emailLocal = context.email?.split("@", 1)[0] || "";
-  return [context.username, emailLocal, context.firstName, context.lastName, "cretexchange"]
+  return [context.username, emailLocal, context.firstName, context.lastName, "CreteXchange"]
     .filter((value): value is string => typeof value === "string")
-    .map(comparable)
-    .filter((value) => value.length >= 4);
+    .map(normalizePasswordForStorage)
+    .filter((value) => Array.from(value).length >= 4);
 }
 
 export function validatePasswordPolicy(password: unknown, context: PasswordPolicyContext = {}): PasswordPolicyResult {
@@ -59,11 +54,10 @@ export function validatePasswordPolicy(password: unknown, context: PasswordPolic
     return { valid: false, code: "too_long", message: `Password must be no more than ${PASSWORD_MAX_LENGTH} characters.` };
   }
 
-  const normalized = comparable(canonicalPassword);
-  if (COMMON_OR_COMPROMISED_PASSWORDS.has(normalized)) {
+  if (COMMON_OR_COMPROMISED_PASSWORDS.has(canonicalPassword)) {
     return { valid: false, code: "common", message: "Choose a password that is not commonly used or known to be compromised." };
   }
-  if (contextTokens(context).some((token) => normalized.includes(token))) {
+  if (contextTokens(context).some((token) => canonicalPassword.includes(token))) {
     return { valid: false, code: "context_specific", message: "Choose a password that does not contain your name, username, email name, or CreteXchange." };
   }
   return { valid: true };

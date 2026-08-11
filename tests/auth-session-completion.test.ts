@@ -23,23 +23,47 @@ test("approved password policy accepts long Unicode passphrases and rejects weak
   assert.deepEqual(validatePasswordPolicy("CreteXchange safe password 2026").valid, false);
   assert.deepEqual(validatePasswordPolicy("Michael builds a lengthy safe phrase", { firstName: "Michael" }).valid, false);
   assert.deepEqual(validatePasswordPolicy("owner42 has a lengthy safe phrase", { username: "owner42" }).valid, false);
+  assert.deepEqual(validatePasswordPolicy("Cafe\u0301 builds a lengthy safe phrase", { firstName: "Café" }).valid, false);
+  assert.deepEqual(validatePasswordPolicy("contrasen\u0303a12345"), {
+    valid: false,
+    code: "common",
+    message: "Choose a password that is not commonly used or known to be compromised.",
+  });
+  assert.equal(validatePasswordPolicy("e\u0301".repeat(14)).code, "too_short");
+  assert.equal(validatePasswordPolicy("e\u0301".repeat(15)).valid, true);
 });
 test("versioned password storage preserves full Unicode input and legacy verification", async () => {
   const composed = "Long passphrase with spaces, accents café, and blocks 🧱🧱";
   const decomposed = composed.normalize("NFD");
   const stored = await hashPasswordForStorage(decomposed);
-  assert.match(stored, /^cxpw\$v1\$sha256-bcrypt\$/);
+  assert.match(stored, /^cxpw\$v1\$nfc-sha256-bcrypt\$/);
   assert.equal(await verifyStoredPassword(composed, stored), true);
   assert.equal(await verifyStoredPassword(`${composed}!`, stored), false);
 
   const legacy = await bcrypt.hash("legacy-password-value", 4);
   const legacyVerification = await verifyPasswordForAuthentication("legacy-password-value", legacy);
   assert.equal(legacyVerification.valid, true);
-  assert.match(legacyVerification.upgradedHash || "", /^cxpw\$v1\$sha256-bcrypt\$/);
+  assert.match(legacyVerification.upgradedHash || "", /^cxpw\$v1\$nfc-sha256-bcrypt\$/);
   assert.equal(await verifyStoredPassword("legacy-password-value", legacyVerification.upgradedHash || ""), true);
   assert.deepEqual(await verifyPasswordForAuthentication("wrong", legacy), { valid: false, upgradedHash: null });
   assert.deepEqual(await verifyPasswordForAuthentication(composed, stored), { valid: true, upgradedHash: null });
   assert.equal(await verifyStoredPassword(composed, `cxpw$v2$sha256-bcrypt$${legacy}`), false);
+
+  const compatibilityPassword = "Compatibility remains distinct ﬀ in this password";
+  const compatibilityStored = await hashPasswordForStorage(compatibilityPassword);
+  assert.equal(await verifyStoredPassword(compatibilityPassword, compatibilityStored), true);
+  assert.equal(await verifyStoredPassword(compatibilityPassword.replace("ﬀ", "ff"), compatibilityStored), false);
+
+  const spacedPassword = "Spaces  remain exactly where entered";
+  const spacedStored = await hashPasswordForStorage(spacedPassword);
+  assert.equal(await verifyStoredPassword(spacedPassword, spacedStored), true);
+  assert.equal(await verifyStoredPassword(spacedPassword.replace("  ", " "), spacedStored), false);
+  assert.equal(await verifyStoredPassword(spacedPassword.toLocaleLowerCase("en-US"), spacedStored), false);
+
+  const longPrefix = "🧱".repeat(40);
+  const longStored = await hashPasswordForStorage(`${longPrefix}A`);
+  assert.equal(await verifyStoredPassword(`${longPrefix}A`, longStored), true);
+  assert.equal(await verifyStoredPassword(`${longPrefix}B`, longStored), false);
 });
 
 test("session UI is own-account scoped, localized, accessible, responsive, and confirmation governed", async () => {

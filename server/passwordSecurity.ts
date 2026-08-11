@@ -6,8 +6,8 @@ import {
   type PasswordPolicyContext,
 } from "@shared/passwordPolicy";
 
-const PREHASHED_PASSWORD_PREFIX = "cxpw$v1$sha256-bcrypt$";
-const PREHASH_DOMAIN = "CreteXchange password prehash v1\0";
+const PREHASHED_PASSWORD_PREFIX = "cxpw$v1$nfc-sha256-bcrypt$";
+const PREHASH_DOMAIN = "CreteXchange password prehash v1 nfc\0";
 const PASSWORD_HASH_ROUNDS = 12;
 const BCRYPT_HASH_PATTERN = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
 

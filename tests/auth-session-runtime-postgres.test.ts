@@ -95,11 +95,19 @@ test("default-off runtime foundation persists, authenticates, rotates, revokes, 
 
   try {
     const user = { id: userId, role: "owner" as const };
+    assert.deepEqual(await passwordSecurity.verifyPasswordForAuthentication("wrong legacy password", legacyPasswordHash), {
+      valid: false,
+      upgradedHash: null,
+    });
+    assert.equal((await verification.query("SELECT password_hash FROM users WHERE id=$1", [userId])).rows[0].password_hash, legacyPasswordHash);
     const legacyVerification = await passwordSecurity.verifyPasswordForAuthentication(legacyPassword, legacyPasswordHash);
     assert.equal(legacyVerification.valid, true);
-    assert.match(legacyVerification.upgradedHash || "", /^cxpw\$v1\$sha256-bcrypt\$/);
-    assert.equal(await storage.upgradeUserPasswordHash(userId, legacyPasswordHash, legacyVerification.upgradedHash || ""), true);
-    assert.equal(await storage.upgradeUserPasswordHash(userId, legacyPasswordHash, legacyVerification.upgradedHash || ""), false);
+    assert.match(legacyVerification.upgradedHash || "", /^cxpw\$v1\$nfc-sha256-bcrypt\$/);
+    const competingUpgradeHash = await passwordSecurity.hashPasswordForStorage(legacyPassword);
+    assert.deepEqual((await Promise.all([
+      storage.upgradeUserPasswordHash(userId, legacyPasswordHash, legacyVerification.upgradedHash || ""),
+      storage.upgradeUserPasswordHash(userId, legacyPasswordHash, competingUpgradeHash),
+    ])).sort(), [false, true]);
     const upgradedPasswordHash = (await verification.query("SELECT password_hash FROM users WHERE id=$1", [userId])).rows[0].password_hash;
     assert.equal(await passwordSecurity.verifyStoredPassword(legacyPassword.normalize("NFD"), upgradedPasswordHash), true);
     assert.deepEqual(await passwordSecurity.verifyPasswordForAuthentication(legacyPassword, upgradedPasswordHash), { valid: true, upgradedHash: null });
@@ -144,20 +152,30 @@ test("default-off runtime foundation persists, authenticates, rotates, revokes, 
 
     const resetToken = await foundation.createSecurePasswordResetToken(user, mockRequest({ method: "POST", requestId: "auth-runtime-reset-request" }));
     assert.equal((await verification.query("SELECT count(*)::int AS value FROM auth_password_reset_tokens WHERE token_hash=$1", [resetToken])).rows[0].value, 0);
-    const resetPassword = "Correct horse battery staple 🧱";
+    const resetPassword = "Correct horse battery staple Cafe\u0301 🧱";
     assert.equal(await foundation.consumeSecurePasswordResetToken(resetToken, resetPassword, mockRequest({ method: "POST", requestId: "auth-runtime-reset-complete" })), true);
     assert.equal(await foundation.consumeSecurePasswordResetToken(resetToken, "replay-hash", mockRequest({ method: "POST", requestId: "auth-runtime-reset-replay" })), false);
     const resetState = await verification.query("SELECT password_hash,auth_token_version FROM users WHERE id=$1", [userId]);
-    assert.match(resetState.rows[0].password_hash, /^cxpw\$v1\$sha256-bcrypt\$/);
-    assert.equal(await passwordSecurity.verifyStoredPassword(resetPassword, resetState.rows[0].password_hash), true);
+    assert.match(resetState.rows[0].password_hash, /^cxpw\$v1\$nfc-sha256-bcrypt\$/);
+    assert.equal(await passwordSecurity.verifyStoredPassword(resetPassword.normalize("NFC"), resetState.rows[0].password_hash), true);
     assert.equal(resetState.rows[0].auth_token_version, 1);
     assert.equal((await verification.query("SELECT count(*)::int AS value FROM auth_sessions WHERE revoked_at IS NULL")).rows[0].value, 0);
 
     const replacementResponse = mockResponse();
     const replacementRequest = mockRequest({ method: "POST", requestId: "auth-runtime-password-change" });
-    await foundation.updatePasswordAndRevokeSessions(user, "changed-hash", replacementRequest, replacementResponse);
+    const changedPassword = "Changed password keeps decomposed Cafe\u0301 🧱";
+    await foundation.updatePasswordAndRevokeSessions(
+      user,
+      await passwordSecurity.hashPasswordForStorage(changedPassword),
+      replacementRequest,
+      replacementResponse,
+    );
     assert.equal((await verification.query("SELECT count(*)::int AS value FROM auth_sessions WHERE revoked_at IS NULL")).rows[0].value, 1);
     assert.equal((await verification.query("SELECT auth_token_version FROM users WHERE id=$1", [userId])).rows[0].auth_token_version, 2);
+    assert.equal(await passwordSecurity.verifyStoredPassword(
+      changedPassword.normalize("NFC"),
+      (await verification.query("SELECT password_hash FROM users WHERE id=$1", [userId])).rows[0].password_hash,
+    ), true);
 
     const currentSessionId = (await verification.query("SELECT id FROM auth_sessions WHERE revoked_at IS NULL")).rows[0].id;
     await foundation.createAuthenticatedServerSession(user, mockRequest({ method: "POST", requestId: "auth-runtime-other-device" }), mockResponse(), "password_login");

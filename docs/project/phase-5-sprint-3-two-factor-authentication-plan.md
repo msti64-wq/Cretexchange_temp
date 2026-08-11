@@ -25,7 +25,7 @@ Founder decisions are recorded. Implement exact-match default-off server session
 
 #### Level 4 security closeout scope
 
-- NFKC-normalize the complete Unicode password consistently for policy measurement and the versioned/domain-separated SHA-256-before-bcrypt format `cxpw$v1$sha256-bcrypt$`.
+- NFC-normalize the complete Unicode password consistently for code-point policy measurement and the versioned/domain-separated SHA-256-before-bcrypt format `cxpw$v1$nfc-sha256-bcrypt$`; preserve case, whitespace, and compatibility characters.
 - Continue authenticating strict legacy bcrypt values and conditionally upgrade the stored value after successful login without double hashing or lockout.
 - Govern deactivation by token-version increment, active server-session revocation, and append-only audit; retain next-request role-snapshot revocation and legacy JWT token-version validation.
 - Keep cookie mode and bearer mode mutually exclusive under the exact default-off foundation flag; the active foundation requires a valid independent pepper and fails closed when it is missing.

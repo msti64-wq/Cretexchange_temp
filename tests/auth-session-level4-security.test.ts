@@ -35,9 +35,9 @@ function plan(mode: "plan" | "count" | "apply", extras: string[] = []): AuthSess
   ], environment);
 }
 
-test("password prehash format is versioned, domain-separated, strict, and Unicode canonical", () => {
-  assert.equal(passwordSecurityInternals.PREHASHED_PASSWORD_PREFIX, "cxpw$v1$sha256-bcrypt$");
-  assert.equal(passwordSecurityInternals.PREHASH_DOMAIN, "CreteXchange password prehash v1\0");
+test("password prehash format is versioned, NFC domain-separated, strict, and Unicode canonical", () => {
+  assert.equal(passwordSecurityInternals.PREHASHED_PASSWORD_PREFIX, "cxpw$v1$nfc-sha256-bcrypt$");
+  assert.equal(passwordSecurityInternals.PREHASH_DOMAIN, "CreteXchange password prehash v1 nfc\0");
   const composed = "Café bricks are safe 🧱";
   assert.equal(
     passwordSecurityInternals.prehashPassword(composed),
@@ -46,6 +46,10 @@ test("password prehash format is versioned, domain-separated, strict, and Unicod
   assert.notEqual(
     passwordSecurityInternals.prehashPassword(composed),
     passwordSecurityInternals.prehashPassword(`${composed}!`),
+  );
+  assert.notEqual(
+    passwordSecurityInternals.prehashPassword("Compatibility ﬀ password remains distinct"),
+    passwordSecurityInternals.prehashPassword("Compatibility ff password remains distinct"),
   );
 });
 
