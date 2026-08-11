@@ -1,5 +1,4 @@
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
 import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
 import { getJwtSecret } from "./jwtSecret";
@@ -15,9 +14,11 @@ import {
   listActiveUserSessions,
   recordAuthenticationFailure,
   revokeAllUserSessionsWithAudit,
+  revokeOtherUserSessionsWithAudit,
   revokeOwnedSessionWithAudit,
   revokeSessionFromRequest,
 } from "./authSessionFoundation";
+import { enforcePasswordPolicy, hashPasswordForStorage, isPasswordPolicyError, verifyStoredPassword } from "./passwordSecurity";
 
 const JWT_SECRET = getJwtSecret();
 
@@ -51,7 +52,7 @@ export async function setupAuth(app: Express) {
       }
 
       // Verify password
-      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+      const isValidPassword = await verifyStoredPassword(password, user.passwordHash);
       if (!isValidPassword) {
         console.log("Login attempt failed: invalid password");
         if (foundationEnabled) await recordAuthenticationFailure({ req, eventType: "login.failed", reasonCode: "invalid_credentials", subjectUserId: user.id, role: user.role });
@@ -127,8 +128,8 @@ export async function setupAuth(app: Express) {
         return res.status(400).json({ message: "Email already exists" });
       }
 
-      // Hash password
-      const passwordHash = await bcrypt.hash(password, 10);
+      enforcePasswordPolicy(password, { username, email, firstName, lastName });
+      const passwordHash = await hashPasswordForStorage(password);
 
       // Create user with all mandatory fields
       const newUser = await storage.createUser({
@@ -182,6 +183,7 @@ export async function setupAuth(app: Express) {
         ...(token ? { token, sessionMode: "legacy_bearer" } : { sessionMode: "server_cookie" }),
       });
     } catch (error) {
+      if (isPasswordPolicyError(error)) return res.status(400).json({ message: error.message, code: error.code });
       console.error("Registration error:", error);
       const errorMessage = (error as any).message || "Internal server error";
       console.error("Detailed error:", JSON.stringify(error, null, 2));
@@ -275,18 +277,13 @@ export async function setupAuth(app: Express) {
         return res.status(400).json({ message: "Token and new password are required" });
       }
 
-      if (password.length < 6) {
-        return res.status(400).json({ message: "Password must be at least 6 characters long" });
-      }
-
       if (foundationEnabled) {
         const limit = await consumeAuthenticationRateLimit("reset_password", req, token);
         if (!limit.allowed) {
           res.setHeader("Retry-After", String(limit.retryAfterSeconds));
           return res.status(429).json({ message: "Unable to reset the password right now. Please wait and try again." });
         }
-        const passwordHash = await bcrypt.hash(password, 10);
-        const consumed = await consumeSecurePasswordResetToken(token, passwordHash, req);
+        const consumed = await consumeSecurePasswordResetToken(token, password, req);
         if (!consumed) return res.status(400).json({ message: "Invalid or expired reset token" });
         clearAuthenticationCookies(res);
         return res.json({ message: "Password has been reset successfully" });
@@ -308,8 +305,8 @@ export async function setupAuth(app: Express) {
         return res.status(400).json({ message: "User not found" });
       }
 
-      // Hash new password
-      const passwordHash = await bcrypt.hash(password, 10);
+      enforcePasswordPolicy(password, user);
+      const passwordHash = await hashPasswordForStorage(password);
 
       // Update user password
       await storage.updateUserPassword(user.id, passwordHash);
@@ -320,6 +317,7 @@ export async function setupAuth(app: Express) {
       console.log("Password reset successfully");
       res.json({ message: "Password has been reset successfully" });
     } catch (error) {
+      if (isPasswordPolicyError(error)) return res.status(400).json({ message: error.message, code: error.code });
       console.error("Reset password error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
@@ -347,6 +345,17 @@ export async function setupAuth(app: Express) {
     const revoked = await revokeAllUserSessionsWithAudit({ user: req.user, req });
     clearAuthenticationCookies(res);
     return res.json({ message: "All sessions revoked", revoked });
+  });
+
+  app.post("/api/auth/sessions/sign-out-others", isAuthenticated, async (req: any, res) => {
+    if (!isAuthSessionFoundationEnabled()) return res.status(404).json({ message: "Session management is not enabled" });
+    if (!req.authSessionId) return res.status(403).json({ message: "Current session context is required" });
+    const revoked = await revokeOtherUserSessionsWithAudit({
+      user: req.user,
+      currentSessionId: req.authSessionId,
+      req,
+    });
+    return res.json({ message: "Other sessions revoked", revoked });
   });
 }
 

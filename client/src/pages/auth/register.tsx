@@ -13,6 +13,7 @@ import { ArrowLeft, Building2, User, Truck } from "lucide-react";
 import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { useLanguage } from "@/lib/i18n";
+import { validatePasswordPolicy } from "@shared/passwordPolicy";
 
 export default function Register({ preselectedRole }: { preselectedRole?: 'driver' | 'owner' }) {
   const { toast } = useToast();
@@ -54,6 +55,8 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
       if (data.password !== data.confirmPassword) {
         throw new Error(t("auth.register.passwordMismatch"));
       }
+      const passwordResult = validatePasswordPolicy(data.password, data);
+      if (!passwordResult.valid) throw new Error(t("password.policy.help"));
       
       const { confirmPassword, ...registerData } = data;
       const response = await apiRequest("POST", "/api/register", registerData);
@@ -88,7 +91,7 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
     onError: (error: any) => {
       toast({
         title: t("auth.register.failedTitle"),
-        description: t("auth.register.failedDescription"),
+        description: error.message || t("auth.register.failedDescription"),
         variant: "destructive",
       });
     },
@@ -328,8 +331,11 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
+                  minLength={15}
+                  maxLength={128}
                   data-testid="input-password"
                 />
+                <p className="text-xs text-muted-foreground">{t("password.policy.help")}</p>
               </div>
 
               <div className="space-y-2">
@@ -340,6 +346,8 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required
+                  minLength={15}
+                  maxLength={128}
                   data-testid="input-confirm-password"
                 />
               </div>

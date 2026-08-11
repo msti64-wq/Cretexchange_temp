@@ -1,9 +1,9 @@
 import { pathToFileURL } from "node:url";
-import bcrypt from "bcryptjs";
 import { and, eq, sql } from "drizzle-orm";
+import { validatePasswordPolicy } from "../shared/passwordPolicy";
+import { hashPasswordForStorage } from "../server/passwordSecurity";
 
 const CONFIRMATION = "prepare-staging-pilot-acceptance";
-const PASSWORD_HASH_ROUNDS = 10;
 const PARTICIPANTS = [
   { role: "driver", suffix: "driver" },
   { role: "owner", suffix: "owner" },
@@ -49,13 +49,16 @@ export function readStagingPilotAcceptanceContext(environment: NodeJS.ProcessEnv
   }
   const namespace = normalizedNamespace(environment.STAGING_PILOT_ACCEPTANCE_NAMESPACE || "pilot-acceptance");
   const password = requireEnvironment(environment, "STAGING_PILOT_ACCEPTANCE_PASSWORD");
-  if (password.length < 16) throw new Error("STAGING_PILOT_ACCEPTANCE_PASSWORD must be at least 16 characters.");
   const operator = requireEnvironment(environment, "STAGING_PILOT_ACCEPTANCE_OPERATOR");
   const participants = PARTICIPANTS.map(({ role, suffix }) => ({
     role,
     username: `${namespace}-${suffix}`,
     email: `${namespace}-${suffix}@cretexchange.invalid`,
   }));
+  for (const participant of participants) {
+    const policy = validatePasswordPolicy(password, participant);
+    if (!policy.valid) throw new Error(`STAGING_PILOT_ACCEPTANCE_PASSWORD: ${policy.message}`);
+  }
   return { namespace, password, operator, participants };
 }
 
@@ -129,7 +132,7 @@ async function run(): Promise<void> {
           eventMetadata: { target: "staging", role: input.role, action: input.action, namespace: input.namespace, operator: input.operator },
         });
       },
-      hashPassword: (password) => bcrypt.hash(password, PASSWORD_HASH_ROUNDS),
+      hashPassword: hashPasswordForStorage,
     }));
     console.log(`STAGING_PILOT_ACCEPTANCE_BOOTSTRAP created=${result.created.length} existing=${result.existing.length} target=staging`);
   } finally {

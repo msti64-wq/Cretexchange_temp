@@ -11,7 +11,7 @@ import { DriverHeader } from "@/components/DriverHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { DriverTermsDialog } from "@/components/DriverTermsDialog";
 import { DriverPayoutSettings } from "@/components/DriverPayoutSettings";
-import { User, Truck, Save, FileText, Eye, Smartphone, Gift } from "lucide-react";
+import { User, Truck, Save, FileText, Eye, Smartphone, Gift, ShieldCheck } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
@@ -20,10 +20,12 @@ import { hasHandledInstallPromptThisSession, markInstallPromptHandledThisSession
 import { formatLocalizedDate, useLanguage } from "@/lib/i18n";
 import { DSCard, DSStatusChip } from "@/components/design-system";
 import { resolveDriverAccountReadiness } from "@/lib/pilotOnboarding";
+import { useLocation } from "wouter";
 
 export default function DriverProfile() {
   const { toast } = useToast();
   const { language, t } = useLanguage();
+  const [, setLocation] = useLocation();
   const [isEditing, setIsEditing] = useState(false);
   const [showTermsDialog, setShowTermsDialog] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
@@ -556,6 +558,21 @@ export default function DriverProfile() {
                   {t("driver.profile.termsHelp")}
                 </p>
               </div>
+            </CardContent>
+          </DSCard>
+
+          <DSCard padding="lg" className="border-border/70 bg-card/90">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+                {t("security.sessions.link")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-foreground/75">{t("security.sessions.profileDescription")}</p>
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setLocation("/security/sessions")} data-testid="button-security-sessions">
+                {t("security.sessions.open")}
+              </Button>
             </CardContent>
           </DSCard>
 

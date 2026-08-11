@@ -83,6 +83,7 @@ test("default-off runtime foundation persists, authenticates, rotates, revokes, 
   process.env.AUTH_SESSION_HASH_PEPPER = "isolated-auth-session-pepper-material-2026";
   process.env.NODE_ENV = "test";
   const foundation = await import("../server/authSessionFoundation");
+  const passwordSecurity = await import("../server/passwordSecurity");
   const { pool } = await import("../server/db");
   const verification = new Client({ connectionString: databaseUrl });
   await verification.connect();
@@ -129,10 +130,12 @@ test("default-off runtime foundation persists, authenticates, rotates, revokes, 
 
     const resetToken = await foundation.createSecurePasswordResetToken(user, mockRequest({ method: "POST", requestId: "auth-runtime-reset-request" }));
     assert.equal((await verification.query("SELECT count(*)::int AS value FROM auth_password_reset_tokens WHERE token_hash=$1", [resetToken])).rows[0].value, 0);
-    assert.equal(await foundation.consumeSecurePasswordResetToken(resetToken, "new-hash", mockRequest({ method: "POST", requestId: "auth-runtime-reset-complete" })), true);
+    const resetPassword = "Correct horse battery staple 🧱";
+    assert.equal(await foundation.consumeSecurePasswordResetToken(resetToken, resetPassword, mockRequest({ method: "POST", requestId: "auth-runtime-reset-complete" })), true);
     assert.equal(await foundation.consumeSecurePasswordResetToken(resetToken, "replay-hash", mockRequest({ method: "POST", requestId: "auth-runtime-reset-replay" })), false);
     const resetState = await verification.query("SELECT password_hash,auth_token_version FROM users WHERE id=$1", [userId]);
-    assert.equal(resetState.rows[0].password_hash, "new-hash");
+    assert.match(resetState.rows[0].password_hash, /^cx-sha256-bcrypt\$/);
+    assert.equal(await passwordSecurity.verifyStoredPassword(resetPassword, resetState.rows[0].password_hash), true);
     assert.equal(resetState.rows[0].auth_token_version, 1);
     assert.equal((await verification.query("SELECT count(*)::int AS value FROM auth_sessions WHERE revoked_at IS NULL")).rows[0].value, 0);
 
@@ -141,6 +144,17 @@ test("default-off runtime foundation persists, authenticates, rotates, revokes, 
     await foundation.updatePasswordAndRevokeSessions(user, "changed-hash", replacementRequest, replacementResponse);
     assert.equal((await verification.query("SELECT count(*)::int AS value FROM auth_sessions WHERE revoked_at IS NULL")).rows[0].value, 1);
     assert.equal((await verification.query("SELECT auth_token_version FROM users WHERE id=$1", [userId])).rows[0].auth_token_version, 2);
+
+    const currentSessionId = (await verification.query("SELECT id FROM auth_sessions WHERE revoked_at IS NULL")).rows[0].id;
+    await foundation.createAuthenticatedServerSession(user, mockRequest({ method: "POST", requestId: "auth-runtime-other-device" }), mockResponse(), "password_login");
+    assert.equal((await foundation.listActiveUserSessions(userId, currentSessionId)).length, 2);
+    assert.equal(await foundation.revokeOtherUserSessionsWithAudit({
+      user,
+      currentSessionId,
+      req: mockRequest({ method: "POST", requestId: "auth-runtime-revoke-others" }),
+    }), 1);
+    assert.equal((await foundation.listActiveUserSessions(userId, currentSessionId)).length, 1);
+    assert.equal((await verification.query("SELECT count(*)::int AS value FROM auth_security_events WHERE event_type='session.revoked_others'")).rows[0].value, 1);
 
     for (let attempt = 0; attempt < 10; attempt += 1) {
       assert.equal((await foundation.consumeAuthenticationRateLimit("login", mockRequest({ ip: "127.0.0.2" }), "bounded-user")).allowed, true);

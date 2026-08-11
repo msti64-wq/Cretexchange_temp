@@ -24,7 +24,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 const createAdminSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(15, "Password must be at least 15 characters").max(128, "Password must be no more than 128 characters"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
 });
@@ -632,8 +632,9 @@ export default function AdminUsers() {
                           <FormItem>
                             <FormLabel>Password</FormLabel>
                             <FormControl>
-                              <PasswordInput placeholder="Enter password" {...field} data-testid="input-admin-password" />
+                              <PasswordInput placeholder="Enter a password of at least 15 characters" minLength={15} maxLength={128} {...field} data-testid="input-admin-password" />
                             </FormControl>
+                            <p className="text-xs text-muted-foreground">Spaces and Unicode are allowed. Avoid common passwords and account details.</p>
                             <FormMessage />
                           </FormItem>
                         )}

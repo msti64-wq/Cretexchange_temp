@@ -7,7 +7,7 @@ const environment = {
   RAILWAY_ENVIRONMENT_NAME: "staging",
   STAGING_ADMIN_BOOTSTRAP_CONFIRM: "bootstrap-staging-admin",
   STAGING_ADMIN_EMAIL: "staging-release-admin@cretexchange.test",
-  STAGING_ADMIN_PASSWORD: "staging-only-password",
+  STAGING_ADMIN_PASSWORD: "River stones remain quiet at sunrise 47!",
   STAGING_ADMIN_BOOTSTRAP_OPERATOR: "release-engineering",
 };
 
@@ -30,7 +30,7 @@ test("staging admin bootstrap creates a normal Admin and records sanitized audit
   assert.equal(result.action, "created");
   assert.equal(result.user.role, "admin");
   assert.match(calls[0], /staging_admin_bootstrap_created/);
-  assert.doesNotMatch(calls[0], /staging-only-password/);
+  assert.doesNotMatch(calls[0], /River stones/);
 });
 
 test("staging admin bootstrap is idempotent and never resets an existing administrative credential", async () => {

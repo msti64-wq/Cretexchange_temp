@@ -9,9 +9,12 @@ import { apiRequest } from "@/lib/queryClient";
 import { useLocation, Link } from "wouter";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
+import { useLanguage } from "@/lib/i18n";
+import { validatePasswordPolicy } from "@shared/passwordPolicy";
 
 export default function ResetPassword() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const [, setLocation] = useLocation();
   const [token, setToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -70,10 +73,11 @@ export default function ResetPassword() {
       return;
     }
 
-    if (formData.password.length < 6) {
+    const passwordResult = validatePasswordPolicy(formData.password);
+    if (!passwordResult.valid) {
       toast({
-        title: "Password Too Short",
-        description: "Password must be at least 6 characters long.",
+        title: t("password.policy.invalidTitle"),
+        description: t("password.policy.help"),
         variant: "destructive",
       });
       return;
@@ -121,6 +125,8 @@ export default function ResetPassword() {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
+                    minLength={15}
+                    maxLength={128}
                     data-testid="input-new-password"
                   />
                   <Button
@@ -170,7 +176,7 @@ export default function ResetPassword() {
               </div>
 
               <div className="text-xs text-muted-foreground">
-                Password must be at least 6 characters long.
+                {t("password.policy.help")}
               </div>
 
               <Button 

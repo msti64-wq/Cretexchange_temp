@@ -2,7 +2,6 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
 import Stripe from "stripe";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage";
 import {
@@ -28,6 +27,7 @@ import {
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
 import { isAuthSessionFoundationEnabled, updatePasswordAndRevokeSessions } from "./authSessionFoundation";
+import { enforcePasswordPolicy, hashPasswordForStorage, isPasswordPolicyError, verifyStoredPassword } from "./passwordSecurity";
 import { isFinancialExecutionEnabled, resolveRuntimeEnvironment } from "./runtimeEnvironment";
 import { getJwtSecret } from "./jwtSecret";
 import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, getPhotoReadProviderSelection, getPhotoUploadProviderSelection, objectStorageClient, signObjectURL, signUploadObjectURL } from "./objectStorage";
@@ -2515,8 +2515,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email already exists" });
       }
 
-      // Hash password
-      const passwordHash = await bcrypt.hash(password, 10);
+      enforcePasswordPolicy(password, { username, email, firstName, lastName });
+      const passwordHash = await hashPasswordForStorage(password);
 
       // Create user
       const newUser = await storage.createUser({
@@ -2555,6 +2555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error: any) {
+      if (isPasswordPolicyError(error)) return res.status(400).json({ message: error.message, code: error.code });
       console.error("Registration error:", error);
       res.status(500).json({ message: "Registration failed: " + error.message });
     }
@@ -11358,8 +11359,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Hash password
-      const bcrypt = require('bcryptjs');
-      const passwordHash = await bcrypt.hash(password, 10);
+      enforcePasswordPolicy(password, { username, email, firstName, lastName });
+      const passwordHash = await hashPasswordForStorage(password);
 
       const newAdmin = await storage.createAdminUser({
         username,
@@ -11371,6 +11372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ message: "Admin user created successfully", admin: { id: newAdmin.id, username: newAdmin.username, email: newAdmin.email } });
     } catch (error) {
+      if (isPasswordPolicyError(error)) return res.status(400).json({ message: error.message, code: error.code });
       console.error("Error creating admin user:", error);
       res.status(500).json({ message: "Failed to create admin user" });
     }
@@ -15149,10 +15151,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Current password and new password are required" });
       }
 
-      if (newPassword.length < 6) {
-        return res.status(400).json({ message: "New password must be at least 6 characters long" });
-      }
-
       // Get current user
       const user = await storage.getUser(userId);
       if (!user) {
@@ -15160,13 +15158,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify current password
-      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      const isCurrentPasswordValid = await verifyStoredPassword(currentPassword, user.passwordHash);
       if (!isCurrentPasswordValid) {
         return res.status(400).json({ message: "Current password is incorrect" });
       }
 
-      // Hash new password
-      const newPasswordHash = await bcrypt.hash(newPassword, 10);
+      enforcePasswordPolicy(newPassword, user);
+      const newPasswordHash = await hashPasswordForStorage(newPassword);
 
       if (isAuthSessionFoundationEnabled()) {
         await updatePasswordAndRevokeSessions(user, newPasswordHash, req, res);
@@ -15181,6 +15179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ message: "Password changed successfully" });
     } catch (error) {
+      if (isPasswordPolicyError(error)) return res.status(400).json({ message: error.message, code: error.code });
       console.error("Error changing password:", error);
       res.status(500).json({ message: "Failed to change password" });
     }
@@ -15213,7 +15212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify current password
-      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      const isCurrentPasswordValid = await verifyStoredPassword(currentPassword, user.passwordHash);
       if (!isCurrentPasswordValid) {
         return res.status(400).json({ message: "Current password is incorrect" });
       }

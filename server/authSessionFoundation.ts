@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Request, Response } from "express";
-import { and, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, ne, sql } from "drizzle-orm";
 import {
   authPasswordResetTokens,
   authRateLimitBuckets,
@@ -10,6 +10,7 @@ import {
   type User,
 } from "@shared/schema";
 import { db } from "./db";
+import { enforcePasswordPolicy, hashPasswordForStorage } from "./passwordSecurity";
 import {
   AUTH_CSRF_COOKIE,
   AUTH_CSRF_HEADER,
@@ -496,6 +497,37 @@ export async function revokeAllUserSessionsWithAudit(input: {
   });
 }
 
+export async function revokeOtherUserSessionsWithAudit(input: {
+  user: Pick<User, "id" | "role">;
+  currentSessionId: string;
+  req: Request;
+}): Promise<number> {
+  const pepper = getAuthSessionHashPepper();
+  return db.transaction(async (tx) => {
+    const rows = await tx.update(authSessions).set({
+      revokedAt: new Date(),
+      revocationReason: "user_signed_out_other_devices",
+    }).where(and(
+      eq(authSessions.userId, input.user.id),
+      ne(authSessions.id, input.currentSessionId),
+      isNull(authSessions.revokedAt),
+    )).returning({ id: authSessions.id });
+    await insertSecurityEvent(tx, {
+      eventType: "session.revoked_others",
+      outcome: "success",
+      reasonCode: "user_signed_out_other_devices",
+      actorUserId: input.user.id,
+      subjectUserId: input.user.id,
+      sessionId: input.currentSessionId,
+      requestReference: requestReference(input.req),
+      networkKeyHash: requestNetworkHash(input.req, pepper),
+      role: input.user.role,
+      metadata: { revokedCount: rows.length },
+    });
+    return rows.length;
+  });
+}
+
 function rateLimitKey(action: AuthenticationRateLimitAction, scope: string, value: string, pepper: string): string {
   return hashAuthenticationSecret(`rate:${action}:${scope}:${value.trim().toLowerCase()}`, pepper);
 }
@@ -611,7 +643,7 @@ export async function createSecurePasswordResetToken(user: Pick<User, "id" | "ro
   return rawToken;
 }
 
-export async function consumeSecurePasswordResetToken(rawToken: string, passwordHash: string, req: Request): Promise<boolean> {
+export async function consumeSecurePasswordResetToken(rawToken: string, password: string, req: Request): Promise<boolean> {
   const pepper = getAuthSessionHashPepper();
   const tokenHash = hashAuthenticationSecret(rawToken, pepper);
   const ref = requestReference(req);
@@ -626,6 +658,8 @@ export async function consumeSecurePasswordResetToken(rawToken: string, password
     const record = rows[0];
     const now = new Date();
     if (!record || record.reset.consumedAt || record.reset.revokedAt || record.reset.expiresAt <= now) return false;
+    enforcePasswordPolicy(password, record.user);
+    const passwordHash = await hashPasswordForStorage(password);
     await tx.update(users).set({
       passwordHash,
       authTokenVersion: sql`${users.authTokenVersion} + 1`,

@@ -7,7 +7,7 @@ const environment = {
   RAILWAY_ENVIRONMENT_NAME: "staging",
   PILOT_ACCEPTANCE_CONFIRM: "prepare-staging-pilot-acceptance",
   STAGING_PILOT_ACCEPTANCE_NAMESPACE: "pilot-acceptance-test",
-  STAGING_PILOT_ACCEPTANCE_PASSWORD: "staging-only-password-with-length",
+  STAGING_PILOT_ACCEPTANCE_PASSWORD: "River stones remain quiet at sunrise 47!",
   STAGING_PILOT_ACCEPTANCE_OPERATOR: "release-engineering",
 };
 
@@ -33,7 +33,7 @@ test("staging pilot acceptance bootstrap creates distinct roles and audited role
   assert.match(calls.join("|"), /driver:driver/);
   assert.match(calls.join("|"), /owner:owner/);
   assert.equal(calls.filter((item) => item.startsWith("audit:")).length, 4);
-  assert.doesNotMatch(calls.join("|"), /staging-only-password/);
+  assert.doesNotMatch(calls.join("|"), /River stones/);
 });
 
 test("staging pilot acceptance bootstrap is idempotent and never changes an existing identity", async () => {

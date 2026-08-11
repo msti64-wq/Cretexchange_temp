@@ -8,14 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { MobileNav } from "@/components/MobileNav";
-import { User, Settings, Save, AlertCircle, Crown, Lock, Eye, EyeOff, Mail } from "lucide-react";
+import { User, Settings, Save, AlertCircle, Crown, Lock, Eye, EyeOff, Mail, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { LogoutButton } from "@/components/LogoutButton";
+import { useLanguage } from "@/lib/i18n";
+import { validatePasswordPolicy } from "@shared/passwordPolicy";
 
 export default function AdminProfile() {
   const { toast } = useToast();
+  const { t } = useLanguage();
   const { logout, user: authUser } = useAuth();
   const [, setLocation] = useLocation();
   const [showChangeEmail, setShowChangeEmail] = useState(false);
@@ -148,10 +151,11 @@ export default function AdminProfile() {
       return;
     }
 
-    if (passwordData.newPassword.length < 6) {
+    const policy = validatePasswordPolicy(passwordData.newPassword, user as any);
+    if (!policy.valid) {
       toast({
-        title: "Password Too Short",
-        description: "Password must be at least 6 characters long.",
+        title: t("password.policy.invalidTitle"),
+        description: t("password.policy.help"),
         variant: "destructive",
       });
       return;
@@ -470,7 +474,9 @@ export default function AdminProfile() {
                           type={showNewPassword ? "text" : "password"}
                           value={passwordData.newPassword}
                           onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
-                          placeholder="Enter new password (min 6 characters)"
+                          placeholder={t("password.policy.placeholder")}
+                          minLength={15}
+                          maxLength={128}
                           className="pr-10"
                           data-testid="input-new-password"
                         />
@@ -526,7 +532,7 @@ export default function AdminProfile() {
                         <div>
                           <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Security Tip</p>
                           <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                            Use a strong password with at least 6 characters. Include uppercase, lowercase, numbers, and special characters.
+                            {t("password.policy.help")}
                           </p>
                         </div>
                       </div>
@@ -558,6 +564,12 @@ export default function AdminProfile() {
                   </form>
                 </DialogContent>
               </Dialog>
+            </div>
+            <div className="pt-4 border-t">
+              <Button type="button" variant="outline" className="w-full" onClick={() => setLocation("/security/sessions")} data-testid="button-security-sessions">
+                <ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />
+                {t("security.sessions.link")}
+              </Button>
             </div>
           </CardContent>
         </Card>

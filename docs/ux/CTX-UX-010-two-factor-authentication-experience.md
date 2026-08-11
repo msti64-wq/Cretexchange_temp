@@ -1,8 +1,8 @@
 # CTX-UX-010 — Two-Factor Authentication Experience
 
 - **Document ID:** CTX-UX-010
-- **Version:** 0.2
-- **Status:** Founder-approved direction; Work Package 0 has API foundations only and no new UI is activated
+- **Version:** 0.3
+- **Status:** Founder-approved direction; Work Package 0 includes a controlled-branch Security & Sessions interface and remains inactive/not deployed
 - **Owner:** CreteXchange Product and Experience
 - **Product:** CreteXchange
 - **Date:** 2026-08-11
@@ -23,11 +23,13 @@ At a separately authorized cutover:
 - expired, idle, revoked, inactive-account, or role-changed sessions return neutral sign-in guidance;
 - logout revokes the server session before local UI cleanup;
 - password reset/change revokes existing sessions and requires fresh authenticated state;
-- session-management foundations can list broad device type and safe timestamps, revoke one owned session, and sign out all devices without showing IP address or a full user agent;
+- session management lists broad device type and safe timestamps, identifies the current session, revokes another owned session, signs out all other devices, or signs out all devices without showing IP address or a full user agent;
 - loading or failure never displays a false authenticated state; and
 - the browser sends credentials and CSRF proof without exposing the HttpOnly session token to JavaScript.
 
-The session-management user interface is a separate Founder decision. Its server APIs exist in Work Package 0, but no new screen is introduced or activated by this package.
+The Founder-approved Security & Sessions screen is linked from every role's Profile experience. It is responsive, English/Spanish, keyboard and screen-reader operable, and uses confirmation dialogs with Cancel as the safe default. It exposes only the signed-in user's session summaries. Loading, empty, disabled-foundation, error/retry, success, and revocation states never claim success before the governed API returns.
+
+New and changed password forms explain the 15–128 character policy: spaces and Unicode are allowed; arbitrary composition and periodic-reset rules are absent; common/compromised and account-context-specific choices are rejected. Existing users are not interrupted solely because an existing password predates the policy.
 
 ## 3. Enrollment
 
@@ -48,7 +50,7 @@ Sensitive actions use a compact recent-verification dialog or page. It names the
 
 ## 5. Recovery and device management
 
-Account Security shows factor status, enrollment time, recovery-code availability count without values, active sessions, and trusted devices only if that later feature is approved. Users can revoke individual sessions and all other sessions.
+Account Security shows factor status, enrollment time, recovery-code availability count without values, active sessions, and trusted devices only if that later feature is approved. The Work Package 0 Sessions screen already permits revoking an individual other session, all other sessions, and all sessions. It does not give Admin a cross-user session browser.
 
 Lost-device recovery offers:
 
@@ -109,3 +111,4 @@ Founder acceptance is separate for Super Admin, Admin, Owner, and Driver. Passin
 | --- | --- | --- |
 | 0.1 | 2026-08-11 | Initial 2FA discovery and UX planning document. |
 | 0.2 | 2026-08-11 | Recorded Founder decisions and Work Package 0 forced-sign-in, session, CSRF, privacy, and compatibility experience. |
+| 0.3 | 2026-08-11 | Recorded the approved localized Sessions screen, mobile/accessibility behavior, confirmation states, and password-policy experience. |

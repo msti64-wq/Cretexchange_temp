@@ -1,9 +1,8 @@
 import { pathToFileURL } from "node:url";
-import bcrypt from "bcryptjs";
 import { sql } from "drizzle-orm";
 import { users } from "../shared/schema";
+import { enforcePasswordPolicy, hashPasswordForStorage } from "../server/passwordSecurity";
 
-const PASSWORD_HASH_ROUNDS = 10;
 
 type AdminResult = {
   id: string;
@@ -66,14 +65,12 @@ export async function runCreateSuperadmin(): Promise<void> {
   const firstName = optionalTrimmedEnv("SUPERADMIN_FIRST_NAME") ?? "Super";
   const lastName = optionalTrimmedEnv("SUPERADMIN_LAST_NAME") ?? "Admin";
 
-  if (password.length < 12) {
-    throw new Error("SUPERADMIN_PASSWORD must be at least 12 characters");
-  }
+  enforcePasswordPolicy(password, { username, email, firstName, lastName });
 
   const { db, pool } = await import("../server/db");
 
   try {
-    const passwordHash = await bcrypt.hash(password, PASSWORD_HASH_ROUNDS);
+    const passwordHash = await hashPasswordForStorage(password);
 
     const [existingByEmail] = await db
       .select(adminResultColumns)

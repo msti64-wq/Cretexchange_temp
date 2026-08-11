@@ -17,6 +17,7 @@ const Register = lazy(() => import("@/pages/auth/register"));
 const ResetPassword = lazy(() => import("@/pages/auth/reset-password"));
 const OldRegister = lazy(() => import("@/pages/register"));
 const PrivacyPolicy = lazy(() => import("@/pages/privacy-policy"));
+const SecuritySessions = lazy(() => import("@/pages/security/sessions"));
 
 // Driver pages
 const DriverDashboard = lazy(() => import("@/pages/driver/dashboard"));
@@ -138,6 +139,7 @@ function Router() {
           <Route path="/messages" component={DriverNotifications} />
           <Route path="/notifications" component={DriverNotifications} />
           <Route path="/profile" component={DriverProfile} />
+          <Route path="/security/sessions" component={SecuritySessions} />
           <Route path="/reports" component={DriverReports} />
           <Route path="/rewards" component={DriverRewards} />
           <Route path="/driver/rewards" component={DriverRewards} />
@@ -164,6 +166,7 @@ function Router() {
             <Route path="/wallet" component={OwnerWallet} />
             <Route path="/notifications" component={OwnerNotifications} />
             <Route path="/profile" component={OwnerProfile} />
+            <Route path="/security/sessions" component={SecuritySessions} />
             <Route path="/subscribe" component={OwnerSubscribe} />
             <Route path="/payment-methods" component={OwnerPaymentMethods} />
             <Route path="/reports" component={OwnerReports} />
@@ -210,6 +213,7 @@ function Router() {
             <Route path="/network-intelligence" component={NetworkIntelligence} />
             <Route path="/settings" component={AdminSettings} />
             <Route path="/profile" component={AdminProfile} />
+            <Route path="/security/sessions" component={SecuritySessions} />
             <Route path="/service-accounts" component={ServiceAccountsPage} />
             <Route component={NotFound} />
           </Switch>

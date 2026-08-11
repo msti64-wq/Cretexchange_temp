@@ -86,6 +86,7 @@ await import("./platform-terminology.test.ts");
 await import("./facility-geofence-service.test.ts");
 await import("./facility-geofence-foundation.test.ts");
 await import("./auth-session-foundation.test.ts");
+await import("./auth-session-completion.test.ts");
 
 test("billing policy resolver treats blank and null as defaults and zero as an override", () => {
   const platform = {
@@ -2829,7 +2830,7 @@ test("public registration allows driver and owner profiles only", async () => {
             body: {
               username: `${role}user`,
               email: `${role}@example.com`,
-              password: "password",
+              password: "Orbit lantern river 2048",
               firstName: "Allowed",
               lastName: "User",
               role,

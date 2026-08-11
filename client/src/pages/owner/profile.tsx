@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { MobileNav } from "@/components/MobileNav";
-import { Building2, CreditCard, Save, AlertCircle, Crown, Lock, Eye, EyeOff, ExternalLink, CheckCircle2, XCircle } from "lucide-react";
+import { Building2, CreditCard, Save, AlertCircle, Crown, Lock, Eye, EyeOff, ExternalLink, CheckCircle2, XCircle, ShieldCheck } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -19,6 +19,7 @@ import { LogoutButton } from "@/components/LogoutButton";
 import { useLanguage } from "@/lib/i18n";
 import { resolveFacilityReadinessChecklist, type FacilityReadinessStepId } from "@/lib/pilotOnboarding";
 import { resolveOwnerLocationAccessState } from "@shared/ownerLocationAccess";
+import { validatePasswordPolicy } from "@shared/passwordPolicy";
 
 export default function OwnerProfile() {
   const { toast } = useToast();
@@ -212,10 +213,11 @@ export default function OwnerProfile() {
       return;
     }
 
-    if (passwordData.newPassword.length < 6) {
+    const policy = validatePasswordPolicy(passwordData.newPassword, user);
+    if (!policy.valid) {
       toast({
-        title: "Password Too Short",
-        description: "Password must be at least 6 characters long.",
+        title: t("password.policy.invalidTitle"),
+        description: t("password.policy.help"),
         variant: "destructive",
       });
       return;
@@ -600,7 +602,8 @@ export default function OwnerProfile() {
                             value={passwordData.newPassword}
                             onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
                             required
-                            minLength={6}
+                            minLength={15}
+                            maxLength={128}
                             data-testid="input-new-password"
                           />
                           <Button
@@ -614,7 +617,7 @@ export default function OwnerProfile() {
                           </Button>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Must be at least 6 characters long
+                          {t("password.policy.help")}
                         </p>
                       </div>
 
@@ -666,11 +669,15 @@ export default function OwnerProfile() {
                 </Dialog>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="text-sm text-muted-foreground">
                 <p>{t("owner.profile.passwordHelp")}</p>
                 <p className="mt-1">{t("owner.profile.lastUpdatedNever")}</p>
               </div>
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setLocation("/security/sessions")} data-testid="button-security-sessions">
+                <ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />
+                {t("security.sessions.link")}
+              </Button>
             </CardContent>
           </Card>
 

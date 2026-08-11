@@ -1,4 +1,3 @@
-import bcrypt from "bcryptjs";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
@@ -6,6 +5,7 @@ import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import type { User } from "../shared/schema";
+import { enforcePasswordPolicy, hashPasswordForStorage, isPasswordPolicyError, verifyStoredPassword } from "./passwordSecurity";
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -44,7 +44,7 @@ export async function setupAuth(app: Express) {
           return done(null, false, { message: "Account is inactive" });
         }
 
-        const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+        const isValidPassword = await verifyStoredPassword(password, user.passwordHash);
         if (!isValidPassword) {
           return done(null, false, { message: "Invalid password" });
         }
@@ -119,8 +119,8 @@ export async function setupAuth(app: Express) {
         return res.status(400).json({ message: "Email already exists" });
       }
 
-      // Hash password
-      const passwordHash = await bcrypt.hash(password, 10);
+      enforcePasswordPolicy(password, { username, email, firstName, lastName });
+      const passwordHash = await hashPasswordForStorage(password);
 
       // Create user
       const newUser = await storage.createUser({
@@ -143,6 +143,7 @@ export async function setupAuth(app: Express) {
         return res.json({ message: "Registration successful", user: userWithoutPassword });
       });
     } catch (error: unknown) {
+      if (isPasswordPolicyError(error)) return res.status(400).json({ message: error.message, code: error.code });
       console.error("Registration error:", error);
       const errorMessage = error instanceof Error ? error.message : "Internal server error";
       console.error("Detailed error:", JSON.stringify(error, null, 2));

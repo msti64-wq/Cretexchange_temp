@@ -19,7 +19,7 @@ No partial MFA service or schema exists. The repository contains only a reusable
 
 ### Work Package 0 — Revocable session and authentication-security foundation — implementation checkpoint
 
-Founder decisions are recorded. Implement exact-match default-off server sessions, opaque token/CSRF cookies, resistant server hashes, role-bounded absolute/idle expiry, rotation and revocation, hashed single-use password-reset tokens, token-version invalidation, authentication rate limits, same-origin and CSRF controls, append-only security events, 24-month/seven-year retention, 90-day detailed-network minimization, and session list/revoke APIs.
+Founder decisions are recorded. Implement exact-match default-off server sessions, opaque token/CSRF cookies, resistant server hashes, approved role-bounded absolute/idle expiry, rotation and revocation, hashed single-use password-reset tokens, token-version invalidation, authentication rate limits, same-origin and CSRF controls, append-only security events, 24-month/seven-year retention, 90-day detailed-network minimization, and session list/revoke APIs plus the minimal English/Spanish Security & Sessions interface. Apply the approved 15–128 character policy to new and changed passwords without forcing existing-password resets.
 
 **Gate:** Level 3 controlled-branch validation; exact migration checksum and Level 4 release authorization remain separate. No TOTP, user enrollment, Production migration, configuration, cutover, merge, or deployment.
 
@@ -54,7 +54,7 @@ Founder chooses whether to require 2FA for Owner/Driver, retain opt-in, or begin
 ## Additive migration and release sequence
 
 1. Complete Level 3 branch validation: disposable PostgreSQL rollback/reapplication, constraints, indexes, concurrency, append-only audit, retention functions, zero inferred backfill, focused security tests, TypeScript, Production build, full suite, privacy/RBAC/workflow/financial review, and exact checksum.
-2. Obtain Founder approval of the branch SHA, migration checksum, 24-hour Owner/Driver idle recommendation, Railway session-hash key ceremony, legacy-token invalidation operation, recovery checkpoint, cutover window, and rollback command sequence.
+2. Obtain Founder approval of the final branch SHA, migration checksum, Railway session-hash key ceremony, legacy-token invalidation operation, recovery checkpoint, cutover window, and rollback command sequence. The seven-day absolute/24-hour idle Owner/Driver policy is approved.
 3. Create and verify a permanent governed Production database recovery checkpoint.
 4. Apply checksum-approved migration `0042` through a separately approved controlled runner; verify all four tables, constraints, indexes, functions, trigger, and zero rows.
 5. Merge and deploy the exact validated SHA with `AUTH_SESSION_FOUNDATION_ENABLED` absent/false. No behavior changes at this step.
@@ -96,14 +96,18 @@ Founder chooses whether to require 2FA for Owner/Driver, retain opt-in, or begin
 5. Single-use hashed recovery codes; privileged two-person, no-self-approval recovery; 24-hour delay; two-custodian Super Admin break-glass.
 6. Versioned Railway-held authenticated encryption for TOTP secrets; Node crypto preferred; resistant hashes for recovery/session material; `otpauth` preferred pending review.
 7. Routine events 24 months; privileged events seven years; detailed network/device data no more than 90 days.
+8. Owner/Driver sessions use a seven-day absolute and 24-hour inactivity limit.
+9. Work Package 0 includes a minimal privacy-safe Sessions page and a 15–128 character password policy with spaces/Unicode, local compromised/context checks, no composition rule, and no periodic reset.
+10. Routine Owner/Driver recovery targets one business day; Admin recovery uses Super Admin plus one authorized approver with a 24-hour delay.
+11. Jonathan Stiger and Joe Kelly are the two independent joint Founder/Super Admin break-glass custodians; designation grants no system access and activation awaits separate acknowledgment and out-of-band preparation.
+12. Future TOTP keys use versioned Railway-held authenticated encryption with current/previous key support; no key is generated in Work Package 0.
 
 ## Remaining Founder decisions
 
-1. Accept or revise the 24-hour Owner/Driver inactivity limit.
-2. Approve the exact Work Package 0 SHA, migration checksum, controlled runner update if needed, recovery checkpoint, Railway hash-pepper ceremony, legacy-token invalidation transaction, release/cutover window, and rollback sequence.
-3. Decide whether the session-list UI ships at cutover or later; APIs are in the foundation.
-4. Approve stronger password-policy scope separately.
-5. Before Work Package 1, approve `otpauth`, versioned TOTP key rotation, identity-proof evidence, recovery-role mapping, two custodian names, service targets, and test cadence.
+1. Approve the exact Work Package 0 SHA, migration checksum, controlled runner update if needed, recovery checkpoint, Railway hash-pepper ceremony, legacy-token invalidation transaction, release/cutover window, and rollback sequence.
+2. Confirm both custodians acknowledge their roles and receive secure out-of-band instructions/material before privileged enforcement.
+3. Assign the authorized Admin-recovery approver role and approve evidence standards, escalation thresholds, and periodic test cadence.
+4. Before Work Package 1, complete the pinned `otpauth` license, maintenance, vulnerability, transitive-dependency, and package-lock review and approve the key-rotation ceremony.
 
 ## Explicitly not authorized
 

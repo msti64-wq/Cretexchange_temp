@@ -1,7 +1,7 @@
 # CTX-ARCH-017 — Two-Factor Authentication Architecture
 
 - **Document ID:** CTX-ARCH-017
-- **Version:** 0.2
+- **Version:** 0.3
 - **Status:** Founder-approved direction; Work Package 0 implemented on a controlled branch, not activated or deployed
 - **Owner:** CreteXchange Product, Security, and Engineering
 - **Product:** CreteXchange
@@ -43,7 +43,9 @@ The active application authentication path is `server/tokenAuth.ts`, registered 
 
 The controlled branch adds an inactive compatibility path that replaces the browser bearer credential with an opaque server session only when `AUTH_SESSION_FOUNDATION_ENABLED` equals `true`. It is false when absent and is not configured for Production. The server stores HMAC-SHA-256 hashes of session, CSRF, reset, rate-limit, and bounded network keys; the raw session token exists only in a Secure, HttpOnly, SameSite cookie. The companion CSRF cookie is readable only so the browser can submit the double-submit header. No TOTP factor or secret exists in Work Package 0.
 
-Session policy is 24-hour absolute/one-hour idle for Admin and Super Admin, and seven-day absolute/24-hour idle for Owner and Driver. The 24-hour Owner/Driver idle value is the implementation recommendation and remains a Founder cutover-acceptance item.
+Session policy is 24-hour absolute/one-hour idle for Admin and Super Admin, and the Founder-approved seven-day absolute/24-hour idle policy for Owner and Driver. A localized, responsive Security & Sessions page lists only the signed-in user's privacy-safe session summaries and supports revoking another session, all other sessions, or all sessions. No Admin receives an unrestricted cross-user session browser.
+
+New and changed passwords use the Founder-approved 15–128 character policy, permit spaces and supported Unicode, impose no composition or periodic-change rule, and reject a deterministic local set of compromised/common choices plus context-specific values derived from the account. Existing hashes remain verifiable and are not force-reset solely for the policy change. New hashes prehash the complete UTF-8 password with SHA-256 before bcrypt so bcrypt's input boundary cannot silently truncate long or multibyte passwords; the stored format is version-marked for legacy compatibility.
 
 ## 3. Recommended initial method
 
@@ -98,6 +100,7 @@ The migration creates no session, reset token, audit event, rate bucket, enrolle
 - Prevent acceptance of the same TOTP time step more than once for the same factor/challenge.
 - Keep server time monitored; fail safely when clock integrity cannot be trusted.
 - `otpauth` remains the preferred server-only TOTP candidate, subject to final license, maintenance, dependency, and supply-chain review. It is not added by Work Package 0.
+- Future TOTP authenticated-encryption keys are versioned Railway secrets. The reader must support the current and immediately previous version during a controlled rotation. No Production key is generated or configured by Work Package 0.
 
 ## 7. Rate limiting and lockout protection
 
@@ -113,7 +116,10 @@ A failed challenge is locked or expires without permanently locking the account.
 - Lost-device recovery prefers an unused recovery code. A future second factor may be added only through separate approval.
 - Admin assistance never reveals, generates, or accepts an OTP on the participant’s behalf.
 - A governed reset requires identity proof, separation of duties for privileged accounts, a bounded delay or out-of-band review where appropriate, append-only audit, factor disablement, recovery-code revocation, and revocation of all existing sessions.
-- Super Admin break-glass recovery requires a separately approved offline procedure and must not be a hidden application bypass.
+- Founder/Super Admin break-glass designates Jonathan Stiger and Joe Kelly as the two independent governed custodians. Both must participate; neither can complete recovery alone; the Founder cannot approve recovery of the Founder-controlled account. Designation grants no application, database, Railway, GitHub, financial, or Production access.
+- Custodian contact information, identity documents, credentials, QR codes, secret material, encryption keys, and recovery material remain outside the repository. Production activation stays blocked until both custodians separately acknowledge the role and receive secure instructions/material out of band.
+- Ordinary privileged recovery retains the 24-hour delay. Emergency break-glass may bypass that delay only with both custodians, a bounded documented emergency reason, immediate session/authenticator revocation, and permanent append-only evidence.
+- Routine Owner/Driver recovery has a one-business-day response target. Admin recovery requires Super Admin plus one separately authorized recovery approver and the 24-hour delay.
 
 ## 9. Device trust
 
@@ -178,21 +184,19 @@ Production acceptance requires separate role-controlled enrollment and login wal
 
 ## 15. Founder decisions
 
-Approved on 2026-08-11: TOTP first; Passkeys/WebAuthn later; SMS/email OTP deferred; Work Package 0 mandatory; Super Admin then Admin; Owner/Driver opt-in; ten-minute privileged elevation; no privileged trusted-device bypass; single-use hashed recovery codes; two-person privileged recovery with a 24-hour delay and no self-approval; two-custodian break-glass; versioned Railway-held authenticated-encryption keys; and the 24-month/seven-year/90-day retention schedule.
+Approved on 2026-08-11: TOTP first; Passkeys/WebAuthn later; SMS/email OTP deferred; Work Package 0 mandatory; Super Admin then Admin; Owner/Driver opt-in; ten-minute privileged elevation; no privileged trusted-device bypass; single-use hashed recovery codes; two-person privileged recovery with a 24-hour delay and no self-approval; Jonathan Stiger and Joe Kelly as the joint break-glass custodians; versioned Railway-held authenticated-encryption keys with current/previous-version rotation; the 24-month/seven-year/90-day retention schedule; seven-day absolute/24-hour idle Owner/Driver sessions; a self-service Sessions page; the 15–128 character password policy; and the stated recovery service targets.
 
 Remaining before Work Package 0 release or cutover:
 
-1. Approve the 24-hour Owner/Driver inactivity limit or select another bounded value.
-2. Approve the exact migration checksum, permanent recovery checkpoint, legacy token-version invalidation operation, Railway secret configuration ceremony, release SHA, and cutover/rollback window.
-3. Approve whether session-management UI ships with cutover or in the next UX package; the APIs exist in Work Package 0.
-4. Approve the strengthened password policy separately; Work Package 0 preserves the existing minimum to avoid unapproved account-policy change.
+1. Approve the exact migration checksum, permanent recovery checkpoint, legacy token-version invalidation operation, Railway secret configuration ceremony, release SHA, and cutover/rollback window.
+2. Confirm both named custodians have acknowledged their roles and received separate secure instructions/material outside the repository before privileged enforcement.
+3. Assign the authorized Admin-recovery approver role, privacy-safe identity-evidence standard, escalation thresholds, and periodic recovery test cadence before enforcement.
 
 Remaining before TOTP implementation or enforcement:
 
-1. Approve the `otpauth` dependency after license, maintenance, and supply-chain evidence.
-2. Name the two governed Super Admin break-glass custodians and privileged recovery approver roles.
-3. Approve identity-proof evidence, access scope, service targets, escalation thresholds, and periodic recovery tests.
-4. Approve the versioned TOTP encryption-key generation, rotation, dual-read, destruction, and emergency custody procedure.
+1. Complete and approve the pinned `otpauth` version, license, maintenance, vulnerability, transitive-dependency, and package-lock review.
+2. Approve identity-proof evidence, access scope, escalation thresholds, and periodic recovery tests.
+3. Approve the versioned TOTP encryption-key generation, rotation, dual-read, destruction, and emergency custody procedure.
 
 ## 16. Related documents
 
@@ -212,3 +216,4 @@ Remaining before TOTP implementation or enforcement:
 | --- | --- | --- |
 | 0.1 | 2026-08-11 | Initial discovery and planning architecture; no implementation authority. |
 | 0.2 | 2026-08-11 | Recorded Founder decisions and exact default-off Work Package 0 session, migration, retention, cutover, and rollback architecture. |
+| 0.3 | 2026-08-11 | Recorded approved session limits, password policy, self-service Sessions UI, named joint custodians, recovery service targets, and versioned key-rotation governance. |

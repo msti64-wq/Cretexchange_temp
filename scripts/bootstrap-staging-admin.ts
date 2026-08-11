@@ -1,8 +1,8 @@
 import { pathToFileURL } from "node:url";
-import bcrypt from "bcryptjs";
 import { sql } from "drizzle-orm";
+import { validatePasswordPolicy } from "../shared/passwordPolicy";
+import { hashPasswordForStorage } from "../server/passwordSecurity";
 
-const PASSWORD_HASH_ROUNDS = 10;
 const STAGING_CONFIRMATION = "bootstrap-staging-admin";
 
 type BootstrapUser = {
@@ -63,8 +63,9 @@ export function readStagingAdminBootstrapContext(environment: NodeJS.ProcessEnv 
   const operator = requireTrimmedEnv(environment, "STAGING_ADMIN_BOOTSTRAP_OPERATOR");
   const password = environment.STAGING_ADMIN_PASSWORD;
 
-  if (password !== undefined && password.length < 12) {
-    throw new Error("STAGING_ADMIN_PASSWORD must be at least 12 characters when creating an account.");
+  if (password !== undefined) {
+    const policy = validatePasswordPolicy(password, { username, email, firstName, lastName });
+    if (!policy.valid) throw new Error(`STAGING_ADMIN_PASSWORD: ${policy.message}`);
   }
 
   return { email, username, firstName, lastName, password, operator };
@@ -138,7 +139,7 @@ async function run(): Promise<void> {
       async audit(input) {
         await tx.insert(schema.governanceAuditEvents).values({ eventType: "staging_admin_bootstrap", actorId: input.actorId, eventMetadata: input.eventMetadata });
       },
-      hashPassword: (password) => bcrypt.hash(password, PASSWORD_HASH_ROUNDS),
+      hashPassword: hashPasswordForStorage,
     }));
     console.log(`STAGING_ADMIN_BOOTSTRAP ${result.action} ${result.user.email} role=${result.user.role}`);
   } finally {

@@ -1,8 +1,8 @@
 # CTX-RB-011 — Two-Factor Authentication Recovery and Reset Runbook
 
 - **Document ID:** CTX-RB-011
-- **Version:** 0.2
-- **Status:** Founder-approved recovery policy; procedure not operational until named authorities and TOTP release
+- **Version:** 0.3
+- **Status:** Founder-approved recovery governance with named break-glass custodians; procedure not operational until custodian acknowledgment, secure out-of-band preparation, and TOTP release
 - **Owner:** CreteXchange Operations and Security
 - **Product:** CreteXchange
 - **Date:** 2026-08-11
@@ -11,7 +11,7 @@
 
 ## 1. Purpose and current limitation
 
-This runbook records the Founder-approved response to a lost authenticator device, exhausted recovery codes, suspected factor compromise, locked challenge, and privileged-account recovery. It is not yet operational: human custodians, evidence standards, access roles, and TOTP release must be separately approved. It never authorizes an Admin to reset or bypass 2FA unilaterally.
+This runbook records the Founder-approved response to a lost authenticator device, exhausted recovery codes, suspected factor compromise, locked challenge, and privileged-account recovery. Jonathan Stiger and Joe Kelly are the two independent Founder/Super Admin break-glass custodians. The runbook is not yet operational: both must acknowledge the role and separately receive secure instructions/material outside this repository; evidence standards, the Admin-recovery approver role, and TOTP release remain separate gates. It never authorizes an Admin or one custodian to reset or bypass 2FA unilaterally.
 
 ## 2. Recovery order
 
@@ -39,12 +39,16 @@ Support and administrators must not:
 
 | Role | Approved minimum handling |
 | --- | --- |
-| Driver | Recovery code first; governed identity proof and support reset; all sessions revoked; mobile reenrollment required. |
-| Owner | Recovery code first; identity proof must include approved account/Facility authority evidence without exposing private Facility data; all sessions revoked. |
-| Admin | Recovery code first; two authorized reviewers, no self-approval, privacy-safe evidence, 24-hour delay, high-priority audit, TOTP replacement, and all sessions revoked. |
-| Super Admin | Recovery code first; two Founder-named, separately controlled break-glass custodians; no self-approval or single-person reset; 24-hour delay; all sessions revoked. |
+| Driver | Recovery code first; governed identity proof and support reset; one-business-day response target; all sessions revoked; mobile reenrollment required. |
+| Owner | Recovery code first; identity proof must include approved account/Facility authority evidence without exposing private Facility data; one-business-day response target; all sessions revoked. |
+| Admin | Recovery code first; Super Admin plus one authorized recovery approver, no self-approval, privacy-safe evidence, 24-hour delay, high-priority audit, TOTP replacement, and all sessions revoked. |
+| Super Admin | Recovery code first; Jonathan Stiger and Joe Kelly must participate jointly; no self-approval or single-person reset; ordinary recovery retains the 24-hour delay; all sessions revoked. |
 
-The 24-hour delay and separation rules are approved. Exact evidence, approver-role mapping, human custodian names, service target, and escalation channel remain unresolved and must be approved before this runbook can become operational.
+Custodian designation grants no application, database, Railway, GitHub, financial, or Production access. Do not store custodian contact information, identity documents, credentials, QR codes, recovery secrets, encryption keys, or recovery materials in this repository. Exact evidence, the authorized Admin-recovery approver role, escalation thresholds, and test cadence remain unresolved and must be approved before this runbook becomes operational.
+
+### 4.1 Emergency Founder/Super Admin break-glass
+
+Emergency break-glass may bypass the ordinary 24-hour delay only when Jonathan Stiger and Joe Kelly both participate, the Founder does not approve the Founder's own recovery, and a 20–500 character emergency reason is recorded. Completion must immediately revoke all sessions, authenticators, and recovery codes; require fresh enrollment; and append permanent privileged audit evidence. Custodian materials remain separate from the platform TOTP encryption key.
 
 ## 5. Work Package 0 password and session recovery
 
@@ -57,6 +61,8 @@ Work Package 0 provides the foundation for password recovery before TOTP exists:
 5. Authenticated password change increments the token version, revokes all sessions, and creates a rotated replacement session in one transaction.
 6. Login, registration, forgot-password, and reset requests have temporary principal/network rate limits. Limits expire and do not permanently lock an account.
 7. No Production reset delivery adapter is added. Development-only token return remains limited to the existing development environment behavior.
+8. New and changed passwords require 15–128 characters, permit spaces and supported Unicode, reject compromised/common and account-context-specific values, and impose no composition or periodic-change rule. Existing passwords are not force-reset solely because policy changed.
+9. The self-service Sessions page exposes only broad device labels and safe timestamps for the signed-in user's sessions. It supports revoking one other session, all other sessions, or all sessions; it exposes no precise IP or fingerprinting data and grants no cross-user Admin browser.
 
 No Work Package 0 route is active until the exact-match session-foundation control is separately enabled.
 
@@ -89,10 +95,10 @@ For the future Work Package 0 cutover, first create and verify a permanent datab
 
 ## 10. Founder decisions required
 
-1. Assign exact recovery approval/revocation roles under CTX-POL-008 and name both break-glass custodians.
+1. Assign the authorized Admin-recovery approver role under CTX-POL-008.
 2. Define privacy-safe identity-proof evidence by role.
-3. Define the recovery service target, escalation channel, and periodic test cadence.
-4. Approve incident-escalation thresholds.
+3. Approve the escalation thresholds and periodic test cadence.
+4. Confirm each named custodian's acknowledgment and secure out-of-band preparation before privileged enforcement.
 5. Approve whether any Owner/Driver trusted-device recovery is allowed in a later work package.
 
 ## 11. Related documents
@@ -110,3 +116,4 @@ For the future Work Package 0 cutover, first create and verify a permanent datab
 | --- | --- | --- |
 | 0.1 | 2026-08-11 | Initial discovery-stage runbook; procedure not operational. |
 | 0.2 | 2026-08-11 | Recorded Founder-approved recovery, separation, 24-hour delay, retention, Work Package 0 reset/session behavior, and cutover recovery plan. |
+| 0.3 | 2026-08-11 | Named the two joint custodians and recorded service targets, emergency-delay exception, password policy, self-service Sessions UI, and out-of-band preparation boundary. |
