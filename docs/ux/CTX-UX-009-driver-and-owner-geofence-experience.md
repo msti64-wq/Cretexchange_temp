@@ -1,20 +1,20 @@
 # CTX-UX-009 — Driver and Owner Geofence Experience
 
 - **Document ID:** CTX-UX-009
-- **Version:** 1.3
-- **Status:** Approved — Owner/Driver advisory and submission-time Owner context accepted; notification experience not activated
+- **Version:** 1.4
+- **Status:** Approved — current authorized geofence experience Founder-accepted and closed; enforcement and legacy transition deferred
 - **Owner:** CreteXchange Product and Experience
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Product:** CreteXchange
 - **Effective Date:** 2026-08-04
 - **Classification:** Internal
 - **Review Frequency:** Event-driven after a material Driver-location or Owner-boundary change
-- **Last Reviewed:** 2026-08-08
-- **Next Review:** Before geofence notification implementation or red enforcement-pilot authorization
+- **Last Reviewed:** 2026-08-11
+- **Next Review:** Before any separately authorized enforcement, legacy-transition, or geofence experience expansion
 
 ## 1. Purpose and scope
 
-This document defines the approved Driver Facility-status indicator, governed Owner boundary-management experience, and completed-submission notification experience. Owner/Driver advisory scope and submission-time Owner context are accepted. The Gray-capable notification workflow and red enforcement pilot are not activated; legacy transition is deferred; and 2FA has not begun. [CTX-ARCH-016](../architecture/CTX-ARCH-016-canonical-facility-geofence-architecture.md) owns evaluation and data contracts; [PD-061](../product/PD-061-facility-geofence-and-operational-exception-policy.md) owns product policy.
+This document defines the approved Driver Facility-status indicator, governed Owner boundary-management experience, and completed-submission notification experience. Green, Yellow, Gray, and Red Driver advisory presentation; Owner boundary management and submission-time evidence/context; and controlled Revel Yellow/Gray Owner/Admin notification and protected evidence access are Founder-accepted. Revel notifications remain enabled. Submission enforcement is disabled and explicitly deferred; quarantine, Owner-queue exclusion, and enforcement-specific Admin routing for Red are not represented as Founder-tested. Legacy transition remains disabled and deferred. The current authorized geofence experience is operationally accepted and closed. [CTX-ARCH-016](../architecture/CTX-ARCH-016-canonical-facility-geofence-architecture.md) owns evaluation and data contracts; [PD-061](../product/PD-061-facility-geofence-and-operational-exception-policy.md) owns product policy.
 
 ## 2. Driver Facility-selection experience
 
@@ -199,3 +199,4 @@ Submission Enforcement is labeled as an internal controlled-pilot routing switch
 | 1.1 | 2026-08-04 | Recorded the controlled feature-branch Driver advisory, submission guidance, Owner boundary management, bilingual copy, and pending release gates. |
 | 1.2 | 2026-08-08 | Added the Founder-approved completed-submission matrix, required Gray experience, control separation, idempotency/privacy safeguards, and accepted/inactive/deferred scope. |
 | 1.3 | 2026-08-08 | Clarified that Gray is derived from the seven-state contract plus reason codes and corrected the notification matrix to the canonical four-column form. |
+| 1.4 | 2026-08-11 | Recorded Founder acceptance and closeout of the current Driver advisory, Owner context, and controlled Yellow/Gray notification experience while preserving enforcement and legacy deferral. |

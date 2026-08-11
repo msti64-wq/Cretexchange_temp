@@ -1,6 +1,6 @@
 # Canonical Facility Geofence — Level 4 Validation Closeout
 
-- **Status:** Owner boundary management, Driver advisory, submission-time Owner context, and the controlled Revel Patio Grill Yellow/Gray notification pilot accepted; red submission enforcement and overall geofence operational acceptance pending; legacy transition deferred
+- **Status:** Current authorized geofence scope operationally accepted and closed; submission enforcement and legacy transition explicitly deferred
 - **Date:** 2026-08-11
 - **Branch:** `feature/canonical-facility-geofence`
 - **Starting SHA:** `33d356acee69dac6d3218a4e6788f18d8dfb454f`
@@ -32,8 +32,8 @@ The disposable database contained one synthetic boundary, revision, and evaluati
 
 - **Owner:** Automated route, service, persistence, localization, accessibility-source, and authorization checks passed for radius and polygon drafting, server validation, activation, revision history, temporary context, and cross-Owner denial.
 - **Driver:** Automated checks passed for green, yellow, red, and neutral/unavailable states; desktop/mobile-responsive source behavior; English/Spanish parity; non-color labels and accessibility semantics; and minimum-necessary safe projections.
-- **Submission:** Green ordinary submission, complete yellow exception, incomplete yellow recovery, and red quarantine passed. Canonical activity, private evidence, and geofence evaluation remain atomic. Red bypasses the Owner queue and routes to active Admin review.
-- **Notifications:** Yellow Owner, Admin/Super Admin, and Driver routing and red Admin/Super Admin and Driver routing passed through governed templates without precise-location disclosure. Red does not notify the Owner.
+- **Automated submission validation:** Green ordinary submission, complete yellow exception, incomplete yellow recovery, and red-quarantine implementation tests passed. These tests are technical evidence only; red submission enforcement/quarantine has not been activated or Founder-tested in Production.
+- **Automated notification validation:** Yellow Owner, Admin/Super Admin, and Driver routing and red Admin/Super Admin and Driver routing passed governed tests without precise-location disclosure. Founder Production acceptance covers Yellow and Gray only; it does not cover enforcement-specific red routing.
 - **Financial isolation:** No geofence path creates a wallet, payout, Stripe, billing, settlement, reward, achievement, competition, or other financial-success outcome. Financial execution remains disabled.
 - **Unconfigured Facilities:** With controls disabled or no configured active boundary, the system preserves the governed legacy path without inferred geometry or false zero/success state.
 
@@ -64,7 +64,7 @@ The Founder verified:
 
 This acceptance closes the Google Maps loader/readiness visual gate and accepts only the currently enabled Owner boundary-management experience. It is not Driver advisory visual acceptance and is not overall geofence operational acceptance. The Driver green, yellow, red, and neutral Facility-selection and fresh check-in experience remains a required Founder visual gate. It does not activate or accept submission enforcement, geofence notifications, or legacy transition.
 
-| Acceptance gate | Status |
+| Acceptance gate | Status at August 5 checkpoint |
 | --- | --- |
 | Owner boundary-management visual acceptance | PASS |
 | Google Maps Production rendering | PASS |
@@ -113,7 +113,7 @@ Technical validation on August 5, 2026:
 - Production build: PASS; and
 - complete test suite and database/migration validation: intentionally omitted because this focused correction changes no schema, migration, dependency, database contract, feature-control value, notification execution, or financial execution path.
 
-These August 5 technical results were not acceptance evidence at that checkpoint. The later Founder acceptance recorded below closes the Driver advisory and controlled Yellow/Gray notification gates; overall geofence acceptance remains open because red enforcement is not accepted or active.
+These August 5 technical results were not acceptance evidence at that checkpoint. The later Founder acceptance recorded below closes the Driver advisory and controlled Yellow/Gray notification gates. Red enforcement remains deliberately deferred rather than a gate on the accepted current operational scope.
 
 ## Founder Production acceptance — Revel Yellow/Gray notification pilot
 
@@ -149,15 +149,31 @@ At acceptance, the governed Revel controls were:
 | Submission enforcement | Disabled | Disabled | Disabled |
 | Legacy transition | Disabled | Disabled | Disabled |
 
-Financial execution remained disabled. The seven canonical geofence states and six Gray presentation conditions remain unchanged. This acceptance closes Driver advisory and Yellow/Gray notification presentation and evidence-access gates only. It does not authorize or accept red submission enforcement, activate legacy transition, change another Facility, or begin Phase 5 Sprint 3 — Two-Factor Authentication.
+Financial execution remained disabled. The seven canonical geofence states and six Gray presentation conditions remain unchanged. This acceptance closes Driver advisory and Yellow/Gray notification presentation and evidence-access gates. It does not authorize or accept red submission enforcement, activate legacy transition, or change another Facility.
+
+## Founder scope decision — current geofence closeout
+
+**ACCEPTED AND CLOSED — August 11, 2026.** The Founder cancelled the proposed Revel red submission-enforcement pilot and directed the project to Phase 5 Sprint 3 — Two-Factor Authentication discovery and planning.
+
+The accepted current geofence scope is:
+
+- green, yellow, Gray, and red Driver advisory presentation — Founder accepted, including the red Driver warning tested at Home Yard;
+- Owner boundary management — Founder accepted;
+- Owner review evidence and privacy-safe geofence context — Founder accepted;
+- Yellow and Gray Owner/Admin notification routing and protected evidence access — Founder accepted; and
+- Revel Patio Grill geofence notifications — remain effectively enabled under the governed Facility override.
+
+The following are explicitly outside that acceptance:
+
+- submission enforcement remains disabled and deferred;
+- red quarantine, Owner-queue exclusion, and enforcement-specific Admin routing are not represented as Founder-tested;
+- legacy transition remains disabled and deferred; and
+- no additional geofence implementation, pilot, activation, or Production mutation is authorized.
+
+This decision closes the current authorized operational geofence scope without claiming that the deferred red-enforcement or legacy-transition packages were tested or completed.
 
 ## Release disposition
 
-**Recommendation: GOVERNED NEXT-STEP DECISION REQUIRED.** Owner boundary management, Google Maps rendering, Driver advisory, submission-time Owner context, and the controlled Revel Yellow/Gray notification pilot are Founder-accepted. Red submission enforcement remains unaccepted and inactive, so the entire geofence program is not complete. Legacy transition remains deferred and financial execution remains isolated.
+**CLOSED FOR CURRENT AUTHORIZED SCOPE.** Owner boundary management, Google Maps rendering, all four Driver advisory presentations, submission-time Owner context, and the controlled Revel Yellow/Gray notification pilot are Founder-accepted. Revel notifications remain enabled. Submission enforcement and legacy transition remain disabled and deferred; neither is a prerequisite for starting Phase 5 Sprint 3 discovery. Financial execution remains isolated.
 
-Remaining governed geofence sequence:
-
-1. Decide whether to separately authorize a controlled Revel red submission-enforcement pilot or proceed to Phase 5 Sprint 3 — Two-Factor Authentication while red enforcement remains an explicitly deferred geofence work package.
-2. If red enforcement is authorized, validate green ordinary routing, complete and incomplete yellow handling under enforcement, red evidence retention/quarantine, no Owner routing for red, Admin/Super Admin attention, privacy/RBAC, idempotency, recovery, and zero financial, reward, achievement, competition, or settlement effects.
-3. Separately authorize legacy transition only after affected Facilities are configured, tested, and Founder-accepted; converge remaining legacy center-distance paths without inferred geometry or destructive evidence changes.
-4. Declare the overall geofence program complete only after every activated or required governed work package receives explicit Founder acceptance.
+Any future red-enforcement or legacy-transition work requires a new Founder authorization and its own implementation, release, and acceptance gates. No such work is active.

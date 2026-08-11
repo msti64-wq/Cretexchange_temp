@@ -81,6 +81,19 @@ The following are cautious, nonbinding directions. They require separately appro
 6. Phase 6 Sprint 3 — Recovery Offer Settlement and Pilot Readiness.
 7. Later external communication channels, including SMS, email, push, webhooks, and related adapters.
 
+The current authorized geofence scope was Founder-accepted and closed on August 11, 2026. Submission enforcement and legacy transition remain explicitly deferred and are not represented as Founder-tested. Phase 5 Sprint 3 is now authorized for discovery and documentation planning only; [the 2FA plan](./phase-5-sprint-3-two-factor-authentication-plan.md) does not authorize implementation.
+
+### Phase 5 Sprint 3 — Two-Factor Authentication
+
+**Status:** Discovery and documentation planning active; implementation not authorized
+
+- Recommended initial method: authenticator-app TOTP with single-use recovery codes.
+- Required precursor: revocable HttpOnly server-session foundation and authentication security audit.
+- Proposed rollout: controlled Super Admin, then Admin; Owner and Driver opt-in until separately approved.
+- Email/SMS delivery, migration, enrollment, enforcement, merge, and deployment remain unauthorized.
+
+See [Phase 5 Sprint 3 — Two-Factor Authentication Plan](./phase-5-sprint-3-two-factor-authentication-plan.md).
+
 ### Phase 6 — Material Quantity and Recovery Economics
 
 **Status:** Approved future product direction — not authorized for implementation

@@ -1,22 +1,22 @@
 # PD-061 — Facility Geofence and Operational Exception Policy
 
 - **Document ID:** PD-061
-- **Version:** 1.3
-- **Status:** Active — advisory and submission-time Owner context accepted; notification implementation and red enforcement pilot not activated
+- **Version:** 1.4
+- **Status:** Active — current authorized geofence scope operationally accepted and closed; enforcement and legacy transition deferred
 - **Owner:** CreteXchange Product
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Product:** CreteXchange
 - **Effective Date:** 2026-08-04
 - **Classification:** Internal
 - **Review Frequency:** Event-driven after a material geofence, exception, evidence, or notification change
-- **Last Reviewed:** 2026-08-08
-- **Next Review:** Before geofence notification implementation or red enforcement-pilot authorization
+- **Last Reviewed:** 2026-08-11
+- **Next Review:** Before any separately authorized enforcement, legacy-transition, or geofence scope expansion
 
 ## 1. Approved policy direction
 
 CreteXchange should use one server-authoritative, versioned Facility geofence to distinguish an approved Driver delivery, disposal, recovery, or washout area from the Facility address or entire property. A configured Facility initially has one active primary boundary: an explicitly configured radius or one Owner-defined polygon. The versioned model remains compatible with future multiple approved polygons, separate entrances, multiple washout areas, material zones, and large campuses without changing the canonical result contract; those capabilities remain deferred.
 
-The Founder has approved this product policy as effective governance. Owner/Driver advisory scope and submission-time Owner context are accepted. The notification workflow in this revision is not yet implemented or activated, the red enforcement pilot is not activated, legacy transition is deferred, and Phase 5 Sprint 3 Two-Factor Authentication has not begun.
+The Founder has approved this product policy as effective governance. Green, Yellow, Gray, and Red Driver advisory presentation; Owner boundary management and submission-time Owner context; and the controlled Revel Yellow/Gray notification and protected evidence experience are accepted. Revel geofence notifications remain enabled. Submission enforcement remains disabled and explicitly deferred. Red quarantine, Owner-queue exclusion, and enforcement-specific Admin routing are not represented as Founder-tested. Legacy transition remains disabled and deferred. The current authorized geofence scope is operationally accepted and closed; Phase 5 Sprint 3 Two-Factor Authentication is in discovery and documentation planning only.
 
 ## 2. Product rules
 
@@ -146,7 +146,7 @@ The current legacy photo-validation behavior is: through one mile from the Facil
 
 ## 12. Remaining release authority
 
-Owner/Driver advisory scope and submission-time Owner context are accepted. The Gray-capable notification workflow remains to be implemented, validated, separately released, and explicitly activated. The red enforcement pilot is not activated. Legacy transition is deferred and cannot be activated by this policy update. No inferred backfill or automatic boundary activation is authorized. Phase 5 Sprint 3 Two-Factor Authentication has not begun.
+Green, Yellow, Gray, and Red Driver advisory presentation, Owner boundary management and evidence context, and the controlled Revel Yellow/Gray notification experience are Founder-accepted. Revel notifications remain enabled. Submission enforcement and legacy transition remain disabled and explicitly deferred. The cancelled Red pilot is not represented as tested: quarantine, Owner-queue exclusion, and enforcement-specific Admin routing remain outside Founder acceptance. No inferred backfill, automatic boundary activation, further geofence implementation, or Production mutation is authorized. Phase 5 Sprint 3 is limited to discovery and documentation planning until separately approved.
 
 ## 13. Related documents
 
@@ -169,3 +169,4 @@ Owner/Driver advisory scope and submission-time Owner context are accepted. The 
 | 1.1 | 2026-08-04 | Recorded the separately authorized controlled feature-branch implementation; migration, activation, merge, deployment, and Production acceptance remain pending. |
 | 1.2 | 2026-08-08 | Established the completed-submission notification matrix, required Gray class, control independence, non-duplication/privacy safeguards, and current accepted/inactive/deferred scope. |
 | 1.3 | 2026-08-08 | Restored the exact seven-state contract and defined the two uncertainty-overlap conditions as reason codes under `LOCATION_ACCURACY_INSUFFICIENT`; Gray remains a six-condition presentation/routing classification. |
+| 1.4 | 2026-08-11 | Recorded Founder closeout of the current authorized geofence scope, enabled Revel notifications, accepted advisory/Owner/Yellow/Gray evidence scope, and explicit deferral of untested enforcement and legacy transition. |

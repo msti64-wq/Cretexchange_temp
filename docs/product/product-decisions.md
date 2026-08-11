@@ -759,9 +759,17 @@ the server.
 
 **Decision:** [PD-061](./PD-061-facility-geofence-and-operational-exception-policy.md) establishes a versioned, server-authoritative Facility radius/polygon boundary, advisory Driver states, governed yellow exceptions, PD-060-aligned red quarantine, and boundary correction without inferred polygons or passive notifications.
 
-**Status:** Active — Founder-approved product policy; no implementation authority.
+**Status:** Active — current authorized geofence scope Founder-accepted and closed; enforcement and legacy transition deferred.
 
-**Implications:** Existing unconfigured Facilities retain isolated feature-flagged legacy center-distance behavior until an authorized Owner activates a valid boundary. New enforcement, migration, runtime, rollout, and Production adoption require the separately approved sequence and Founder acceptance. Phase 5 Sprint 3 Two-Factor Authentication remains the next mandatory major sprint after geofencing completion and Founder acceptance; it has not begun.
+**Implications:** Existing unconfigured Facilities retain isolated feature-flagged legacy center-distance behavior until an authorized Owner activates a valid boundary. Green/Yellow/Gray/Red Driver advisory, Owner boundary/evidence context, and controlled Revel Yellow/Gray notifications and protected evidence are Founder-accepted. Revel notifications remain enabled. Submission enforcement and legacy transition remain disabled and deferred; enforcement-specific Red behavior is not claimed as Founder-tested. Phase 5 Sprint 3 Two-Factor Authentication is authorized for discovery and documentation planning only.
+
+## PD-063 - Two-Factor Authentication and Account Recovery
+
+**Decision:** [PD-063](./PD-063-two-factor-authentication-and-account-recovery-policy.md) proposes authenticator-app TOTP, single-use recovery codes, revocable server-side sessions, recent-factor elevation, append-only security audit, and governed recovery as the initial CreteXchange 2FA direction.
+
+**Status:** Proposed — Founder decision required; no implementation authority.
+
+**Implications:** SMS and email codes are not recommended as initial factors, and passkeys/WebAuthn remain a future phishing-resistant option. Session hardening, recovery authority, role rollout, key custody, retention, schema/migration design, feature controls, and controlled acceptance require separate Founder approvals. No authentication code, dependency, migration, configuration, enrollment, enforcement, merge, deployment, or Production mutation is authorized by this entry.
 
 ## PD-062 - Material Quantity, Measurement, and Facility Recovery Offers — Future Direction
 

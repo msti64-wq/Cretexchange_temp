@@ -1,22 +1,22 @@
 # CTX-ARCH-016 — Canonical Facility Geofence Architecture
 
 - **Document ID:** CTX-ARCH-016
-- **Version:** 1.5
-- **Status:** Approved and effective — Owner/Driver advisory and submission-time Owner context accepted; notification workflow and red enforcement pilot not activated
+- **Version:** 1.6
+- **Status:** Approved and effective — current authorized geofence scope operationally accepted and closed; enforcement and legacy transition deferred
 - **Owner:** CreteXchange Product and Engineering
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Product:** CreteXchange
 - **Effective Date:** 2026-08-04
 - **Classification:** Internal
 - **Review Frequency:** Event-driven before implementation and after a material geofence change
-- **Last Reviewed:** 2026-08-08
-- **Next Review:** Before geofence notification implementation or red enforcement-pilot authorization
+- **Last Reviewed:** 2026-08-11
+- **Next Review:** Before any separately authorized enforcement, legacy-transition, or geofence scope expansion
 
 ## 1. Purpose and authority boundary
 
 This architecture defines one server-authoritative Facility geofence capability for Driver guidance, check-in, evidence submission, operational exceptions, retained evidence, and governed boundary correction. It supports one active primary verification boundary per configured Facility: an explicitly configured radius or one Owner-defined polygon. The initial polygon represents the approved Driver delivery, disposal, recovery, or washout area, not automatically the full property. The versioned `zone_key` model preserves future compatibility with multiple approved polygons, separate entrances, multiple washout areas, operational material zones, and large industrial campuses, but those capabilities are deferred unless separately approved.
 
-The additive geofence foundation, Owner boundary management, Driver advisory evaluation, submission-time evidence capture, submission-time Owner review context, and Facility-scoped control foundation have been released under separate Founder authorizations. Owner/Driver advisory scope and submission-time Owner context are accepted. The geofence notification workflow defined in this revision is required but not activated; red submission enforcement is not activated; legacy transition is deferred; and Phase 5 Sprint 3 Two-Factor Authentication has not begun. Owner access to deliveries and Washout Reviews is always independent of geofence feature controls. This architecture remains subordinate to [CTX-STD-001](../standards/cretexchange-platform-standards.md), [CTX-ARCH-002](./owner-operations-architecture.md), [CTX-ARCH-003](./driver-operations-architecture.md), [CTX-ARCH-013](./CTX-ARCH-013-notification-and-communication-center.md), [CTX-ARCH-015](./CTX-ARCH-015-photo-review-retention-and-integrity-routing.md), [PD-060](../product/PD-060-photo-review-retention-and-platform-rejection.md), and the [Development Protocol](../development-protocol.md).
+The additive geofence foundation, Owner boundary management, Driver advisory evaluation, submission-time evidence capture, submission-time Owner review context, Facility-scoped control foundation, and Yellow/Gray notification workflow have been released under separate Founder authorizations. Green, Yellow, Gray, and Red Driver advisory presentation; Owner boundary management; submission-time Owner evidence/context; and the controlled Revel Yellow/Gray notification and protected Admin evidence experience are Founder-accepted. Revel notifications remain enabled. Submission enforcement remains disabled and explicitly deferred; red quarantine, Owner-queue exclusion, and enforcement-specific Admin routing are not represented as Founder-tested. Legacy transition remains disabled and deferred. The Founder closed the current authorized geofence scope and authorized Phase 5 Sprint 3 discovery/planning only. Owner access to deliveries and Washout Reviews is always independent of geofence feature controls. This architecture remains subordinate to [CTX-STD-001](../standards/cretexchange-platform-standards.md), [CTX-ARCH-002](./owner-operations-architecture.md), [CTX-ARCH-003](./driver-operations-architecture.md), [CTX-ARCH-013](./CTX-ARCH-013-notification-and-communication-center.md), [CTX-ARCH-015](./CTX-ARCH-015-photo-review-retention-and-integrity-routing.md), [PD-060](../product/PD-060-photo-review-retention-and-platform-rejection.md), and the [Development Protocol](../development-protocol.md).
 
 ## 2. Pre-implementation audit (historical baseline)
 
@@ -285,7 +285,7 @@ The notification implementation checkpoint SHALL cover passive no-side-effect be
 
 The Founder has approved the architecture direction recorded here: JSONB GeoJSON with one bounded server library, one active primary radius or polygon, exactly seven canonical states with six governed Gray conditions derived from state plus reason code, one-mile platform-governed exception distance, proposed GPS and polygon limits as governed configuration, immutable versioning, completed-submission notification routing, privacy/RBAC controls, deferred feature-flagged legacy transition, additive migration direction, and the sequencing in the [discovery and validation plan](../project/geofence-architecture-discovery-and-validation-plan.md).
 
-Owner/Driver advisory scope and submission-time Owner context are Founder-accepted. Notification implementation and activation, the red enforcement pilot, and legacy transition require separate Founder authorization. Legacy transition is deferred, and Phase 5 Sprint 3 Two-Factor Authentication has not begun.
+Green, Yellow, Gray, and Red Driver advisory presentation, Owner boundary management/evidence context, and the controlled Revel Yellow/Gray notification experience are Founder-accepted. Revel notifications remain enabled. Submission enforcement and legacy transition remain disabled and deferred. Red quarantine, Owner-queue exclusion, and enforcement-specific Admin routing are not claimed as Founder-tested. The proposed Red pilot was cancelled, the current authorized geofence scope is closed, and Phase 5 Sprint 3 has entered discovery and documentation planning only.
 
 ## 16. Change history
 
@@ -299,3 +299,4 @@ Owner/Driver advisory scope and submission-time Owner context are Founder-accept
 | 1.3 | 2026-08-07 | Recorded the additive Facility-scoped geofence control model, deterministic precedence, Admin/Super Admin audit requirements, fail-closed Facility context, and non-destructive recovery posture; migration `0041` and all Facility activations remain outside Production pending Founder approval. |
 | 1.4 | 2026-08-08 | Recorded the Founder-approved completed-submission notification matrix, required Gray conditions, control separation, idempotency/privacy safeguards, accepted advisory/Owner-context scope, and remaining inactive/deferred work. |
 | 1.5 | 2026-08-08 | Corrected Gray as six presentation/routing conditions derived from the existing seven-state contract and reason codes; no new canonical state is introduced. |
+| 1.6 | 2026-08-11 | Recorded Founder closeout of the current operational scope, accepted four-color advisory and Yellow/Gray evidence experience, enabled Revel notifications, and explicitly deferred untested submission enforcement and legacy transition. |

@@ -1,8 +1,8 @@
 # CTX-RB-010 — Geofence Exception and Boundary Correction Runbook
 
 - **Document ID:** CTX-RB-010
-- **Version:** 1.4
-- **Status:** Approved — advisory, submission-time Owner context, and controlled Revel Yellow/Gray notifications operational and Founder-accepted; red enforcement inactive; legacy transition deferred
+- **Version:** 1.5
+- **Status:** Approved — current authorized geofence scope operationally accepted and closed; enforcement and legacy transition deferred
 - **Owner:** Platform Operations
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Product:** CreteXchange
@@ -10,11 +10,11 @@
 - **Effective Date:** 2026-08-04
 - **Review Frequency:** Quarterly and after a material geofence, exception, or authorization change
 - **Last Reviewed:** 2026-08-11
-- **Next Review:** Before red enforcement-pilot authorization or any notification-pilot scope expansion
+- **Next Review:** Before any separately authorized enforcement, legacy-transition, or geofence scope expansion
 
 ## 1. Purpose and scope
 
-This approved runbook defines safe handling of geofence exceptions, Gray uncertainty/configuration states, Owner boundary-correction requests, and Admin assistance. Owner/Driver advisory scope, submission-time Owner context, and the controlled Revel Patio Grill Yellow/Gray completed-submission notification pilot are Founder-accepted. Red submission enforcement is not accepted or activated; legacy transition is deferred; and 2FA has not begun.
+This approved runbook defines safe handling of geofence exceptions, Gray uncertainty/configuration states, Owner boundary-correction requests, and Admin assistance. Green, Yellow, Gray, and Red Driver advisory presentation; Owner boundary management and submission-time evidence/context; and the controlled Revel Patio Grill Yellow/Gray notification and protected evidence experience are Founder-accepted. Revel notifications remain enabled. Submission enforcement is disabled and explicitly deferred; red quarantine, Owner-queue exclusion, and enforcement-specific Admin routing are not represented as Founder-tested. Legacy transition remains disabled and deferred. The current authorized geofence scope is operationally accepted and closed; 2FA is in discovery and documentation planning only.
 
 It does not authorize direct database edits, geometry modification, account restriction, evidence deletion, Facility disabling, payment action, or a fraud finding.
 
@@ -125,7 +125,7 @@ Do not infer, backfill, or automatically activate a polygon or radius. New enfor
 
 An incorrect activation is corrected by activating a new version or, under separately authorized recovery, restoring an earlier valid geometry as a new version. Do not rewrite history. Application rollback disables new reads/enforcement while retaining additive boundary, revision, evaluation, notification, and review evidence. No destructive rollback or Production recovery is authorized without an explicit Founder recovery checkpoint.
 
-The advisory, submission-time Owner-context, and controlled Revel Yellow/Gray notification portions are Founder-accepted. Notification procedures remain limited to Facilities with an explicit governed effective notification state. Red handling cannot be piloted until submission enforcement is separately authorized for the controlled Facility. Legacy transition remains deferred.
+The advisory, submission-time Owner-context, and controlled Revel Yellow/Gray notification portions are Founder-accepted. Notification procedures remain limited to Facilities with an explicit governed effective notification state. The proposed Revel Red pilot was cancelled. Any future red handling requires new authorization; no enforcement-specific behavior is claimed as Founder-tested. Legacy transition remains deferred.
 
 ## 12. Related documents
 
@@ -147,3 +147,4 @@ The advisory, submission-time Owner-context, and controlled Revel Yellow/Gray no
 | 1.2 | 2026-08-08 | Added the completed-submission notification matrix, Gray handling, control separation, idempotency/privacy safeguards, and current accepted/inactive/deferred scope. |
 | 1.3 | 2026-08-08 | Corrected Gray to six conditions derived from the seven-state contract and reason codes, and normalized the notification matrix to four columns. |
 | 1.4 | 2026-08-11 | Recorded Founder acceptance of the controlled Revel Yellow/Gray notification pilot, protected Admin/Super Admin All History evidence access, unchanged Needs Review classification, and the remaining red-enforcement and legacy-transition gates. |
+| 1.5 | 2026-08-11 | Closed the current authorized operational scope, cancelled the proposed Revel Red pilot, and preserved explicit enforcement and legacy-transition deferral without claiming enforcement-specific Founder testing. |
