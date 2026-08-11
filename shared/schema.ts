@@ -131,6 +131,101 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Phase 5 Sprint 3 Work Package 0: additive, default-off authentication
+// security foundation. Opaque tokens are never persisted; only keyed hashes
+// are stored. The existing JWT path remains the runtime default until the
+// separately governed cutover control is enabled.
+export const authSessions = pgTable("auth_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  csrfTokenHash: varchar("csrf_token_hash", { length: 64 }).notNull(),
+  roleSnapshot: varchar("role_snapshot", { length: 32 }).notNull(),
+  deviceLabel: varchar("device_label", { length: 80 }).notNull(),
+  networkKeyHash: varchar("network_key_hash", { length: 64 }),
+  networkMetadataExpiresAt: timestamp("network_metadata_expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).defaultNow().notNull(),
+  idleExpiresAt: timestamp("idle_expires_at", { withTimezone: true }).notNull(),
+  absoluteExpiresAt: timestamp("absolute_expires_at", { withTimezone: true }).notNull(),
+  mfaVerifiedAt: timestamp("mfa_verified_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  revocationReason: varchar("revocation_reason", { length: 80 }),
+  rotatedFromSessionId: varchar("rotated_from_session_id").references((): any => authSessions.id, { onDelete: "set null" }),
+}, (table) => [
+  index("auth_sessions_user_active_idx").on(table.userId, table.revokedAt, table.absoluteExpiresAt),
+  index("auth_sessions_idle_expiry_idx").on(table.idleExpiresAt),
+  index("auth_sessions_network_expiry_idx").on(table.networkMetadataExpiresAt),
+  check("auth_sessions_role_snapshot_valid", sql`${table.roleSnapshot} IN ('driver', 'owner', 'admin', 'super_admin')`),
+  check("auth_sessions_token_hash_valid", sql`${table.tokenHash} ~ '^[0-9a-f]{64}$'`),
+  check("auth_sessions_csrf_hash_valid", sql`${table.csrfTokenHash} ~ '^[0-9a-f]{64}$'`),
+  check("auth_sessions_expiry_order_valid", sql`${table.idleExpiresAt} <= ${table.absoluteExpiresAt}`),
+]);
+
+export const authPasswordResetTokens = pgTable("auth_password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+  requestReference: varchar("request_reference", { length: 160 }).notNull(),
+  networkKeyHash: varchar("network_key_hash", { length: 64 }),
+  networkMetadataExpiresAt: timestamp("network_metadata_expires_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("auth_password_reset_tokens_user_active_idx").on(table.userId, table.consumedAt, table.revokedAt, table.expiresAt),
+  index("auth_password_reset_tokens_expiry_idx").on(table.expiresAt),
+  index("auth_password_reset_tokens_network_expiry_idx").on(table.networkMetadataExpiresAt),
+  check("auth_password_reset_tokens_hash_valid", sql`${table.tokenHash} ~ '^[0-9a-f]{64}$'`),
+  check("auth_password_reset_tokens_request_reference_valid", sql`char_length(btrim(${table.requestReference})) BETWEEN 8 AND 160`),
+]);
+
+export const authSecurityEvents = pgTable("auth_security_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventType: varchar("event_type", { length: 96 }).notNull(),
+  outcome: varchar("outcome", { length: 24 }).notNull(),
+  reasonCode: varchar("reason_code", { length: 96 }),
+  // Retained pseudonymous references are deliberately not foreign keys:
+  // account/session lifecycle must not rewrite append-only security history.
+  actorUserId: varchar("actor_user_id"),
+  subjectUserId: varchar("subject_user_id"),
+  sessionId: varchar("session_id"),
+  requestReference: varchar("request_reference", { length: 160 }).notNull(),
+  retentionClass: varchar("retention_class", { length: 24 }).notNull(),
+  retainUntil: timestamp("retain_until", { withTimezone: true }).notNull(),
+  networkKeyHash: varchar("network_key_hash", { length: 64 }),
+  networkMetadataExpiresAt: timestamp("network_metadata_expires_at", { withTimezone: true }),
+  eventMetadata: jsonb("event_metadata").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("auth_security_events_subject_created_idx").on(table.subjectUserId, table.createdAt),
+  index("auth_security_events_type_created_idx").on(table.eventType, table.createdAt),
+  index("auth_security_events_retention_idx").on(table.retainUntil),
+  index("auth_security_events_network_expiry_idx").on(table.networkMetadataExpiresAt),
+  check("auth_security_events_outcome_valid", sql`${table.outcome} IN ('success', 'failure', 'denied', 'information')`),
+  check("auth_security_events_retention_class_valid", sql`${table.retentionClass} IN ('routine', 'privileged')`),
+  check("auth_security_events_request_reference_valid", sql`char_length(btrim(${table.requestReference})) BETWEEN 8 AND 160`),
+  check("auth_security_events_metadata_object", sql`jsonb_typeof(${table.eventMetadata}) = 'object'`),
+]);
+
+export const authRateLimitBuckets = pgTable("auth_rate_limit_buckets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  action: varchar("action", { length: 48 }).notNull(),
+  keyHash: varchar("key_hash", { length: 64 }).notNull(),
+  windowStartedAt: timestamp("window_started_at", { withTimezone: true }).notNull(),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  blockedUntil: timestamp("blocked_until", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("auth_rate_limit_buckets_action_key_unique").on(table.action, table.keyHash),
+  index("auth_rate_limit_buckets_blocked_idx").on(table.blockedUntil),
+  index("auth_rate_limit_buckets_expiry_idx").on(table.expiresAt),
+  check("auth_rate_limit_buckets_attempt_count_valid", sql`${table.attemptCount} >= 0`),
+  check("auth_rate_limit_buckets_key_hash_valid", sql`${table.keyHash} ~ '^[0-9a-f]{64}$'`),
+]);
+
 // Driver specific information
 export const drivers = pgTable("drivers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1852,6 +1947,21 @@ export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTo
   createdAt: true,
 });
 
+export const insertAuthSessionSchema = createInsertSchema(authSessions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAuthPasswordResetTokenSchema = createInsertSchema(authPasswordResetTokens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAuthSecurityEventSchema = createInsertSchema(authSecurityEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertOwnerFundingSourceSchema = createInsertSchema(ownerFundingSources).omit({
   id: true,
   createdAt: true,
@@ -2067,6 +2177,13 @@ export type InsertTermsAcceptance = z.infer<typeof insertTermsAcceptanceSchema>;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type AuthSession = typeof authSessions.$inferSelect;
+export type InsertAuthSession = z.infer<typeof insertAuthSessionSchema>;
+export type AuthPasswordResetToken = typeof authPasswordResetTokens.$inferSelect;
+export type InsertAuthPasswordResetToken = z.infer<typeof insertAuthPasswordResetTokenSchema>;
+export type AuthSecurityEvent = typeof authSecurityEvents.$inferSelect;
+export type InsertAuthSecurityEvent = z.infer<typeof insertAuthSecurityEventSchema>;
+export type AuthRateLimitBucket = typeof authRateLimitBuckets.$inferSelect;
 export type OwnerFundingSource = typeof ownerFundingSources.$inferSelect;
 export type InsertOwnerFundingSource = z.infer<typeof insertOwnerFundingSourceSchema>;
 export type OwnerWalletTransaction = typeof ownerWalletTransactions.$inferSelect;

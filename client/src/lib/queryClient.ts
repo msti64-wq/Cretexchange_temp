@@ -1,5 +1,16 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+const AUTH_CSRF_COOKIE = "crete_csrf";
+
+export function getAuthenticationCsrfToken(cookieHeader = typeof document === "undefined" ? "" : document.cookie): string | null {
+  for (const pair of cookieHeader.split(";")) {
+    const separator = pair.indexOf("=");
+    if (separator <= 0 || pair.slice(0, separator).trim() !== AUTH_CSRF_COOKIE) continue;
+    try { return decodeURIComponent(pair.slice(separator + 1).trim()); } catch { return null; }
+  }
+  return null;
+}
+
 export interface SafeApiErrorDetails {
   status: number;
   code?: string;
@@ -148,6 +159,11 @@ export async function apiRequest(
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
+  const method = (options.method || "GET").toUpperCase();
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+    const csrfToken = getAuthenticationCsrfToken();
+    if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
+  }
 
   // Published apps serve both frontend and backend from same domain
   // No need for cross-origin requests in production
@@ -156,6 +172,7 @@ export async function apiRequest(
   const res = await fetch(fullUrl, {
     ...options,
     headers,
+    credentials: "same-origin",
   });
 
   await throwIfResNotOk(res);
@@ -180,6 +197,7 @@ export const getQueryFn: <T>(options: {
     
     const res = await fetch(url, {
       headers,
+      credentials: "same-origin",
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

@@ -60,8 +60,8 @@ export default function Register({ preselectedRole }: { preselectedRole?: 'drive
       return response.json();
     },
     onSuccess: (data) => {
-      // Store the token in localStorage
-      localStorage.setItem('authToken', data.token);
+      if (typeof data.token === "string" && data.token) localStorage.setItem('authToken', data.token);
+      else localStorage.removeItem('authToken');
       
       toast({
         title: t("auth.register.successTitle"),

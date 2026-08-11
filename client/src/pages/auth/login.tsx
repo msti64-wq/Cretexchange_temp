@@ -33,8 +33,8 @@ export default function Login() {
       return response.json();
     },
     onSuccess: async (data) => {
-      // Store the token in localStorage
-      localStorage.setItem('authToken', data.token);
+      if (typeof data.token === "string" && data.token) localStorage.setItem('authToken', data.token);
+      else localStorage.removeItem('authToken');
       
       toast({
         title: t("auth.login.successTitle"),

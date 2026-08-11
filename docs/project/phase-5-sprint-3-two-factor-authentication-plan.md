@@ -1,9 +1,9 @@
 # Phase 5 Sprint 3 — Two-Factor Authentication Plan
 
-- **Status:** Discovery complete; implementation not authorized
+- **Status:** Founder decisions approved; Work Package 0 implemented and under controlled-branch validation, not activated or deployed
 - **Date:** 2026-08-11
 - **Starting Production/main SHA:** `ea61706e42b4a028f3378f598371bd28100f0c50`
-- **Scope:** Documentation and Founder decision checkpoint only
+- **Scope:** Work Package 0 revocable-session and authentication-security foundation only
 
 ## Objective
 
@@ -11,17 +11,17 @@ Introduce governed 2FA without recurring SMS dependency, recovery bypasses, inac
 
 ## Discovery conclusion
 
-Authenticator-app TOTP is the recommended initial method. Before enrollment or enforcement, CreteXchange should replace its seven-day local-storage bearer session with a revocable server-side session held by a Secure, HttpOnly cookie; add durable authentication challenges and security events; harden password-reset revocation; and approve recovery authority.
+Authenticator-app TOTP is the approved initial method. Passkeys/WebAuthn are the future phishing-resistant enhancement; SMS/email OTP are deferred. Before enrollment or enforcement, CreteXchange must replace its seven-day local-storage bearer session with a revocable server-side session held by a Secure, HttpOnly, SameSite cookie; add durable security events; and harden password reset/revocation.
 
 No partial MFA service or schema exists. The repository contains only a reusable OTP input component. No transactional email or SMS adapter exists, and the Notification Center does not authorize external delivery.
 
 ## Exact recommended sprint sequence
 
-### Work Package 0 — Founder security decisions and session foundation
+### Work Package 0 — Revocable session and authentication-security foundation — implementation checkpoint
 
-Approve TOTP, session modernization, role rollout, recovery authority, elevation window, key custody, retention, and dependency shortlist. Implement server-side revocable sessions, short-lived pre-auth challenges, password/reset token hardening, token-version/session revocation, login/recovery rate limits, and append-only security events behind default-off flags.
+Founder decisions are recorded. Implement exact-match default-off server sessions, opaque token/CSRF cookies, resistant server hashes, role-bounded absolute/idle expiry, rotation and revocation, hashed single-use password-reset tokens, token-version invalidation, authentication rate limits, same-origin and CSRF controls, append-only security events, 24-month/seven-year retention, 90-day detailed-network minimization, and session list/revoke APIs.
 
-**Gate:** isolated security review, migration design approval, and no user enrollment.
+**Gate:** Level 3 controlled-branch validation; exact migration checksum and Level 4 release authorization remain separate. No TOTP, user enrollment, Production migration, configuration, cutover, merge, or deployment.
 
 ### Work Package 1 — TOTP enrollment and recovery codes
 
@@ -53,16 +53,16 @@ Founder chooses whether to require 2FA for Owner/Driver, retain opt-in, or begin
 
 ## Additive migration and release sequence
 
-1. Approve architecture, policy, UX, runbook, entity names, constraints, encryption key custody, and retention.
-2. Create a controlled feature branch; add migration and default-off flags only with implementation scope.
-3. Validate in disposable PostgreSQL: checksum, constraints, indexes, append-only protection, transaction rollback, clean reapplication, and zero inferred enrollment/backfill.
-4. Run focused security tests, complete auth/RBAC regression, TypeScript, Production build, privacy/log review, localization/accessibility checks, and dependency audit.
-5. Create and verify the governed Production recovery checkpoint.
-6. Execute the checksum-approved migration through the controlled runner; verify zero factors, codes, challenges, sessions, trusted devices, and events except explicitly expected migration metadata.
-7. Merge exact validated content and deploy with every MFA flag disabled.
-8. Verify SHA alignment, health, database, financial isolation, default-off behavior, and password-login regression.
-9. Separately authorize controlled enrollment, then separately authorize role enforcement.
-10. Preserve rollback ability by disabling role enforcement while retaining factors, sessions, and audit history.
+1. Complete Level 3 branch validation: disposable PostgreSQL rollback/reapplication, constraints, indexes, concurrency, append-only audit, retention functions, zero inferred backfill, focused security tests, TypeScript, Production build, full suite, privacy/RBAC/workflow/financial review, and exact checksum.
+2. Obtain Founder approval of the branch SHA, migration checksum, 24-hour Owner/Driver idle recommendation, Railway session-hash key ceremony, legacy-token invalidation operation, recovery checkpoint, cutover window, and rollback command sequence.
+3. Create and verify a permanent governed Production database recovery checkpoint.
+4. Apply checksum-approved migration `0042` through a separately approved controlled runner; verify all four tables, constraints, indexes, functions, trigger, and zero rows.
+5. Merge and deploy the exact validated SHA with `AUTH_SESSION_FOUNDATION_ENABLED` absent/false. No behavior changes at this step.
+6. Verify GitHub/Railway/version alignment, health, database, financial isolation, legacy login/workflows, zero session-foundation rows, and disabled state.
+7. In a separate Founder-authorized cutover, configure the independent hash pepper, increment all user `auth_token_version` values in a bounded transaction, enable the session path, and require every user to sign in again.
+8. Verify login, logout, expiry, password reset/change, session rotation/revocation, CSRF, rate limits, role/Facility access, Owner/Driver/Admin/Super Admin workflows, English/Spanish, accessibility/mobile, notifications/geofence, and financial isolation.
+9. Founder accepts or invokes immediate rollback: disable the session path, redeploy the accepted prior compatible SHA, preserve the token-version increment so old JWTs stay invalid, and require fresh legacy sign-in. Retain additive tables and audit history.
+10. Only after Work Package 0 acceptance, separately authorize TOTP dependency/schema implementation, controlled enrollment, and later role enforcement.
 
 ## Required test matrix
 
@@ -85,21 +85,29 @@ Founder chooses whether to require 2FA for Owner/Driver, retain opt-in, or begin
 - Financial execution remains disabled and no 2FA event creates payment, wallet, reward, settlement, or eligibility behavior.
 - No migration runs without a permanent recovery checkpoint and exact checksum authorization.
 - Founder-visible behavior and explicit Founder acceptance are release gates in addition to code, GitHub, Railway, and version alignment.
+- Work Package 0 introduces no dependency change. `otpauth` remains a future candidate pending final license, maintenance, and supply-chain approval.
 
-## Founder decisions required before implementation
+## Founder decisions recorded
 
-1. TOTP as the initial method.
-2. HttpOnly server-session modernization as Work Package 0.
-3. Super Admin then Admin mandatory rollout; Owner/Driver opt-in during this sprint.
+1. TOTP initial; Passkeys/WebAuthn future; SMS/email OTP deferred.
+2. Revocable HttpOnly server-session modernization mandatory as Work Package 0.
+3. Super Admin then Admin; Owner/Driver opt-in until separately approved.
 4. Ten-minute recent-verification window and no privileged trusted-device bypass.
-5. Recovery identity proof, approvers, delay, and Super Admin break-glass custody.
-6. Encryption-key custody/rotation and approved library shortlist.
-7. Data retention periods and authentication-security event access.
-8. Exact implementation branch, migration checkpoint, and validation level.
+5. Single-use hashed recovery codes; privileged two-person, no-self-approval recovery; 24-hour delay; two-custodian Super Admin break-glass.
+6. Versioned Railway-held authenticated encryption for TOTP secrets; Node crypto preferred; resistant hashes for recovery/session material; `otpauth` preferred pending review.
+7. Routine events 24 months; privileged events seven years; detailed network/device data no more than 90 days.
+
+## Remaining Founder decisions
+
+1. Accept or revise the 24-hour Owner/Driver inactivity limit.
+2. Approve the exact Work Package 0 SHA, migration checksum, controlled runner update if needed, recovery checkpoint, Railway hash-pepper ceremony, legacy-token invalidation transaction, release/cutover window, and rollback sequence.
+3. Decide whether the session-list UI ships at cutover or later; APIs are in the foundation.
+4. Approve stronger password-policy scope separately.
+5. Before Work Package 1, approve `otpauth`, versioned TOTP key rotation, identity-proof evidence, recovery-role mapping, two custodian names, service targets, and test cadence.
 
 ## Explicitly not authorized
 
-Authentication code changes, new dependencies, migrations, configuration, email/SMS delivery, user contact, enrollment, enforcement, merge, deployment, Production data mutation, financial execution, or any renewed geofence work.
+TOTP/recovery-code implementation, new dependencies, Production migration/configuration, email/SMS delivery, user contact, enrollment, enforcement, merge, deployment, Production session revocation/data mutation, financial execution, or any renewed geofence work.
 
 ## Related documents
 

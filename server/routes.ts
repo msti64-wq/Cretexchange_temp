@@ -27,6 +27,7 @@ import {
 } from "../shared/schema";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
+import { isAuthSessionFoundationEnabled, updatePasswordAndRevokeSessions } from "./authSessionFoundation";
 import { isFinancialExecutionEnabled, resolveRuntimeEnvironment } from "./runtimeEnvironment";
 import { getJwtSecret } from "./jwtSecret";
 import { ObjectStorageService, ObjectNotFoundError, getDefaultObjectStorageBucketName, getPhotoReadProviderSelection, getPhotoUploadProviderSelection, objectStorageClient, signObjectURL, signUploadObjectURL } from "./objectStorage";
@@ -15167,13 +15168,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash new password
       const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-      // Update password
-      await storage.upsertUser({
-        ...user,
-        passwordHash: newPasswordHash
-      });
+      if (isAuthSessionFoundationEnabled()) {
+        await updatePasswordAndRevokeSessions(user, newPasswordHash, req, res);
+      } else {
+        await storage.upsertUser({
+          ...user,
+          passwordHash: newPasswordHash
+        });
+      }
 
-      console.log(`🔐 Password changed for user: ${user.username} (${user.email})`);
+      console.log(`🔐 Password changed successfully: role=${user.role}`);
 
       res.json({ message: "Password changed successfully" });
     } catch (error) {

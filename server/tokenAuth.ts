@@ -3,19 +3,50 @@ import bcrypt from "bcryptjs";
 import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
 import { getJwtSecret } from "./jwtSecret";
+import {
+  authenticateServerSessionRequest,
+  clearAuthenticationCookies,
+  consumeAuthenticationRateLimit,
+  consumeSecurePasswordResetToken,
+  createAuthenticatedServerSession,
+  createSecurePasswordResetToken,
+  isSameOriginAuthenticationRequest,
+  isAuthSessionFoundationEnabled,
+  listActiveUserSessions,
+  recordAuthenticationFailure,
+  revokeAllUserSessionsWithAudit,
+  revokeOwnedSessionWithAudit,
+  revokeSessionFromRequest,
+} from "./authSessionFoundation";
 
 const JWT_SECRET = getJwtSecret();
 
 export async function setupAuth(app: Express) {
+  // Express owns this setting; lightweight route-test doubles may omit `set`.
+  if (typeof app.set === "function") app.set("trust proxy", 1);
+
   // Login route
   app.post("/api/login", async (req, res) => {
     try {
       const { username, password } = req.body;
+      const foundationEnabled = isAuthSessionFoundationEnabled();
+
+      if (foundationEnabled) {
+        if (!isSameOriginAuthenticationRequest(req)) {
+          return res.status(403).json({ message: "Request verification failed" });
+        }
+        const limit = await consumeAuthenticationRateLimit("login", req, typeof username === "string" ? username : "unknown");
+        if (!limit.allowed) {
+          res.setHeader("Retry-After", String(limit.retryAfterSeconds));
+          return res.status(429).json({ message: "Unable to sign in right now. Please wait and try again." });
+        }
+      }
 
       // Check if user exists (case-insensitive username lookup)
       const user = await storage.getUserByUsernameInsensitive(username);
       if (!user) {
         console.log("Login attempt failed: user not found");
+        if (foundationEnabled) await recordAuthenticationFailure({ req, eventType: "login.failed", reasonCode: "invalid_credentials" });
         return res.status(401).json({ message: "Invalid username or password" });
       }
 
@@ -23,11 +54,13 @@ export async function setupAuth(app: Express) {
       const isValidPassword = await bcrypt.compare(password, user.passwordHash);
       if (!isValidPassword) {
         console.log("Login attempt failed: invalid password");
+        if (foundationEnabled) await recordAuthenticationFailure({ req, eventType: "login.failed", reasonCode: "invalid_credentials", subjectUserId: user.id, role: user.role });
         return res.status(401).json({ message: "Invalid username or password" });
       }
 
       if (user.isActive === false) {
         console.log("Login blocked for inactive user");
+        if (foundationEnabled) await recordAuthenticationFailure({ req, eventType: "login.denied", reasonCode: "account_inactive", subjectUserId: user.id, role: user.role, outcome: "denied" });
         return res.status(403).json({ message: "Account is inactive" });
       }
 
@@ -35,12 +68,14 @@ export async function setupAuth(app: Express) {
       // The source-event key makes later logins a no-op for this first-login fact.
       await storage.recordDriverFirstLogin(user.id);
 
-      // Create JWT token
-      const token = jwt.sign(
-        { userId: user.id, username: user.username, authTokenVersion: user.authTokenVersion ?? 0 },
-        JWT_SECRET,
-        { expiresIn: "7d" }
-      );
+      const token = foundationEnabled
+        ? undefined
+        : jwt.sign(
+          { userId: user.id, username: user.username, authTokenVersion: user.authTokenVersion ?? 0 },
+          JWT_SECRET,
+          { expiresIn: "7d" },
+        );
+      if (foundationEnabled) await createAuthenticatedServerSession(user, req, res, "password_login");
 
       // Remove password hash from user object
       const { passwordHash, ...userWithoutPassword } = user;
@@ -49,7 +84,7 @@ export async function setupAuth(app: Express) {
       res.json({ 
         message: "Login successful", 
         user: userWithoutPassword,
-        token 
+        ...(token ? { token, sessionMode: "legacy_bearer" } : { sessionMode: "server_cookie" }),
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -61,6 +96,18 @@ export async function setupAuth(app: Express) {
   app.post("/api/register", async (req, res) => {
     try {
       const { username, email, password, firstName, lastName, phone, street, city, state, zip, role } = req.body;
+      const foundationEnabled = isAuthSessionFoundationEnabled();
+
+      if (foundationEnabled) {
+        if (!isSameOriginAuthenticationRequest(req)) {
+          return res.status(403).json({ message: "Request verification failed" });
+        }
+        const limit = await consumeAuthenticationRateLimit("registration", req, typeof email === "string" ? email : "unknown");
+        if (!limit.allowed) {
+          res.setHeader("Retry-After", String(limit.retryAfterSeconds));
+          return res.status(429).json({ message: "Unable to register right now. Please wait and try again." });
+        }
+      }
 
       // Public self-registration is limited to normal user roles.
       if (!role || !['driver', 'owner'].includes(role)) {
@@ -116,12 +163,14 @@ export async function setupAuth(app: Express) {
         });
       }
 
-      // Create JWT token
-      const token = jwt.sign(
-        { userId: newUser.id, username: newUser.username, authTokenVersion: newUser.authTokenVersion ?? 0 },
-        JWT_SECRET,
-        { expiresIn: "7d" }
-      );
+      const token = foundationEnabled
+        ? undefined
+        : jwt.sign(
+          { userId: newUser.id, username: newUser.username, authTokenVersion: newUser.authTokenVersion ?? 0 },
+          JWT_SECRET,
+          { expiresIn: "7d" },
+        );
+      if (foundationEnabled) await createAuthenticatedServerSession(newUser, req, res, "registration");
 
       // Remove password hash from response
       const { passwordHash: _, ...userWithoutPassword } = newUser;
@@ -130,7 +179,7 @@ export async function setupAuth(app: Express) {
       res.json({ 
         message: "Registration successful", 
         user: userWithoutPassword,
-        token 
+        ...(token ? { token, sessionMode: "legacy_bearer" } : { sessionMode: "server_cookie" }),
       });
     } catch (error) {
       console.error("Registration error:", error);
@@ -140,25 +189,53 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  // Logout route (client-side only since we're using JWT)
-  app.post("/api/logout", (req, res) => {
-    res.json({ message: "Logout successful" });
+  app.post("/api/logout", async (req, res) => {
+    if (isAuthSessionFoundationEnabled()) {
+      const auth = await authenticateServerSessionRequest(req);
+      if (!auth.ok) return res.status(auth.status).json({ message: auth.message, code: auth.code });
+      await revokeSessionFromRequest(req, res, "logout");
+    } else {
+      clearAuthenticationCookies(res);
+    }
+    return res.json({ message: "Logout successful" });
   });
 
   // Forgot password route
   app.post("/api/auth/forgot-password", async (req, res) => {
     try {
       const { email } = req.body;
+      const foundationEnabled = isAuthSessionFoundationEnabled();
+
+      if (foundationEnabled && !isSameOriginAuthenticationRequest(req)) {
+        return res.status(403).json({ message: "Request verification failed" });
+      }
 
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
+      }
+
+      if (foundationEnabled) {
+        const limit = await consumeAuthenticationRateLimit("forgot_password", req, email);
+        if (!limit.allowed) {
+          res.setHeader("Retry-After", String(limit.retryAfterSeconds));
+          return res.json({ message: "If an account exists with this email, password reset instructions have been sent." });
+        }
       }
 
       // Find user by email
       const user = await storage.getUserByEmail(email);
       if (!user) {
         // Don't reveal if email exists for security
+        if (foundationEnabled) await recordAuthenticationFailure({ req, eventType: "password_reset.requested", reasonCode: "account_not_resolved" });
         return res.json({ message: "If an account exists with this email, password reset instructions have been sent." });
+      }
+
+      if (foundationEnabled) {
+        const resetToken = await createSecurePasswordResetToken(user, req);
+        return res.json({
+          message: "If an account exists with this email, password reset instructions have been sent.",
+          ...(process.env.NODE_ENV === "development" && { resetToken }),
+        });
       }
 
       // Generate reset token (use crypto-secure random string)
@@ -188,6 +265,11 @@ export async function setupAuth(app: Express) {
   app.post("/api/auth/reset-password", async (req, res) => {
     try {
       const { token, password } = req.body;
+      const foundationEnabled = isAuthSessionFoundationEnabled();
+
+      if (foundationEnabled && !isSameOriginAuthenticationRequest(req)) {
+        return res.status(403).json({ message: "Request verification failed" });
+      }
 
       if (!token || !password) {
         return res.status(400).json({ message: "Token and new password are required" });
@@ -195,6 +277,19 @@ export async function setupAuth(app: Express) {
 
       if (password.length < 6) {
         return res.status(400).json({ message: "Password must be at least 6 characters long" });
+      }
+
+      if (foundationEnabled) {
+        const limit = await consumeAuthenticationRateLimit("reset_password", req, token);
+        if (!limit.allowed) {
+          res.setHeader("Retry-After", String(limit.retryAfterSeconds));
+          return res.status(429).json({ message: "Unable to reset the password right now. Please wait and try again." });
+        }
+        const passwordHash = await bcrypt.hash(password, 10);
+        const consumed = await consumeSecurePasswordResetToken(token, passwordHash, req);
+        if (!consumed) return res.status(400).json({ message: "Invalid or expired reset token" });
+        clearAuthenticationCookies(res);
+        return res.json({ message: "Password has been reset successfully" });
       }
 
       // Find and validate reset token
@@ -229,11 +324,43 @@ export async function setupAuth(app: Express) {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+
+  app.get("/api/auth/sessions", isAuthenticated, async (req: any, res) => {
+    if (!isAuthSessionFoundationEnabled()) return res.status(404).json({ message: "Session management is not enabled" });
+    return res.json({ sessions: await listActiveUserSessions(req.user.id, req.authSessionId) });
+  });
+
+  app.delete("/api/auth/sessions/:sessionId", isAuthenticated, async (req: any, res) => {
+    if (!isAuthSessionFoundationEnabled()) return res.status(404).json({ message: "Session management is not enabled" });
+    const sessionId = typeof req.params.sessionId === "string" ? req.params.sessionId : "";
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId)) {
+      return res.status(400).json({ message: "Invalid session" });
+    }
+    const revoked = await revokeOwnedSessionWithAudit({ user: req.user, sessionId, req });
+    if (!revoked) return res.status(404).json({ message: "Session not found" });
+    if (sessionId === req.authSessionId) clearAuthenticationCookies(res);
+    return res.json({ message: "Session revoked" });
+  });
+
+  app.post("/api/auth/sessions/sign-out-all", isAuthenticated, async (req: any, res) => {
+    if (!isAuthSessionFoundationEnabled()) return res.status(404).json({ message: "Session management is not enabled" });
+    const revoked = await revokeAllUserSessionsWithAudit({ user: req.user, req });
+    clearAuthenticationCookies(res);
+    return res.json({ message: "All sessions revoked", revoked });
+  });
 }
 
 export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
   try {
     console.log(`🔐 Auth check for ${req.method} ${req.path}`);
+
+    if (isAuthSessionFoundationEnabled()) {
+      const auth = await authenticateServerSessionRequest(req);
+      if (!auth.ok) return res.status(auth.status).json({ message: auth.message, code: auth.code });
+      req.user = auth.user;
+      req.authSessionId = auth.sessionId;
+      return next();
+    }
 
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {

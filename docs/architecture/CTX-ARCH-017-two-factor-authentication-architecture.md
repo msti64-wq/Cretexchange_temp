@@ -1,20 +1,20 @@
 # CTX-ARCH-017 — Two-Factor Authentication Architecture
 
 - **Document ID:** CTX-ARCH-017
-- **Version:** 0.1
-- **Status:** Draft — discovery and planning only; Founder approval required before implementation
+- **Version:** 0.2
+- **Status:** Founder-approved direction; Work Package 0 implemented on a controlled branch, not activated or deployed
 - **Owner:** CreteXchange Product, Security, and Engineering
 - **Product:** CreteXchange
 - **Date:** 2026-08-11
 - **Classification:** Internal
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
-- **Next Review:** Before Phase 5 Sprint 3 implementation begins
+- **Next Review:** Work Package 0 Level 4 release checkpoint
 
 ## 1. Purpose and authority boundary
 
-This architecture defines the proposed Phase 5 Sprint 3 Two-Factor Authentication (2FA) design. It records the current authentication model, security gaps, recommended first factor, additive data model, session-assurance model, recovery controls, rollout sequence, and release gates.
+This architecture defines the Founder-approved Phase 5 Sprint 3 Two-Factor Authentication (2FA) direction. Authenticator-app TOTP is the initial factor, Passkeys/WebAuthn are the future phishing-resistant enhancement, and SMS/email OTP are deferred. Revocable server sessions are mandatory Work Package 0 before any TOTP enrollment.
 
-This document does not authorize code, dependencies, migrations, configuration, delivery providers, enrollment, enforcement, Production data changes, or deployment. It must be approved together with [PD-063](../product/PD-063-two-factor-authentication-and-account-recovery-policy.md), [CTX-UX-010](../ux/CTX-UX-010-two-factor-authentication-experience.md), [CTX-RB-011](../operations/CTX-RB-011-two-factor-authentication-recovery-and-reset-runbook.md), and the [Phase 5 Sprint 3 plan](../project/phase-5-sprint-3-two-factor-authentication-plan.md) before implementation.
+The Founder authorized implementation and validation of Work Package 0 only on a controlled feature branch. This authority does not include TOTP, enrollment, enforcement, merge, deployment, Production migration, Railway secret changes, Production session revocation, or Production data changes.
 
 ## 2. Current-state inventory
 
@@ -39,6 +39,12 @@ The active application authentication path is `server/tokenAuth.ts`, registered 
 | Alternate auth modules | `server/localAuth.ts` and `server/replitAuth.ts` | Not the active Production path. The insecure development cookie settings in `localAuth.ts` must never be promoted or reused without correction. |
 | Email/SMS | No transactional email or SMS provider integration found | In-app Notification Center explicitly defers external delivery adapters. |
 
+### 2.1 Work Package 0 branch state
+
+The controlled branch adds an inactive compatibility path that replaces the browser bearer credential with an opaque server session only when `AUTH_SESSION_FOUNDATION_ENABLED` equals `true`. It is false when absent and is not configured for Production. The server stores HMAC-SHA-256 hashes of session, CSRF, reset, rate-limit, and bounded network keys; the raw session token exists only in a Secure, HttpOnly, SameSite cookie. The companion CSRF cookie is readable only so the browser can submit the double-submit header. No TOTP factor or secret exists in Work Package 0.
+
+Session policy is 24-hour absolute/one-hour idle for Admin and Super Admin, and seven-day absolute/24-hour idle for Owner and Driver. The 24-hour Owner/Driver idle value is the implementation recommendation and remains a Founder cutover-acceptance item.
+
 ## 3. Recommended initial method
 
 Authenticator-application Time-based One-Time Passwords (TOTP) are the recommended initial second factor.
@@ -59,35 +65,39 @@ TOTP provides an offline, standards-based factor without recurring SMS expense, 
 1. Username/password verification creates a short-lived, single-purpose pre-authentication challenge. It does not create a fully authenticated application session for an enforced user.
 2. The user supplies a TOTP or one unused recovery code.
 3. Successful verification atomically consumes the challenge, records the factor event, and creates the final server-governed session.
-4. The final session carries an assurance level and `mfaVerifiedAt`. Sensitive actions require recent elevation, proposed at ten minutes.
+4. The final session carries an assurance level and `mfaVerifiedAt`. Sensitive actions require the Founder-approved ten-minute recent-factor elevation window.
 5. Logout, password reset, factor reset, role change, account disablement, or security recovery can revoke one or all server-side sessions.
 
 The preferred final credential is an opaque, high-entropy session token stored only in a `Secure`, `HttpOnly`, appropriately `SameSite` cookie. The database stores only a one-way token hash and bounded device/session metadata. This replaces persistent local-storage bearer use for the final authenticated session. If engineering review proposes short-lived access tokens instead, the refresh credential must still be HttpOnly, rotated, replay-detected, and backed by a revocable server ledger. A second prompt layered onto the existing seven-day local-storage JWT is not an acceptable target.
 
-## 5. Proposed additive data model
+## 5. Additive data model
 
-Exact names may be refined during implementation design, but the migration must remain additive and default-off.
+Migration `0042_add_revocable_authentication_session_foundation.sql` is additive, creates no rows, performs no inferred backfill, and does not alter existing workflow or financial tables.
 
 | Entity | Minimum purpose and controls |
 | --- | --- |
-| `user_mfa_factors` | User, factor type, pending/active/disabled state, encrypted TOTP secret ciphertext, key version, enrollment/verification/disable timestamps, unique active-factor constraints. Never store plaintext secret after enrollment. |
-| `mfa_recovery_codes` | Factor/user reference, salted and peppered code hash, created and used timestamps. Codes are single use and displayed only once. |
-| `auth_challenges` | Opaque challenge hash, user, purpose, expiry, attempt count, consumed/locked state, and bounded context. No raw OTP. |
-| `auth_sessions` | Opaque session-token hash, user, assurance level, MFA time, created/last-used/expiry/revoked timestamps, and privacy-bounded device label. |
-| `trusted_devices` | Optional later phase only: selector/verifier hash, user, expiry/revocation, and explicit user label. No probabilistic fingerprinting. |
-| `auth_security_events` | Append-only, privacy-safe event type, actor/subject safe references, time, result/reason category, request reference, and approved metadata. No password, TOTP, secret, recovery code, raw token, raw IP, or full user agent. |
+| `auth_sessions` | User, unique opaque-token hash, CSRF-token hash, role snapshot, broad device label, bounded keyed network reference, created/last-seen/idle/absolute/MFA/revocation timestamps, reason, and rotation predecessor. |
+| `auth_password_reset_tokens` | Unique reset-token hash, user, bounded request reference, bounded keyed network reference, expiry, consumption, revocation, and creation time. Raw reset tokens are never stored. |
+| `auth_security_events` | Append-only privacy-safe event, result/reason, actor/subject/session references, request reference, retention class/deadline, 90-day network-metadata deadline, allowlisted metadata, and creation time. |
+| `auth_rate_limit_buckets` | Unique action/key hash, bounded window and attempts, temporary block, retention deadline, and update time. It contains no raw username, email, address, or token. |
 
-The migration creates no enrolled factor, recovery code, trusted device, or enforced user. It must have an approved checksum, disposable-PostgreSQL validation, rollback and clean-reapplication evidence, and a governed Production recovery checkpoint before execution.
+The migration adds exact checks, foreign keys, unique constraints, expiry/order checks, bounded indexes, an append-only event trigger, governed 90-day network minimization, retention purge, and rate-bucket purge functions. `auth_security_events` uses 24-month routine or seven-year privileged retention. Detailed network/device material is minimized or deleted after no more than 90 days.
+
+Future TOTP work packages may add `user_mfa_factors`, `mfa_recovery_codes`, and `auth_challenges` only through a separately approved migration. Work Package 0 does not create these entities.
+
+The migration creates no session, reset token, audit event, rate bucket, enrolled factor, recovery code, trusted device, or enforced user. It requires an approved checksum, disposable-PostgreSQL validation, rollback and clean-reapplication evidence, and a governed Production recovery checkpoint before any Production execution.
 
 ## 6. Secret and cryptographic controls
 
-- Generate TOTP secrets and recovery codes with the platform cryptographic random source.
+- Work Package 0 uses Node's governed `node:crypto` primitives: at least 256 bits from `randomBytes`, HMAC-SHA-256 domain-separated hashes, and constant-time hash comparison.
+- Generate future TOTP secrets and recovery codes with the platform cryptographic random source.
 - Encrypt TOTP secrets at rest with an application encryption key separate from the database and JWT/session secrets; record a key version for rotation.
 - Store recovery codes and session/challenge tokens only as one-way hashes with domain separation.
 - Display the TOTP secret and recovery codes only during the governed one-time flow; never return them in later reads.
 - Never put authentication secrets or codes in notification metadata, URLs, analytics, logs, screenshots, support messages, or audit metadata.
 - Prevent acceptance of the same TOTP time step more than once for the same factor/challenge.
 - Keep server time monitored; fail safely when clock integrity cannot be trusted.
+- `otpauth` remains the preferred server-only TOTP candidate, subject to final license, maintenance, dependency, and supply-chain review. It is not added by Work Package 0.
 
 ## 7. Rate limiting and lockout protection
 
@@ -120,7 +130,16 @@ Trusted-device bypass is disabled for the initial Admin and Super Admin rollout.
 
 Role policy is server authoritative. A role or user without an enrolled factor must never be stranded by enabling enforcement; rollout requires an enrollment grace state and verified recovery readiness.
 
-## 11. Feature controls and precedence
+## 11. Compatibility controls and precedence
+
+Work Package 0 uses two server-only environment controls rather than a participant-visible feature flag:
+
+- `AUTH_SESSION_FOUNDATION_ENABLED` — exact string `true` activates the new credential path; absent or any other value is disabled;
+- `AUTH_SESSION_HASH_PEPPER` — independently governed hash key, required only when the foundation is active, at least 32 characters, never stored in source, migration, fixtures, logs, build output, or documentation.
+
+The database migration alone changes no runtime behavior. Before a future cutover, a permanent recovery checkpoint and an explicitly authorized global `auth_token_version` increment must invalidate all legacy bearer tokens and require every user to sign in again. While the foundation is active, bearer JWTs are not accepted. The version increment remains in place if application rollback is needed, so a rollback cannot resurrect pre-cutover JWTs.
+
+Future TOTP controls are independent of Facility controls and financial execution:
 
 Proposed controls are independent of Facility controls and financial execution:
 
@@ -132,18 +151,22 @@ Proposed controls are independent of Facility controls and financial execution:
 
 Server precedence is: financial and account safety restrictions first; global MFA capability; role enforcement policy; then user enrollment state. No Facility override applies. A missing, invalid, or unenrolled required context fails closed into the approved enrollment/recovery experience, never into a fully authenticated session. No MFA control can enable financial execution.
 
-## 12. Audit and privacy
+## 12. Audit, retention, and privacy
 
 Append-only events cover enrollment start/completion/cancellation, verification success/failure/lock, recovery-code use/regeneration, trusted-device creation/revocation if later enabled, factor disable/reset, recovery request/approval/denial/completion, session creation/elevation/revocation, and enforcement-policy changes.
 
 Participant-facing history uses safe time, event, result, and device labels. Admin views use minimum necessary scope. IP addresses, exact location, raw user agents, TOTP/recovery values, secret material, tokens, private participant data, and unrelated analytics are excluded.
+
+Routine events retain for 24 months. Privileged enrollment, reset, recovery, break-glass, role, and security-control events retain for seven years. Detailed network/device material has a maximum 90-day lifetime and is governed by the migration's minimization function. Purge functions are denied to `PUBLIC` and must be invoked only by a governed maintenance identity and schedule.
 
 ## 13. Failure, rollback, and recovery
 
 - Delivery-provider failure cannot apply because the initial method is offline TOTP; no SMS or email delivery is required.
 - A verification persistence failure creates no final session.
 - Audit failure for a security mutation fails the mutation closed; a non-security presentation failure does not weaken enforcement.
-- Application rollback disables enrollment/enforcement flags while retaining additive tables and audit history.
+- Work Package 0 application rollback sets the session-foundation compatibility control to disabled and redeploys the last accepted compatible SHA while retaining additive tables and append-only audit history.
+- Cutover is a separate Level 4 action. It requires a permanent database recovery checkpoint, exact SHA/configuration evidence, a global legacy token-version increment, a forced sign-in, health/RBAC/workflow verification, and Founder acceptance.
+- Immediate cutover rollback disables the new credential path, deploys the accepted prior build, preserves the token-version increment so old bearer tokens remain invalid, and requires new sign-in through the legacy path. Migration rollback is not the first response.
 - Migration rollback is allowed only before dependent records exist and through the approved recovery plan; Production rollback normally preserves data and deploys compatible code.
 - The recovery checkpoint must include database identifier, timestamp, retention, restore procedure, and verification owner.
 
@@ -153,15 +176,23 @@ Validation must include RFC-compatible TOTP vectors, clock skew, replay, concurr
 
 Production acceptance requires separate role-controlled enrollment and login walkthroughs. No uncontrolled Production identity may be substituted.
 
-## 15. Open Founder decisions
+## 15. Founder decisions
 
-1. Approve TOTP as the initial method and explicitly reject SMS/email as initial factors.
-2. Approve HttpOnly server-side session modernization as Work Package 0.
-3. Approve the role rollout order and whether Owner/Driver enforcement remains opt-in during this sprint.
-4. Approve the proposed ten-minute elevation window and initial no-trusted-device policy for privileged roles.
-5. Assign the access/recovery approval authority missing from CTX-POL-008.
-6. Approve the privileged-account recovery and Super Admin break-glass procedure before implementation.
-7. Approve the additive data model, key-management approach, dependency shortlist, and migration design checkpoint.
+Approved on 2026-08-11: TOTP first; Passkeys/WebAuthn later; SMS/email OTP deferred; Work Package 0 mandatory; Super Admin then Admin; Owner/Driver opt-in; ten-minute privileged elevation; no privileged trusted-device bypass; single-use hashed recovery codes; two-person privileged recovery with a 24-hour delay and no self-approval; two-custodian break-glass; versioned Railway-held authenticated-encryption keys; and the 24-month/seven-year/90-day retention schedule.
+
+Remaining before Work Package 0 release or cutover:
+
+1. Approve the 24-hour Owner/Driver inactivity limit or select another bounded value.
+2. Approve the exact migration checksum, permanent recovery checkpoint, legacy token-version invalidation operation, Railway secret configuration ceremony, release SHA, and cutover/rollback window.
+3. Approve whether session-management UI ships with cutover or in the next UX package; the APIs exist in Work Package 0.
+4. Approve the strengthened password policy separately; Work Package 0 preserves the existing minimum to avoid unapproved account-policy change.
+
+Remaining before TOTP implementation or enforcement:
+
+1. Approve the `otpauth` dependency after license, maintenance, and supply-chain evidence.
+2. Name the two governed Super Admin break-glass custodians and privileged recovery approver roles.
+3. Approve identity-proof evidence, access scope, service targets, escalation thresholds, and periodic recovery tests.
+4. Approve the versioned TOTP encryption-key generation, rotation, dual-read, destruction, and emergency custody procedure.
 
 ## 16. Related documents
 
@@ -180,3 +211,4 @@ Production acceptance requires separate role-controlled enrollment and login wal
 | Version | Date | Change |
 | --- | --- | --- |
 | 0.1 | 2026-08-11 | Initial discovery and planning architecture; no implementation authority. |
+| 0.2 | 2026-08-11 | Recorded Founder decisions and exact default-off Work Package 0 session, migration, retention, cutover, and rollback architecture. |

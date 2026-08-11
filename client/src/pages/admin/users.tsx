@@ -172,17 +172,7 @@ export default function AdminUsers() {
 
   const createAdminMutation = useMutation({
     mutationFn: async (data: z.infer<typeof createAdminSchema>) => {
-      const response = await fetch('/api/admin/users/create-admin', {
-        method: 'POST',
-        body: JSON.stringify(data),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create admin');
-      }
+      const response = await apiRequest('POST', '/api/admin/users/create-admin', data);
       return response.json();
     },
     onSuccess: () => {
