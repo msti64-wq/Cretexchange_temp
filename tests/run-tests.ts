@@ -87,6 +87,7 @@ await import("./facility-geofence-service.test.ts");
 await import("./facility-geofence-foundation.test.ts");
 await import("./auth-session-foundation.test.ts");
 await import("./auth-session-completion.test.ts");
+await import("./auth-session-level4-security.test.ts");
 
 test("billing policy resolver treats blank and null as defaults and zero as an override", () => {
   const platform = {

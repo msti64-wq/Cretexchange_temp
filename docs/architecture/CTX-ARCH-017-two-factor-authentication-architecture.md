@@ -1,8 +1,8 @@
 # CTX-ARCH-017 — Two-Factor Authentication Architecture
 
 - **Document ID:** CTX-ARCH-017
-- **Version:** 0.3
-- **Status:** Founder-approved direction; Work Package 0 implemented on a controlled branch, not activated or deployed
+- **Version:** 0.4
+- **Status:** Founder-approved direction; Work Package 0 Level 4 security closeout on a controlled branch, not activated or deployed
 - **Owner:** CreteXchange Product, Security, and Engineering
 - **Product:** CreteXchange
 - **Date:** 2026-08-11
@@ -45,7 +45,7 @@ The controlled branch adds an inactive compatibility path that replaces the brow
 
 Session policy is 24-hour absolute/one-hour idle for Admin and Super Admin, and the Founder-approved seven-day absolute/24-hour idle policy for Owner and Driver. A localized, responsive Security & Sessions page lists only the signed-in user's privacy-safe session summaries and supports revoking another session, all other sessions, or all sessions. No Admin receives an unrestricted cross-user session browser.
 
-New and changed passwords use the Founder-approved 15–128 character policy, permit spaces and supported Unicode, impose no composition or periodic-change rule, and reject a deterministic local set of compromised/common choices plus context-specific values derived from the account. Existing hashes remain verifiable and are not force-reset solely for the policy change. New hashes prehash the complete UTF-8 password with SHA-256 before bcrypt so bcrypt's input boundary cannot silently truncate long or multibyte passwords; the stored format is version-marked for legacy compatibility.
+New and changed passwords use the Founder-approved 15–128 character policy, permit spaces and supported Unicode, impose no composition or periodic-change rule, and reject a deterministic local set of compromised/common choices plus context-specific values derived from the account. Existing hashes remain verifiable and are not force-reset solely for the policy change. Policy measurement and new hashing use the same NFKC-normalized complete Unicode value. New hashes use the unambiguous `cxpw$v1$sha256-bcrypt$` format and hash the domain separator `CreteXchange password prehash v1` plus the normalized password with SHA-256 before bcrypt, so bcrypt's input boundary cannot silently truncate long or multibyte passwords. A successful legacy bcrypt login performs an atomic compare-and-set upgrade; malformed or unknown versioned formats fail closed and an already upgraded password is never double-hashed.
 
 ## 3. Recommended initial method
 
@@ -176,6 +176,12 @@ Routine events retain for 24 months. Privileged enrollment, reset, recovery, bre
 - Migration rollback is allowed only before dependent records exist and through the approved recovery plan; Production rollback normally preserves data and deploys compatible code.
 - The recovery checkpoint must include database identifier, timestamp, retention, restore procedure, and verification owner.
 
+### 13.1 Governed migration and token-invalidation controls
+
+The Production migration runner recognizes `0042_add_revocable_authentication_session_foundation.sql` only through its explicit ordered allowlist and exact SHA-256 `7e01dfc555d524224423e56c79eda2560ecc6b7fae25e4bdbb6556b6dce7eeff`. It requires immutable deployed-SHA authorization, an advisory lock, statement and lock timeouts, a bounded transaction, rollback, catalog-only evidence for migrations `0032`, `0040`, and `0041`, an empty `0042` catalog before execution, and exact post-migration evidence for 4 tables, 22 constraints, 12 indexes, 4 functions, 1 trigger, retention-function protections, zero rows, and no inferred backfill. Prior migrations are never reexecuted by this prerequisite check, and unknown, tampered, duplicate, partial, or out-of-order selections fail closed.
+
+Global legacy-token invalidation is a separate controlled job with `plan`, `count`, and explicit confirmed `apply` modes. It requires an exact deployed/authorized SHA, a bounded authorized request reference, an exact preflight user count, zero active server sessions, an advisory transaction lock, timeouts, and one append-only privileged cutover event. It increments every user's nonnegative `auth_token_version` exactly once. Repeating the same approved reference is idempotent; another, duplicate, unexpected-count, or partially recorded cutover fails closed. Any error rolls back the transaction. The increment is not reversed during application rollback, preventing a pre-cutover browser JWT from becoming valid again.
+
 ## 14. Required validation
 
 Validation must include RFC-compatible TOTP vectors, clock skew, replay, concurrency, challenge expiry/consumption, rate limits, recovery-code uniqueness/use, encrypted-secret handling, session issuance/revocation/elevation, password-reset invalidation, RBAC, Admin-assistance separation, append-only audit, migration constraints/rollback/reapplication, English/Spanish, mobile/desktop, keyboard/screen reader, reduced motion, privacy, log redaction, and financial isolation.
@@ -217,3 +223,4 @@ Remaining before TOTP implementation or enforcement:
 | 0.1 | 2026-08-11 | Initial discovery and planning architecture; no implementation authority. |
 | 0.2 | 2026-08-11 | Recorded Founder decisions and exact default-off Work Package 0 session, migration, retention, cutover, and rollback architecture. |
 | 0.3 | 2026-08-11 | Recorded approved session limits, password policy, self-service Sessions UI, named joint custodians, recovery service targets, and versioned key-rotation governance. |
+| 0.4 | 2026-08-11 | Recorded Level 4 password compatibility corrections, exact `0042` runner governance, and bounded auditable legacy-token invalidation and rollback behavior. |

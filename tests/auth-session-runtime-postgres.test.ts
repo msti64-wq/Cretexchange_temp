@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { Client } from "pg";
+import bcrypt from "bcryptjs";
+import type { AuthSessionCutoverPlan } from "../scripts/controlled-auth-session-cutover";
 
 const databaseUrl = process.env.AUTH_SESSION_RUNTIME_TEST_DATABASE_URL;
 const confirmation = process.env.AUTH_SESSION_RUNTIME_TEST_CONFIRM;
@@ -74,9 +76,11 @@ test("default-off runtime foundation persists, authenticates, rotates, revokes, 
   )`);
   await setup.query(migration);
   const userId = "00000000-0000-4000-8000-000000000101";
+  const legacyPassword = "Legacy complete Unicode password café 🧱";
+  const legacyPasswordHash = await bcrypt.hash(legacyPassword, 4);
   await setup.query(`INSERT INTO users
     (id,username,email,password_hash,first_name,last_name,role,is_active)
-    VALUES ($1,'auth-runtime','auth-runtime@example.invalid','old-hash','Auth','Runtime','owner',true)`, [userId]);
+    VALUES ($1,'auth-runtime','auth-runtime@example.invalid',$2,'Auth','Runtime','owner',true)`, [userId, legacyPasswordHash]);
   await setup.end();
 
   process.env.AUTH_SESSION_FOUNDATION_ENABLED = "true";
@@ -84,12 +88,22 @@ test("default-off runtime foundation persists, authenticates, rotates, revokes, 
   process.env.NODE_ENV = "test";
   const foundation = await import("../server/authSessionFoundation");
   const passwordSecurity = await import("../server/passwordSecurity");
+  const { storage } = await import("../server/storage");
   const { pool } = await import("../server/db");
   const verification = new Client({ connectionString: databaseUrl });
   await verification.connect();
 
   try {
     const user = { id: userId, role: "owner" as const };
+    const legacyVerification = await passwordSecurity.verifyPasswordForAuthentication(legacyPassword, legacyPasswordHash);
+    assert.equal(legacyVerification.valid, true);
+    assert.match(legacyVerification.upgradedHash || "", /^cxpw\$v1\$sha256-bcrypt\$/);
+    assert.equal(await storage.upgradeUserPasswordHash(userId, legacyPasswordHash, legacyVerification.upgradedHash || ""), true);
+    assert.equal(await storage.upgradeUserPasswordHash(userId, legacyPasswordHash, legacyVerification.upgradedHash || ""), false);
+    const upgradedPasswordHash = (await verification.query("SELECT password_hash FROM users WHERE id=$1", [userId])).rows[0].password_hash;
+    assert.equal(await passwordSecurity.verifyStoredPassword(legacyPassword.normalize("NFD"), upgradedPasswordHash), true);
+    assert.deepEqual(await passwordSecurity.verifyPasswordForAuthentication(legacyPassword, upgradedPasswordHash), { valid: true, upgradedHash: null });
+
     const loginRequest = mockRequest({ method: "POST", requestId: "auth-runtime-login" });
     const loginResponse = mockResponse();
     const sessionId = await foundation.createAuthenticatedServerSession(user, loginRequest, loginResponse, "password_login");
@@ -134,7 +148,7 @@ test("default-off runtime foundation persists, authenticates, rotates, revokes, 
     assert.equal(await foundation.consumeSecurePasswordResetToken(resetToken, resetPassword, mockRequest({ method: "POST", requestId: "auth-runtime-reset-complete" })), true);
     assert.equal(await foundation.consumeSecurePasswordResetToken(resetToken, "replay-hash", mockRequest({ method: "POST", requestId: "auth-runtime-reset-replay" })), false);
     const resetState = await verification.query("SELECT password_hash,auth_token_version FROM users WHERE id=$1", [userId]);
-    assert.match(resetState.rows[0].password_hash, /^cx-sha256-bcrypt\$/);
+    assert.match(resetState.rows[0].password_hash, /^cxpw\$v1\$sha256-bcrypt\$/);
     assert.equal(await passwordSecurity.verifyStoredPassword(resetPassword, resetState.rows[0].password_hash), true);
     assert.equal(resetState.rows[0].auth_token_version, 1);
     assert.equal((await verification.query("SELECT count(*)::int AS value FROM auth_sessions WHERE revoked_at IS NULL")).rows[0].value, 0);
@@ -175,6 +189,31 @@ test("default-off runtime foundation persists, authenticates, rotates, revokes, 
     if (!roleResult.ok) assert.equal(roleResult.code, "ROLE_CHANGED");
 
     await verification.query("UPDATE users SET role='owner' WHERE id=$1", [userId]);
+    const concurrentResponse = mockResponse();
+    const concurrentSessionId = await foundation.createAuthenticatedServerSession(
+      user,
+      mockRequest({ method: "POST", requestId: "auth-runtime-concurrent-revocation-session" }),
+      concurrentResponse,
+      "password_login",
+    );
+    const concurrentResults = await Promise.all([
+      foundation.revokeOwnedSessionWithAudit({
+        user,
+        sessionId: concurrentSessionId,
+        req: mockRequest({ method: "DELETE", requestId: "auth-runtime-concurrent-revoke-a" }),
+      }),
+      foundation.revokeOwnedSessionWithAudit({
+        user,
+        sessionId: concurrentSessionId,
+        req: mockRequest({ method: "DELETE", requestId: "auth-runtime-concurrent-revoke-b" }),
+      }),
+    ]);
+    assert.deepEqual([...concurrentResults].sort(), [false, true]);
+    assert.equal((await verification.query(
+      "SELECT count(*)::int AS value FROM auth_security_events WHERE event_type='session.revoked' AND session_id=$1",
+      [concurrentSessionId],
+    )).rows[0].value, 1);
+
     const allRevoked = await foundation.revokeAllUserSessionsWithAudit({
       user,
       req: mockRequest({ method: "POST", requestId: "auth-runtime-revoke-all" }),
@@ -182,6 +221,74 @@ test("default-off runtime foundation persists, authenticates, rotates, revokes, 
     assert.ok(allRevoked >= 1);
     assert.equal((await verification.query("SELECT count(*)::int AS value FROM auth_sessions WHERE revoked_at IS NULL")).rows[0].value, 0);
     assert.equal((await verification.query("SELECT count(*)::int AS value FROM auth_security_events WHERE event_type='session.revoked_all'")).rows[0].value, 1);
+
+    await foundation.createAuthenticatedServerSession(
+      user,
+      mockRequest({ method: "POST", requestId: "auth-runtime-deactivation-session" }),
+      mockResponse(),
+      "password_login",
+    );
+    await assert.rejects(foundation.setUserActiveStatusWithSessionGovernance({
+      actor: { id: userId, role: "owner" },
+      subjectUserId: userId,
+      isActive: false,
+      req: mockRequest({ method: "PUT", requestId: "auth-runtime-deactivation-denied" }),
+    }), /Privileged account-status authority/);
+    const versionBeforeDeactivation = Number((await verification.query("SELECT auth_token_version FROM users WHERE id=$1", [userId])).rows[0].auth_token_version);
+    const deactivated = await foundation.setUserActiveStatusWithSessionGovernance({
+      actor: { id: userId, role: "admin" },
+      subjectUserId: userId,
+      isActive: false,
+      req: mockRequest({ method: "PUT", requestId: "auth-runtime-deactivation" }),
+    });
+    assert.equal(deactivated?.isActive, false);
+    assert.equal((await verification.query("SELECT count(*)::int AS value FROM auth_sessions WHERE revoked_at IS NULL")).rows[0].value, 0);
+    assert.equal(Number((await verification.query("SELECT auth_token_version FROM users WHERE id=$1", [userId])).rows[0].auth_token_version), versionBeforeDeactivation + 1);
+    await foundation.setUserActiveStatusWithSessionGovernance({
+      actor: { id: userId, role: "admin" },
+      subjectUserId: userId,
+      isActive: false,
+      req: mockRequest({ method: "PUT", requestId: "auth-runtime-deactivation-idempotent" }),
+    });
+    assert.equal((await verification.query("SELECT count(*)::int AS value FROM auth_security_events WHERE event_type='account.deactivated'")).rows[0].value, 1);
+    await foundation.setUserActiveStatusWithSessionGovernance({
+      actor: { id: userId, role: "admin" },
+      subjectUserId: userId,
+      isActive: true,
+      req: mockRequest({ method: "PUT", requestId: "auth-runtime-reactivation" }),
+    });
+
+    const cutover = await import("../scripts/controlled-auth-session-cutover");
+    const tokenVersionBeforeCutover = Number((await verification.query("SELECT auth_token_version FROM users WHERE id=$1", [userId])).rows[0].auth_token_version);
+    const rejectedPlan: AuthSessionCutoverPlan = {
+      mode: "apply",
+      deployedSha: "0c5c37fc41068b380a204fe6f62c6b4b37b96596",
+      requestReference: "auth-cutover-runtime-rollback-2026",
+      expectedUserCount: 2,
+      confirmed: true,
+    };
+    await assert.rejects(cutover.executeAuthSessionTokenVersionCutover(verification, rejectedPlan), /User count changed/);
+    assert.equal(Number((await verification.query("SELECT auth_token_version FROM users WHERE id=$1", [userId])).rows[0].auth_token_version), tokenVersionBeforeCutover);
+
+    const acceptedPlan: AuthSessionCutoverPlan = {
+      ...rejectedPlan,
+      requestReference: "auth-cutover-runtime-applied-2026",
+      expectedUserCount: 1,
+    };
+    assert.deepEqual(await cutover.executeAuthSessionTokenVersionCutover(verification, acceptedPlan), {
+      status: "applied",
+      affectedUsers: 1,
+      tokenVersionSum: tokenVersionBeforeCutover + 1,
+    });
+    assert.deepEqual(await cutover.executeAuthSessionTokenVersionCutover(verification, acceptedPlan), {
+      status: "already_applied",
+      affectedUsers: 0,
+      tokenVersionSum: tokenVersionBeforeCutover + 1,
+    });
+    assert.equal((await verification.query(
+      "SELECT count(*)::int AS value FROM auth_security_events WHERE event_type='auth.cutover.legacy_tokens_invalidated' AND request_reference=$1",
+      [acceptedPlan.requestReference],
+    )).rows[0].value, 1);
 
     const rawSensitiveMetadata = await verification.query(`SELECT count(*)::int AS value FROM auth_security_events
       WHERE event_metadata::text ~* '(token|password|email|coordinate|storage|user-agent|127\\.0\\.0)'`);

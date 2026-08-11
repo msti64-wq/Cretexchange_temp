@@ -5,7 +5,11 @@ import bcrypt from "bcryptjs";
 import { translations } from "../client/src/lib/i18n";
 import { FOUNDER_BREAK_GLASS_CUSTODIANS, validateFounderBreakGlassApproval } from "../shared/authRecoveryGovernance";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validatePasswordPolicy } from "../shared/passwordPolicy";
-import { hashPasswordForStorage, verifyStoredPassword } from "../server/passwordSecurity";
+import {
+  hashPasswordForStorage,
+  verifyPasswordForAuthentication,
+  verifyStoredPassword,
+} from "../server/passwordSecurity";
 
 const read = (path: string) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -21,14 +25,21 @@ test("approved password policy accepts long Unicode passphrases and rejects weak
   assert.deepEqual(validatePasswordPolicy("owner42 has a lengthy safe phrase", { username: "owner42" }).valid, false);
 });
 test("versioned password storage preserves full Unicode input and legacy verification", async () => {
-  const password = "Long passphrase with spaces, accents café, and blocks 🧱🧱";
-  const stored = await hashPasswordForStorage(password);
-  assert.match(stored, /^cx-sha256-bcrypt\$/);
-  assert.equal(await verifyStoredPassword(password, stored), true);
-  assert.equal(await verifyStoredPassword(`${password}!`, stored), false);
+  const composed = "Long passphrase with spaces, accents café, and blocks 🧱🧱";
+  const decomposed = composed.normalize("NFD");
+  const stored = await hashPasswordForStorage(decomposed);
+  assert.match(stored, /^cxpw\$v1\$sha256-bcrypt\$/);
+  assert.equal(await verifyStoredPassword(composed, stored), true);
+  assert.equal(await verifyStoredPassword(`${composed}!`, stored), false);
 
   const legacy = await bcrypt.hash("legacy-password-value", 4);
-  assert.equal(await verifyStoredPassword("legacy-password-value", legacy), true);
+  const legacyVerification = await verifyPasswordForAuthentication("legacy-password-value", legacy);
+  assert.equal(legacyVerification.valid, true);
+  assert.match(legacyVerification.upgradedHash || "", /^cxpw\$v1\$sha256-bcrypt\$/);
+  assert.equal(await verifyStoredPassword("legacy-password-value", legacyVerification.upgradedHash || ""), true);
+  assert.deepEqual(await verifyPasswordForAuthentication("wrong", legacy), { valid: false, upgradedHash: null });
+  assert.deepEqual(await verifyPasswordForAuthentication(composed, stored), { valid: true, upgradedHash: null });
+  assert.equal(await verifyStoredPassword(composed, `cxpw$v2$sha256-bcrypt$${legacy}`), false);
 });
 
 test("session UI is own-account scoped, localized, accessible, responsive, and confirmation governed", async () => {

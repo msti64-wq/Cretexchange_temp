@@ -388,6 +388,46 @@ export async function revokeAllUserSessions(userId: string, reasonCode: string, 
   return rows.length;
 }
 
+export async function setUserActiveStatusWithSessionGovernance(input: {
+  actor: Pick<User, "id" | "role">;
+  subjectUserId: string;
+  isActive: boolean;
+  req: Request;
+}): Promise<User | undefined> {
+  if (!isPrivilegedRole(input.actor.role)) throw new Error("Privileged account-status authority is required");
+  const pepper = getAuthSessionHashPepper();
+  return db.transaction(async (tx) => {
+    const [subject] = await tx.select().from(users)
+      .where(eq(users.id, input.subjectUserId))
+      .for("update")
+      .limit(1);
+    if (!subject) return undefined;
+    if (subject.isActive === input.isActive) return subject;
+
+    const [updated] = await tx.update(users).set({
+      isActive: input.isActive,
+      ...(input.isActive ? {} : { authTokenVersion: sql`${users.authTokenVersion} + 1` }),
+      updatedAt: new Date(),
+    }).where(eq(users.id, input.subjectUserId)).returning();
+    const sessionsRevoked = input.isActive
+      ? 0
+      : await revokeAllUserSessions(input.subjectUserId, "account_deactivated", tx);
+    await insertSecurityEvent(tx, {
+      eventType: input.isActive ? "account.activated" : "account.deactivated",
+      outcome: "success",
+      reasonCode: input.isActive ? "administrative_activation" : "administrative_deactivation",
+      actorUserId: input.actor.id,
+      subjectUserId: input.subjectUserId,
+      requestReference: requestReference(input.req),
+      networkKeyHash: requestNetworkHash(input.req, pepper),
+      role: subject.role,
+      forcePrivileged: isPrivilegedRole(input.actor.role) || isPrivilegedRole(subject.role),
+      metadata: { sessionsRevoked },
+    });
+    return updated;
+  });
+}
+
 export async function rotateAuthenticatedServerSession(
   req: Request & { authSessionId?: string; user?: { id?: string; role?: AuthenticatedRole } },
   res: Response,

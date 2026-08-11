@@ -5,7 +5,12 @@ import type { Express, RequestHandler } from "express";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import type { User } from "../shared/schema";
-import { enforcePasswordPolicy, hashPasswordForStorage, isPasswordPolicyError, verifyStoredPassword } from "./passwordSecurity";
+import {
+  enforcePasswordPolicy,
+  hashPasswordForStorage,
+  isPasswordPolicyError,
+  verifyPasswordForAuthentication,
+} from "./passwordSecurity";
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -44,9 +49,17 @@ export async function setupAuth(app: Express) {
           return done(null, false, { message: "Account is inactive" });
         }
 
-        const isValidPassword = await verifyStoredPassword(password, user.passwordHash);
-        if (!isValidPassword) {
+        const passwordVerification = await verifyPasswordForAuthentication(password, user.passwordHash);
+        if (!passwordVerification.valid) {
           return done(null, false, { message: "Invalid password" });
+        }
+
+        if (passwordVerification.upgradedHash) {
+          try {
+            await storage.upgradeUserPasswordHash(user.id, user.passwordHash, passwordVerification.upgradedHash);
+          } catch {
+            console.error("PASSWORD_HASH_UPGRADE_FAILED");
+          }
         }
 
         // Remove password hash from user object

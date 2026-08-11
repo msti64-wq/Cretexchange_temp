@@ -26,7 +26,12 @@ import {
 } from "../shared/schema";
 import { db } from "./db";
 import { setupAuth, isAuthenticated } from "./tokenAuth";
-import { isAuthSessionFoundationEnabled, updatePasswordAndRevokeSessions } from "./authSessionFoundation";
+import {
+  clearAuthenticationCookies,
+  isAuthSessionFoundationEnabled,
+  setUserActiveStatusWithSessionGovernance,
+  updatePasswordAndRevokeSessions,
+} from "./authSessionFoundation";
 import { enforcePasswordPolicy, hashPasswordForStorage, isPasswordPolicyError, verifyStoredPassword } from "./passwordSecurity";
 import { isFinancialExecutionEnabled, resolveRuntimeEnvironment } from "./runtimeEnvironment";
 import { getJwtSecret } from "./jwtSecret";
@@ -11393,14 +11398,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "isActive must be a boolean" });
       }
 
-      // Update user status
-      const updatedUser = await storage.updateUserStatus(userId, isActive);
+      const updatedUser = isAuthSessionFoundationEnabled()
+        ? await setUserActiveStatusWithSessionGovernance({ actor: user, subjectUserId: userId, isActive, req })
+        : await storage.updateUserStatus(userId, isActive);
       
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      res.json({ message: "User status updated successfully", user: updatedUser });
+      if (!isActive && userId === user.id && isAuthSessionFoundationEnabled()) clearAuthenticationCookies(res);
+      const { passwordHash: _passwordHash, ...safeUser } = updatedUser;
+      res.json({ message: "User status updated successfully", user: safeUser });
     } catch (error) {
       console.error("Error updating user status:", error);
       res.status(500).json({ message: "Failed to update user status" });

@@ -3,12 +3,15 @@ import test from "node:test";
 import pg from "pg";
 import {
   assert0040Prerequisites,
+  assert0042Pending,
+  assert0042Prerequisites,
   assertMigrationChecksum,
   closeClient,
   executeMigrationTransaction,
   productionMigrations,
   selectMigrations,
   verify0041Catalog,
+  verify0042Catalog,
 } from "../scripts/controlled-production-migrations";
 import { readFile } from "node:fs/promises";
 
@@ -94,9 +97,26 @@ test("controlled production runner accepts only the checksum-approved 0041 artif
   );
 });
 
+test("controlled production runner accepts only the checksum-approved 0042 artifact", async () => {
+  const selected = selectMigrations("0042", "0042");
+  assert.equal(selected.length, 1);
+  assert.deepEqual(selected[0], {
+    id: "0042",
+    file: "migrations/0042_add_revocable_authentication_session_foundation.sql",
+    sha256: "7e01dfc555d524224423e56c79eda2560ecc6b7fae25e4bdbb6556b6dce7eeff",
+    expectedObjects: 43,
+  });
+  const contents = await readFile(new URL("../migrations/0042_add_revocable_authentication_session_foundation.sql", import.meta.url));
+  assert.equal(assertMigrationChecksum(selected[0], contents), selected[0].sha256);
+  assert.throws(
+    () => assertMigrationChecksum(selected[0], Buffer.from(`${contents.toString("utf8")}\n-- tampered`)),
+    /Checksum mismatch for 0042/,
+  );
+});
+
 test("unknown, out-of-order, and catalog-only 0040 selections remain denied", () => {
-  assert.throws(() => selectMigrations("0042", "0042"), /explicit ordered/);
-  assert.throws(() => selectMigrations("0041", "0039"), /explicit ordered/);
+  assert.throws(() => selectMigrations("0043", "0043"), /explicit ordered/);
+  assert.throws(() => selectMigrations("0042", "0041"), /explicit ordered/);
   assert.throws(() => selectMigrations("0040", "0040"), /explicit ordered/);
 });
 
@@ -138,6 +158,40 @@ test("0041 verification requires zero initial override rows and zero initial aud
   await assert.doesNotReject(verify0041Catalog(sequenceClient([2, 15, 3, 1, 1, 0, 0])));
 });
 
+test("0042 prerequisites require the exact prior catalog without executing prior migrations", async () => {
+  const expected = [1, 1, 1, 0, 3, 4, 8, 2, 3, 5, 2, 15, 3, 1, 1];
+  for (let missing = 0; missing < expected.length; missing += 1) {
+    const observed = [...expected];
+    observed[missing] = expected[missing] === 0 ? 1 : expected[missing] - 1;
+    await assert.rejects(assert0042Prerequisites(sequenceClient(observed)), /004[02] prerequisite/);
+  }
+  await assert.doesNotReject(assert0042Prerequisites(sequenceClient(expected)));
+});
+
+test("0042 verification requires every object, retention protection, and zero-row state", async () => {
+  const expected = [4, 22, 12, 4, 1, 3, 3, 0, 0, 0, 0, 0];
+  for (let missing = 0; missing < 7; missing += 1) {
+    const observed = [...expected];
+    observed[missing] = Math.max(0, observed[missing] - 1);
+    await assert.rejects(verify0042Catalog(sequenceClient(observed)), /0042/);
+  }
+  const publicExecuteGranted = [...expected];
+  publicExecuteGranted[7] = 1;
+  await assert.rejects(verify0042Catalog(sequenceClient(publicExecuteGranted)), /PUBLIC execute/);
+  for (let table = 8; table < expected.length; table += 1) {
+    const observed = [...expected];
+    observed[table] = 1;
+    await assert.rejects(verify0042Catalog(sequenceClient(observed)), /0042 initial/);
+  }
+  await assert.doesNotReject(verify0042Catalog(sequenceClient(expected)));
+});
+
+test("0042 duplicate and partial catalog states fail closed", async () => {
+  await assert.doesNotReject(assert0042Pending(sequenceClient([0, 0, 0, 0, 0])));
+  await assert.rejects(assert0042Pending(sequenceClient([4, 22, 12, 4, 1])), /already applied.*duplicate execution/i);
+  await assert.rejects(assert0042Pending(sequenceClient([3, 22, 12, 4, 1])), /partial.*no repair/i);
+});
+
 test("bounded migration transaction rolls back on execution failure", async () => {
   const queries: string[] = [];
   const client = {
@@ -176,12 +230,14 @@ test("runner introduces no generic migration discovery or execution bypass", asy
   assert.doesNotMatch(script, /--force\b|force-execution|skip-checksum|ignore-checksum/i);
   assert.doesNotMatch(script, /id:\s*"0040"/);
   assert.match(script, /if \(migration\.id === "0041"\) await assert0040Prerequisites\(client\)/);
+  assert.match(script, /await assert0042Prerequisites\(client\)/);
+  assert.match(script, /await assert0042Pending\(client\)/);
   assert.match(script, /pg_try_advisory_lock/);
   assert.match(script, /SET LOCAL statement_timeout/);
   assert.match(script, /SET LOCAL lock_timeout/);
 });
 
-test("0041 runner catalog checks pass against disposable PostgreSQL after catalog-only 0040 setup", {
+test("0042 runner catalog checks pass against disposable PostgreSQL after catalog-only prerequisites", {
   skip: process.env.CONTROLLED_PRODUCTION_RUNNER_TEST_DATABASE_URL ? false : "isolated PostgreSQL URL is required",
 }, async () => {
   const client = new pg.Client({
@@ -191,6 +247,7 @@ test("0041 runner catalog checks pass against disposable PostgreSQL after catalo
   await client.connect();
   try {
     await client.query(`
+      CREATE EXTENSION IF NOT EXISTS pgcrypto;
       CREATE TABLE users (id varchar PRIMARY KEY);
       CREATE TABLE owners (id varchar PRIMARY KEY, user_id varchar NOT NULL REFERENCES users(id));
       CREATE TABLE washout_locations (id varchar PRIMARY KEY, owner_id varchar NOT NULL REFERENCES owners(id));
@@ -205,13 +262,20 @@ test("0041 runner catalog checks pass against disposable PostgreSQL after catalo
         updated_at timestamp DEFAULT now()
       );
     `);
+    const migration0032 = await readFile(new URL("../migrations/0032_add_user_auth_token_version.sql", import.meta.url), "utf8");
+    await client.query(migration0032);
     const migration0040 = await readFile(new URL("../migrations/0040_add_canonical_facility_geofence_foundation.sql", import.meta.url), "utf8");
     await client.query(migration0040);
     await assert0040Prerequisites(client);
 
     const migration0041 = await readFile(new URL("../migrations/0041_add_facility_scoped_geofence_feature_controls.sql", import.meta.url), "utf8");
     await executeMigrationTransaction(client, migration0041, () => verify0041Catalog(client));
-    await verify0041Catalog(client);
+    await assert0042Prerequisites(client);
+
+    const migration0042 = await readFile(new URL("../migrations/0042_add_revocable_authentication_session_foundation.sql", import.meta.url), "utf8");
+    await executeMigrationTransaction(client, migration0042, () => verify0042Catalog(client));
+    await verify0042Catalog(client);
+    await assert.rejects(assert0042Pending(client), /duplicate execution/i);
   } finally {
     await client.end();
   }

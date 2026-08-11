@@ -1,7 +1,7 @@
 # CTX-RB-011 — Two-Factor Authentication Recovery and Reset Runbook
 
 - **Document ID:** CTX-RB-011
-- **Version:** 0.3
+- **Version:** 0.4
 - **Status:** Founder-approved recovery governance with named break-glass custodians; procedure not operational until custodian acknowledgment, secure out-of-band preparation, and TOTP release
 - **Owner:** CreteXchange Operations and Security
 - **Product:** CreteXchange
@@ -93,6 +93,19 @@ If the 2FA service is unavailable, do not bypass an enforced factor. The governe
 
 For the future Work Package 0 cutover, first create and verify a permanent database recovery checkpoint. Increment every user's legacy `auth_token_version` in the separately authorized bounded cutover transaction, deploy the exact accepted session-foundation SHA/configuration, and require fresh sign-in. Immediate rollback disables the foundation control and redeploys the accepted prior compatible SHA without reversing the token-version increment. This prevents rollback from reviving a pre-cutover JWT. Preserve the additive tables and audit history; do not drop migration `0042` as the first recovery action.
 
+### 9.1 Exact foundation release and cutover sequence
+
+1. Obtain separate Founder authority for the exact application SHA, migration checksum, permanent recovery checkpoint, and each subsequent cutover action.
+2. Run the controlled migration runner in `plan` mode for only `0042`; verify the exact approved checksum and no database connection.
+3. Create and verify the permanent governed Production recovery checkpoint.
+4. Run the controlled migration runner for only `0042`. Stop on any SHA, checksum, prerequisite, lock, timeout, transaction, or catalog mismatch. Verify all exact objects and zero initial rows/no inferred backfill.
+5. Deploy the exact validated application SHA with `AUTH_SESSION_FOUNDATION_ENABLED` absent or false. Verify legacy authentication, all roles and workflows, health, financial isolation, and zero foundation activity.
+6. In a separate cutover authorization, configure the independent hash pepper directly in the governed environment. Never copy it into source, chat, documentation, logs, screenshots, or reports.
+7. Run the cutover job in `count` mode with the exact immutable deployed SHA, authorized bounded request reference, and exact expected user count. Require zero active server sessions.
+8. Run the same job in confirmed `apply` mode. Verify the exact user-count increment, one privileged append-only cutover event, and forced sign-in. A repeated identical job must report already applied without another increment or event.
+9. Enable the foundation only under the separately authorized release step, then verify password login, reset/change, CSRF, role and deactivation handling, expiry, session list/revocation, RBAC, privacy, localization, accessibility, geofence/notification isolation, and financial isolation.
+10. If rollback is required, disable the foundation and redeploy the accepted compatible fallback without decrementing `auth_token_version`. Require fresh legacy sign-in; preserve `0042` and audit history unless the separately authorized database recovery procedure is invoked.
+
 ## 10. Founder decisions required
 
 1. Assign the authorized Admin-recovery approver role under CTX-POL-008.
@@ -117,3 +130,4 @@ For the future Work Package 0 cutover, first create and verify a permanent datab
 | 0.1 | 2026-08-11 | Initial discovery-stage runbook; procedure not operational. |
 | 0.2 | 2026-08-11 | Recorded Founder-approved recovery, separation, 24-hour delay, retention, Work Package 0 reset/session behavior, and cutover recovery plan. |
 | 0.3 | 2026-08-11 | Named the two joint custodians and recorded service targets, emergency-delay exception, password policy, self-service Sessions UI, and out-of-band preparation boundary. |
+| 0.4 | 2026-08-11 | Added the exact controlled `0042` release, count/apply cutover, idempotency, and rollback sequence; no Production action is authorized by this update. |

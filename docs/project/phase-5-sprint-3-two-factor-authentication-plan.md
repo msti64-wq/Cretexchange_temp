@@ -17,11 +17,21 @@ No partial MFA service or schema exists. The repository contains only a reusable
 
 ## Exact recommended sprint sequence
 
-### Work Package 0 — Revocable session and authentication-security foundation — implementation checkpoint
+### Work Package 0 — Revocable session and authentication-security foundation — Level 4 controlled-branch checkpoint
 
 Founder decisions are recorded. Implement exact-match default-off server sessions, opaque token/CSRF cookies, resistant server hashes, approved role-bounded absolute/idle expiry, rotation and revocation, hashed single-use password-reset tokens, token-version invalidation, authentication rate limits, same-origin and CSRF controls, append-only security events, 24-month/seven-year retention, 90-day detailed-network minimization, and session list/revoke APIs plus the minimal English/Spanish Security & Sessions interface. Apply the approved 15–128 character policy to new and changed passwords without forcing existing-password resets.
 
-**Gate:** Level 3 controlled-branch validation; exact migration checksum and Level 4 release authorization remain separate. No TOTP, user enrollment, Production migration, configuration, cutover, merge, or deployment.
+**Gate:** Level 4 validates the exact migration runner, password/session security, disposable-PostgreSQL behavior, bounded token-version cutover plan, complete regressions, TypeScript, and Production build. Exact Production migration, recovery checkpoint, merge/deployment, hash-pepper configuration, cutover, and activation each remain separately authorized. No TOTP or user enrollment exists.
+
+#### Level 4 security closeout scope
+
+- NFKC-normalize the complete Unicode password consistently for policy measurement and the versioned/domain-separated SHA-256-before-bcrypt format `cxpw$v1$sha256-bcrypt$`.
+- Continue authenticating strict legacy bcrypt values and conditionally upgrade the stored value after successful login without double hashing or lockout.
+- Govern deactivation by token-version increment, active server-session revocation, and append-only audit; retain next-request role-snapshot revocation and legacy JWT token-version validation.
+- Keep cookie mode and bearer mode mutually exclusive under the exact default-off foundation flag; the active foundation requires a valid independent pepper and fails closed when it is missing.
+- Add exact `0042` allowlist/checksum/catalog verification to the controlled Production runner without making prerequisite migrations executable.
+- Provide a separate exact-SHA, bounded-reference `plan`/`count`/confirmed-`apply` token-version cutover with advisory locking, timeouts, rollback, exact row counts, idempotency, and append-only privileged evidence.
+- Preserve the approved Work Package 0 boundary: no TOTP dependency, secret, QR code, recovery code, enrollment, enforcement, external delivery, custodian contact, financial change, Production contact, or deployment.
 
 ### Work Package 1 — TOTP enrollment and recovery codes
 

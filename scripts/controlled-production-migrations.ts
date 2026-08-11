@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
 
-type Migration = { id: "0013" | "0036" | "0037" | "0038" | "0039" | "0041"; file: string; sha256: string; expectedObjects: number };
+type Migration = { id: "0013" | "0036" | "0037" | "0038" | "0039" | "0041" | "0042"; file: string; sha256: string; expectedObjects: number };
 type MigrationState = "pending" | "applied";
 const CLIENT_CLOSE_TIMEOUT_MS = 5_000;
 
@@ -18,6 +18,7 @@ export const productionMigrations: readonly Migration[] = [
   { id: "0038", file: "migrations/0038_add_platform_analytics_events.sql", sha256: "684a072dac88a16515118bfd7eb3e9208570b375f4dff3a3c632c6426fbee667", expectedObjects: 13 },
   { id: "0039", file: "migrations/0039_extend_notifications_for_communication_center.sql", sha256: "90d7ffe79169b3735f8af4cfa77805aac34def6f9afddf48d878abfbec9b4c79", expectedObjects: 23 },
   { id: "0041", file: "migrations/0041_add_facility_scoped_geofence_feature_controls.sql", sha256: "01223adea3af146550bab3d925f12f367d14bbf832307c8a2a97de89fceca751", expectedObjects: 22 },
+  { id: "0042", file: "migrations/0042_add_revocable_authentication_session_foundation.sql", sha256: "7e01dfc555d524224423e56c79eda2560ecc6b7fae25e4bdbb6556b6dce7eeff", expectedObjects: 43 },
 ] as const;
 
 function fail(message: string): never { throw new Error(message); }
@@ -27,7 +28,7 @@ function sha(value: string | undefined): string | null { return value && /^[a-f0
 export function selectMigrations(from: string | undefined, to: string | undefined): readonly Migration[] {
   const first = productionMigrations.findIndex((migration) => migration.id === from);
   const last = productionMigrations.findIndex((migration) => migration.id === to);
-  if (first < 0 || last < first) fail("Only the explicit ordered 0013, 0036 through 0039, and 0041 production allowlist is permitted.");
+  if (first < 0 || last < first) fail("Only the explicit ordered 0013, 0036 through 0039, 0041, and 0042 production allowlist is permitted.");
   return productionMigrations.slice(first, last + 1);
 }
 
@@ -114,6 +115,64 @@ export async function verify0041Catalog(client: pg.Client): Promise<void> {
   console.log("NO_INFERRED_BACKFILL 0041 overrides=0 audit_events=0");
 }
 
+async function migration0042ObjectCount(client: pg.Client): Promise<number> {
+  const tables = await count(client,
+    "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name = ANY($2::text[])",
+    ["public", "{auth_sessions,auth_password_reset_tokens,auth_security_events,auth_rate_limit_buckets}"]);
+  const constraints = await count(client,
+    "SELECT count(*)::int AS value FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace WHERE n.nspname=$1 AND c.conname = ANY($2::text[])",
+    ["public", "{auth_sessions_pkey,auth_sessions_user_id_fkey,auth_sessions_token_hash_key,auth_sessions_rotated_from_session_id_fkey,auth_sessions_role_snapshot_valid,auth_sessions_token_hash_valid,auth_sessions_csrf_hash_valid,auth_sessions_expiry_order_valid,auth_password_reset_tokens_pkey,auth_password_reset_tokens_user_id_fkey,auth_password_reset_tokens_token_hash_key,auth_password_reset_tokens_hash_valid,auth_password_reset_tokens_request_reference_valid,auth_security_events_pkey,auth_security_events_outcome_valid,auth_security_events_retention_class_valid,auth_security_events_request_reference_valid,auth_security_events_metadata_object,auth_rate_limit_buckets_pkey,auth_rate_limit_buckets_action_key_unique,auth_rate_limit_buckets_attempt_count_valid,auth_rate_limit_buckets_key_hash_valid}"]);
+  const indexes = await count(client,
+    "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])",
+    ["public", "{auth_sessions_user_active_idx,auth_sessions_idle_expiry_idx,auth_sessions_network_expiry_idx,auth_password_reset_tokens_user_active_idx,auth_password_reset_tokens_expiry_idx,auth_password_reset_tokens_network_expiry_idx,auth_security_events_subject_created_idx,auth_security_events_type_created_idx,auth_security_events_retention_idx,auth_security_events_network_expiry_idx,auth_rate_limit_buckets_blocked_idx,auth_rate_limit_buckets_expiry_idx}"]);
+  const functions = await count(client,
+    "SELECT count(*)::int AS value FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=$1 AND p.proname = ANY($2::text[])",
+    ["public", "{reject_auth_security_event_mutation,minimize_expired_auth_event_network_metadata,purge_expired_auth_security_events,purge_expired_auth_rate_limit_buckets}"]);
+  const triggers = await count(client,
+    "SELECT count(*)::int AS value FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid WHERE NOT t.tgisinternal AND t.tgrelid=to_regclass($1) AND t.tgname=$2 AND p.proname=$3",
+    ["public.auth_security_events", "auth_security_events_append_only", "reject_auth_security_event_mutation"]);
+  return tables + constraints + indexes + functions + triggers;
+}
+
+export async function assert0042Prerequisites(client: pg.Client): Promise<void> {
+  await requireCount(client, "SELECT count(*)::int AS value FROM pg_extension WHERE extname=$1", ["pgcrypto"], 1, "0042 prerequisite pgcrypto extension");
+  await requireCount(client,
+    "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid=to_regclass($1) AND contype='p' AND conname=$2",
+    ["public.users", "users_pkey"], 1, "0042 prerequisite users primary key");
+  await requireCount(client,
+    "SELECT count(*)::int AS value FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2 AND column_name=$3 AND data_type=$4 AND is_nullable=$5 AND column_default=$6",
+    ["public", "users", "auth_token_version", "integer", "NO", "0"], 1, "0042 prerequisite 0032 auth token version");
+  await requireCount(client, "SELECT count(*)::int AS value FROM users WHERE auth_token_version IS NULL OR auth_token_version < 0", [], 0, "0042 prerequisite auth token invariant");
+  await assert0040Prerequisites(client);
+  const foundation0041 = await migration0041ObjectCount(client);
+  if (foundation0041 !== 22) fail(`0042 prerequisite 0041 catalog verification failed (${foundation0041}/22).`);
+}
+
+export async function verify0042Catalog(client: pg.Client): Promise<void> {
+  const actual = await migration0042ObjectCount(client);
+  if (actual !== 43) fail(`0042 catalog verification failed (${actual}/43).`);
+  await requireCount(client,
+    "SELECT count(*)::int AS value FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=$1 AND p.proname = ANY($2::text[]) AND p.prosecdef",
+    ["public", "{minimize_expired_auth_event_network_metadata,purge_expired_auth_security_events,purge_expired_auth_rate_limit_buckets}"], 3, "0042 retention SECURITY DEFINER functions");
+  await requireCount(client,
+    "SELECT count(*)::int AS value FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=$1 AND p.proname = ANY($2::text[]) AND array_to_string(p.proconfig, ',') LIKE $3",
+    ["public", "{minimize_expired_auth_event_network_metadata,purge_expired_auth_security_events,purge_expired_auth_rate_limit_buckets}", "%search_path=public, pg_temp%"], 3, "0042 retention search path protections");
+  await requireCount(client,
+    "SELECT count(*)::int AS value FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname=$1 AND p.proname = ANY($2::text[]) AND has_function_privilege('public', p.oid, 'EXECUTE')",
+    ["public", "{minimize_expired_auth_event_network_metadata,purge_expired_auth_security_events,purge_expired_auth_rate_limit_buckets}"], 0, "0042 retention PUBLIC execute privileges");
+  for (const table of ["auth_sessions", "auth_password_reset_tokens", "auth_security_events", "auth_rate_limit_buckets"]) {
+    await requireCount(client, `SELECT count(*)::int AS value FROM ${table}`, [], 0, `0042 initial ${table} rows`);
+  }
+  console.log("NO_INFERRED_BACKFILL 0042 sessions=0 reset_tokens=0 security_events=0 rate_limits=0");
+}
+
+export async function assert0042Pending(client: pg.Client): Promise<void> {
+  const actual = await migration0042ObjectCount(client);
+  if (actual === 0) return;
+  if (actual === 43) fail("0042 is already applied; duplicate execution is denied.");
+  fail(`Catalog state for 0042 is partial (${actual}/43); no repair is authorized.`);
+}
+
 async function migrationObjectCount(client: pg.Client, migration: Migration): Promise<number> {
   if (migration.id === "0013") {
     const tables = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name = ANY($2::text[])", ["public", "{terms_versions,terms_acceptances}"]);
@@ -144,6 +203,7 @@ async function migrationObjectCount(client: pg.Client, migration: Migration): Pr
     return columns + indexes + constraints;
   }
   if (migration.id === "0041") return migration0041ObjectCount(client);
+  if (migration.id === "0042") return migration0042ObjectCount(client);
   const tables = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name=$2", ["public", "washout_photo_review_events"]);
   const indexes = await count(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])", ["public", "{washout_photo_review_events_photo_created_idx,washout_photo_review_events_activity_created_idx}"]);
   const constraints = await count(client, "SELECT count(*)::int AS value FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname=$1 AND t.relname=$2 AND c.conname=$3", ["public", "washout_photo_review_events", "washout_photo_review_events_rejection_reason_check"]);
@@ -235,12 +295,17 @@ async function main() {
     if (!lock.rows[0]?.acquired) fail("Production migration advisory lock is unavailable.");
     for (const migration of selected) {
       if (migration.id === "0041") await assert0040Prerequisites(client);
+      if (migration.id === "0042") {
+        await assert0042Prerequisites(client);
+        await assert0042Pending(client);
+      }
       const before = await state(client, migration);
       if (before === "applied") { console.log(`ALREADY_APPLIED ${migration.id}`); continue; }
       const legacyBefore = migration.id === "0013" ? await legacyTermsCounts(client) : null;
       const sql = await readFile(path.resolve(migration.file), "utf8");
       await executeMigrationTransaction(client, sql, async () => {
         if (migration.id === "0041") await verify0041Catalog(client);
+        else if (migration.id === "0042") await verify0042Catalog(client);
         else if (await state(client, migration) !== "applied") fail(`Catalog verification failed for ${migration.id}.`);
         if (legacyBefore) {
           const legacyAfter = await legacyTermsCounts(client);

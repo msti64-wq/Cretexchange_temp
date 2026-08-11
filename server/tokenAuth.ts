@@ -18,7 +18,12 @@ import {
   revokeOwnedSessionWithAudit,
   revokeSessionFromRequest,
 } from "./authSessionFoundation";
-import { enforcePasswordPolicy, hashPasswordForStorage, isPasswordPolicyError, verifyStoredPassword } from "./passwordSecurity";
+import {
+  enforcePasswordPolicy,
+  hashPasswordForStorage,
+  isPasswordPolicyError,
+  verifyPasswordForAuthentication,
+} from "./passwordSecurity";
 
 const JWT_SECRET = getJwtSecret();
 
@@ -52,8 +57,8 @@ export async function setupAuth(app: Express) {
       }
 
       // Verify password
-      const isValidPassword = await verifyStoredPassword(password, user.passwordHash);
-      if (!isValidPassword) {
+      const passwordVerification = await verifyPasswordForAuthentication(password, user.passwordHash);
+      if (!passwordVerification.valid) {
         console.log("Login attempt failed: invalid password");
         if (foundationEnabled) await recordAuthenticationFailure({ req, eventType: "login.failed", reasonCode: "invalid_credentials", subjectUserId: user.id, role: user.role });
         return res.status(401).json({ message: "Invalid username or password" });
@@ -63,6 +68,16 @@ export async function setupAuth(app: Express) {
         console.log("Login blocked for inactive user");
         if (foundationEnabled) await recordAuthenticationFailure({ req, eventType: "login.denied", reasonCode: "account_inactive", subjectUserId: user.id, role: user.role, outcome: "denied" });
         return res.status(403).json({ message: "Account is inactive" });
+      }
+
+      if (passwordVerification.upgradedHash) {
+        try {
+          await storage.upgradeUserPasswordHash(user.id, user.passwordHash, passwordVerification.upgradedHash);
+        } catch {
+          // Authentication remains available; the atomic conditional upgrade is
+          // retried after the next successful legacy login.
+          console.error("PASSWORD_HASH_UPGRADE_FAILED");
+        }
       }
 
       // Registration is not a substitute for a successful authenticated login.
@@ -194,7 +209,10 @@ export async function setupAuth(app: Express) {
   app.post("/api/logout", async (req, res) => {
     if (isAuthSessionFoundationEnabled()) {
       const auth = await authenticateServerSessionRequest(req);
-      if (!auth.ok) return res.status(auth.status).json({ message: auth.message, code: auth.code });
+      if (!auth.ok) {
+        clearAuthenticationCookies(res);
+        return res.status(auth.status).json({ message: auth.message, code: auth.code });
+      }
       await revokeSessionFromRequest(req, res, "logout");
     } else {
       clearAuthenticationCookies(res);

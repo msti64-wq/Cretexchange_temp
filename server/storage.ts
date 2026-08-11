@@ -183,6 +183,7 @@ export interface IStorage {
   createUser(user: { username: string; email: string; passwordHash: string; firstName: string; lastName: string; phone?: string; address?: string; role: string }): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserPassword(userId: string, passwordHash: string): Promise<User>;
+  upgradeUserPasswordHash(userId: string, expectedLegacyHash: string, passwordHash: string): Promise<boolean>;
   updateUserStatus(userId: string, isActive: boolean): Promise<User | undefined>;
   updateUserStripeInfo(userId: string, stripeData: { stripeConnectAccountId?: string; stripeCustomerId?: string }): Promise<User>;
   reconcileDriverStripeAccountIds(params: {
@@ -788,6 +789,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async upgradeUserPasswordHash(userId: string, expectedLegacyHash: string, passwordHash: string): Promise<boolean> {
+    const rows = await db
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(and(eq(users.id, userId), eq(users.passwordHash, expectedLegacyHash)))
+      .returning({ id: users.id });
+    return rows.length === 1;
   }
 
   async updateUserStatus(userId: string, isActive: boolean): Promise<User | undefined> {
