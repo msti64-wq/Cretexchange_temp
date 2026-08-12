@@ -34,6 +34,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { useLanguage } from "@/lib/i18n";
 
+const ADMIN_DASHBOARD_ACTION_BUTTON_CLASS_NAME =
+  "h-auto w-full min-w-0 max-w-full flex-col items-start justify-start whitespace-normal text-left";
+const ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME =
+  "block w-full min-w-0 max-w-full whitespace-normal break-words [overflow-wrap:anywhere]";
+
 function AdminDashboardSkeleton({ role }: { role?: "driver" | "owner" | "admin" | "super_admin" }) {
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -579,56 +584,56 @@ export default function AdminDashboard() {
             <div className="grid gap-2 sm:grid-cols-3">
               <Button
                 variant="outline"
-                className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                className={`${ADMIN_DASHBOARD_ACTION_BUTTON_CLASS_NAME} min-h-20 gap-1 rounded-2xl border-border/70 bg-background/80 p-4 shadow-sm hover:bg-muted/60`}
                 onClick={() => window.location.href = '/users'}
                 data-testid="button-manage-users-hero"
               >
                 <Users className="h-5 w-5 text-primary" />
-                <span className="text-sm font-semibold">Users</span>
-                <span className="text-xs text-muted-foreground">Review approvals and roles</span>
+                <span className={`${ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME} text-sm font-semibold leading-snug`}>Users</span>
+                <span className={`${ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME} text-xs leading-relaxed text-muted-foreground`}>Review approvals and roles</span>
               </Button>
               <Button
                 variant="outline"
-                className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                className={`${ADMIN_DASHBOARD_ACTION_BUTTON_CLASS_NAME} min-h-20 gap-1 rounded-2xl border-border/70 bg-background/80 p-4 shadow-sm hover:bg-muted/60`}
                 onClick={() => window.location.href = '/locations'}
                 data-testid="button-manage-locations-hero"
               >
                 <Building className="h-5 w-5 text-secondary" />
-                <span className="text-sm font-semibold">Locations</span>
-                <span className="text-xs text-muted-foreground">Monitor site network</span>
+                <span className={`${ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME} text-sm font-semibold leading-snug`}>Locations</span>
+                <span className={`${ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME} text-xs leading-relaxed text-muted-foreground`}>Monitor site network</span>
               </Button>
               <Button
                 variant="outline"
-                className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                className={`${ADMIN_DASHBOARD_ACTION_BUTTON_CLASS_NAME} min-h-20 gap-1 rounded-2xl border-border/70 bg-background/80 p-4 shadow-sm hover:bg-muted/60`}
                 onClick={() => window.location.href = '/admin/facility-geofence-controls'}
                 data-testid="button-facility-geofence-controls-hero"
               >
                 <ShieldCheck className="h-5 w-5 text-sky-500" />
-                <span className="text-sm font-semibold">{t("facilityControls.nav")}</span>
-                <span className="text-xs text-muted-foreground">{t("facilityControls.dashboardActionDescription")}</span>
+                <span className={`${ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME} text-sm font-semibold leading-snug`}>{t("facilityControls.nav")}</span>
+                <span className={`${ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME} text-xs leading-relaxed text-muted-foreground`}>{t("facilityControls.dashboardActionDescription")}</span>
               </Button>
               {user?.role === 'super_admin' && (
                 <Button
                   variant="outline"
-                  className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                  className={`${ADMIN_DASHBOARD_ACTION_BUTTON_CLASS_NAME} min-h-20 gap-1 rounded-2xl border-border/70 bg-background/80 p-4 shadow-sm hover:bg-muted/60`}
                   onClick={() => window.location.href = '/feature-flags'}
                   data-testid="button-feature-flags-hero"
                 >
                   <Flag className="h-5 w-5 text-emerald-600" />
-                  <span className="text-sm font-semibold">Feature Flags</span>
-                  <span className="text-xs text-muted-foreground">Control rollout settings</span>
+                  <span className={`${ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME} text-sm font-semibold leading-snug`}>Feature Flags</span>
+                  <span className={`${ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME} text-xs leading-relaxed text-muted-foreground`}>Control rollout settings</span>
                 </Button>
               )}
               {user?.role === 'super_admin' && (
                 <Button
                   variant="outline"
-                  className="h-auto min-h-20 flex-col items-start justify-start gap-1 rounded-2xl border-border/70 bg-background/80 p-4 text-left shadow-sm hover:bg-muted/60"
+                  className={`${ADMIN_DASHBOARD_ACTION_BUTTON_CLASS_NAME} min-h-20 gap-1 rounded-2xl border-border/70 bg-background/80 p-4 shadow-sm hover:bg-muted/60`}
                   onClick={() => window.location.href = '/billing-audit-report'}
                   data-testid="button-billing-audit-report-hero"
                 >
                   <Search className="h-5 w-5 text-amber-600" />
-                  <span className="text-sm font-semibold">Billing Audit</span>
-                  <span className="text-xs text-muted-foreground">Reconcile Stripe and recovery activities</span>
+                  <span className={`${ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME} text-sm font-semibold leading-snug`}>{t("adminDashboard.action.billingAudit")}</span>
+                  <span className={`${ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME} text-xs leading-relaxed text-muted-foreground`}>{t("adminDashboard.action.billingAuditDescription")}</span>
                 </Button>
               )}
             </div>
@@ -2072,54 +2077,54 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Button 
             variant="outline" 
-            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
+            className={`${ADMIN_DASHBOARD_ACTION_BUTTON_CLASS_NAME} min-h-24 gap-2 rounded-2xl border-border/70 bg-card/95 p-4 shadow-sm hover:bg-muted/50`}
             onClick={() => window.location.href = '/users'}
             data-testid="button-manage-users"
           >
             <Users className="h-5 w-5 text-primary" />
-            <div>
-              <div className="text-sm font-semibold">Users</div>
-              <div className="text-xs text-muted-foreground">Manage & approve</div>
+            <div className={ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME}>
+              <div className="break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere]">Users</div>
+              <div className="break-words text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">Manage & approve</div>
             </div>
           </Button>
           
           <Button 
             variant="outline" 
-            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
+            className={`${ADMIN_DASHBOARD_ACTION_BUTTON_CLASS_NAME} min-h-24 gap-2 rounded-2xl border-border/70 bg-card/95 p-4 shadow-sm hover:bg-muted/50`}
             onClick={() => window.location.href = '/locations'}
             data-testid="button-manage-locations"
           >
             <Building className="h-5 w-5 text-secondary" />
-            <div>
-              <div className="text-sm font-semibold">Locations</div>
-              <div className="text-xs text-muted-foreground">Monitor sites</div>
+            <div className={ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME}>
+              <div className="break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere]">Locations</div>
+              <div className="break-words text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">Monitor sites</div>
             </div>
           </Button>
 
           <Button
             variant="outline"
-            className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
+            className={`${ADMIN_DASHBOARD_ACTION_BUTTON_CLASS_NAME} min-h-24 gap-2 rounded-2xl border-border/70 bg-card/95 p-4 shadow-sm hover:bg-muted/50`}
             onClick={() => window.location.href = '/admin/facility-geofence-controls'}
             data-testid="button-facility-geofence-controls"
           >
             <ShieldCheck className="h-5 w-5 text-sky-500" />
-            <div>
-              <div className="text-sm font-semibold">{t("facilityControls.nav")}</div>
-              <div className="text-xs text-muted-foreground">{t("facilityControls.dashboardActionDescription")}</div>
+            <div className={ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME}>
+              <div className="break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere]">{t("facilityControls.nav")}</div>
+              <div className="break-words text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">{t("facilityControls.dashboardActionDescription")}</div>
             </div>
           </Button>
 
           {user?.role === 'super_admin' && (
             <Button 
               variant="outline" 
-              className="h-auto min-h-24 flex-col items-start justify-start gap-2 rounded-2xl border-border/70 bg-card/95 p-4 text-left shadow-sm hover:bg-muted/50"
+              className={`${ADMIN_DASHBOARD_ACTION_BUTTON_CLASS_NAME} min-h-24 gap-2 rounded-2xl border-border/70 bg-card/95 p-4 shadow-sm hover:bg-muted/50`}
               onClick={() => window.location.href = '/feature-flags'}
               data-testid="button-feature-flags"
             >
               <Flag className="h-5 w-5 text-emerald-600" />
-              <div>
-                <div className="text-sm font-semibold">Feature Flags</div>
-                <div className="text-xs text-muted-foreground">Control rollout</div>
+              <div className={ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME}>
+                <div className="break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere]">Feature Flags</div>
+                <div className="break-words text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">Control rollout</div>
               </div>
             </Button>
           )}

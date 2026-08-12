@@ -1,6 +1,6 @@
 # Phase 5 Sprint 3 — Two-Factor Authentication Plan
 
-- **Status:** Founder decisions approved; Work Package 0 implemented and under controlled-branch validation, not activated or deployed
+- **Status:** Work Package 0 additive/default-off Production release and Founder acceptance complete; session cutover and activation remain separately gated
 - **Date:** 2026-08-11
 - **Starting Production/main SHA:** `ea61706e42b4a028f3378f598371bd28100f0c50`
 - **Scope:** Work Package 0 revocable-session and authentication-security foundation only
@@ -22,6 +22,10 @@ No partial MFA service or schema exists. The repository contains only a reusable
 Founder decisions are recorded. Implement exact-match default-off server sessions, opaque token/CSRF cookies, resistant server hashes, approved role-bounded absolute/idle expiry, rotation and revocation, hashed single-use password-reset tokens, token-version invalidation, authentication rate limits, same-origin and CSRF controls, append-only security events, 24-month/seven-year retention, 90-day detailed-network minimization, and session list/revoke APIs plus the minimal English/Spanish Security & Sessions interface. Apply the approved 15–128 character policy to new and changed passwords without forcing existing-password resets.
 
 **Gate:** Level 4 validates the exact migration runner, password/session security, disposable-PostgreSQL behavior, bounded token-version cutover plan, complete regressions, TypeScript, and Production build. Exact Production migration, recovery checkpoint, merge/deployment, hash-pepper configuration, cutover, and activation each remain separately authorized. No TOTP or user enrollment exists.
+
+### Work Package 0 default-off Production acceptance
+
+Founder Production acceptance passed on August 12, 2026, against exact Production SHA `e9b991cebe0544c9b6c29584b352775f952d4b8d`. Super Admin, Owner, and Driver dashboards and their established workflows passed while the session foundation remained disabled. The Security & Sessions entry is discoverable from Profile and correctly presents its unavailable state before activation. Existing JWT authentication remains functional. Migration `0042` is additive and present with all four foundation tables empty; this acceptance does not authorize a session hash pepper, token-version cutover, server-session activation, TOTP implementation, enrollment, or enforcement.
 
 #### Level 4 security closeout scope
 

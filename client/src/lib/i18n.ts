@@ -492,6 +492,9 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
     "adminNav.settings": "Settings",
     "adminNav.profile": "Profile",
 
+    "adminDashboard.action.billingAudit": "Billing Audit",
+    "adminDashboard.action.billingAuditDescription": "Reconcile Stripe and recovery activities",
+
     "facilityControls.nav": "Facility Geofence Pilot Controls",
     "facilityControls.dashboardActionDescription": "Review future-submission geofence pilot controls",
     "facilityControls.accessRequired": "Admin or Super Admin access is required.",
@@ -3141,6 +3144,9 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
     "adminNav.features": "Funciones",
     "adminNav.settings": "Configuración",
     "adminNav.profile": "Perfil",
+
+    "adminDashboard.action.billingAudit": "Auditoría de facturación",
+    "adminDashboard.action.billingAuditDescription": "Conciliar Stripe y las actividades de recuperación",
 
     "facilityControls.nav": "Controles piloto de geocerca por instalación",
     "facilityControls.dashboardActionDescription": "Revisar controles piloto de geocerca para envíos futuros",
