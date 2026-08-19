@@ -91,7 +91,7 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
     "public.facility.benefit5": "Strengthen a trusted recovery network",
     "public.facility.cta": "Register as a Facility",
     "public.footer.privacy": "Privacy Policy",
-    "public.footer.copyright": "© {{year}} CreteXchange. All rights reserved.",
+    "public.footer.copyright": "© {{year}} {{company}} — CreteXchange. All rights reserved.",
 
     "common.active": "Active",
     "common.address": "Address",
@@ -2744,7 +2744,7 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
     "public.facility.benefit5": "Fortalezca una red de recuperación confiable",
     "public.facility.cta": "Registrarse como instalación",
     "public.footer.privacy": "Política de privacidad",
-    "public.footer.copyright": "© {{year}} CreteXchange. Todos los derechos reservados.",
+    "public.footer.copyright": "© {{year}} {{company}} — CreteXchange. Todos los derechos reservados.",
 
     "common.active": "Activo",
     "common.address": "Dirección",

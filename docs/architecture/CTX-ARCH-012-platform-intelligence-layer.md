@@ -1,7 +1,7 @@
 # CTX-ARCH-012 — Platform Intelligence Layer
 
 **Status:** Approved through Phase 3 Sprint 4 Driver Competition and Leaderboards
-**Owner:** V8 Laboratories
+**Owner:** V8 Industries LLC
 **Scope:** Immutable operational analytics, governed metrics, journeys, role-scoped read APIs, owner-scoped Facility Intelligence, Driver-scoped personal intelligence, private Driver achievements, authenticated privacy-safe Driver competition, and Admin-only Network Intelligence. No public profile, public ranking, reward, prize, point, financial incentive, environmental claim, AI inference, or financial-execution change is authorized.
 
 ## Purpose and source of truth

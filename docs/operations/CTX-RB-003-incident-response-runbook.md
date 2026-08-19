@@ -3,7 +3,7 @@
 - **Document ID:** CTX-RB-003
 - **Version:** 0.1
 - **Status:** Draft
-- **Owner:** V8 Laboratories
+- **Owner:** V8 Industries LLC
 - **Product:** CreteXchange
 - **Effective Date:** July 2026
 - **Classification:** Internal
@@ -96,7 +96,7 @@ Formal severity levels, incident communications, support ownership, provider-rec
 
 ## 12. Governance and Change History
 
-- **Owner:** V8 Laboratories
+- **Owner:** V8 Industries LLC
 - **Approval Authority:** To be formally assigned
 - **Status:** Draft
 - **Last Reviewed:** July 2026
