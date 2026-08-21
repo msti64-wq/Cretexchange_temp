@@ -2419,10 +2419,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      const user = req.user?.role ? req.user : await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
 
       // Get role-specific data
       let roleData = null;
@@ -4860,7 +4858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/owners/dashboard/operational-summary', isAuthenticated, async (req: any, res) => {
     try {
       if (!req.user?.id) return res.status(401).json({ message: "Unauthorized" });
-      const user = await storage.getUser(req.user.id);
+      const user = req.user?.role ? req.user : await storage.getUser(req.user.id);
       if (!user || user.role !== "owner") {
         return res.status(403).json({ message: "Facility Owner access required." });
       }
@@ -10820,7 +10818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/dashboard', isAuthenticated, async (req: any, res) => {
     try {
       setBillingNoCacheHeaders(res);
-      const user = await storage.getUser(req.user.id);
+      const user = req.user?.role ? req.user : await storage.getUser(req.user.id);
       if (user?.role !== 'admin' && user?.role !== 'super_admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
@@ -10855,37 +10853,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       const dashboardErrors: Record<string, string> = {};
 
-      const weekResult = await Promise.resolve()
-        .then(() => storage.getSystemStats(7))
-        .catch((error) => {
-          console.error("[ADMIN_DASHBOARD] weekStats query failed", error);
-          dashboardErrors.weekStats = "Unable to load weekly admin metrics.";
-          return emptyStats;
-        });
-
-      const monthResult = await Promise.resolve()
-        .then(() => storage.getSystemStats(30))
-        .catch((error) => {
-          console.error("[ADMIN_DASHBOARD] monthStats query failed", error);
-          dashboardErrors.monthStats = "Unable to load monthly admin metrics.";
-          return emptyStats;
-        });
-
-      const awaitingResult = await Promise.resolve()
-        .then(() => storage.getPaymentsAwaitingDriverStripe())
-        .catch((error) => {
-          console.error("[ADMIN_DASHBOARD] awaitingDriverStripePayments query failed", error);
-          dashboardErrors.awaitingDriverStripePayments = "Unable to load driver setup queue.";
-          return [];
-        });
-
-      const billingReceivablesSummary = await Promise.resolve()
-        .then(() => buildOwnerBillingReceivablesOverview(storage))
-        .catch((error) => {
-          console.error("[ADMIN_DASHBOARD] billingReceivables query failed", error);
-          dashboardErrors.billingReceivables = "Unable to load current platform receivables.";
-          return null;
-        });
+      // These independent dashboard reads previously formed a serial database
+      // waterfall. Resolve them together so the critical response is bounded by
+      // the slowest source rather than the sum of all four sources. Each source
+      // keeps its existing local fallback and warning semantics.
+      const [weekResult, monthResult, awaitingResult, billingReceivablesSummary] = await Promise.all([
+        Promise.resolve()
+          .then(() => storage.getSystemStats(7))
+          .catch((error) => {
+            console.error("[ADMIN_DASHBOARD] weekStats query failed", error);
+            dashboardErrors.weekStats = "Unable to load weekly admin metrics.";
+            return emptyStats;
+          }),
+        Promise.resolve()
+          .then(() => storage.getSystemStats(30))
+          .catch((error) => {
+            console.error("[ADMIN_DASHBOARD] monthStats query failed", error);
+            dashboardErrors.monthStats = "Unable to load monthly admin metrics.";
+            return emptyStats;
+          }),
+        Promise.resolve()
+          .then(() => storage.getPaymentsAwaitingDriverStripe())
+          .catch((error) => {
+            console.error("[ADMIN_DASHBOARD] awaitingDriverStripePayments query failed", error);
+            dashboardErrors.awaitingDriverStripePayments = "Unable to load driver setup queue.";
+            return [];
+          }),
+        Promise.resolve()
+          .then(() => buildOwnerBillingReceivablesOverview(storage))
+          .catch((error) => {
+            console.error("[ADMIN_DASHBOARD] billingReceivables query failed", error);
+            dashboardErrors.billingReceivables = "Unable to load current platform receivables.";
+            return null;
+          }),
+      ]);
       const billingReceivablesOwnerChargeCents = Number(billingReceivablesSummary?.summary?.ownerChargeTotalCents || 0);
       console.log("[ADMIN_DASHBOARD] receivables parity", {
         billingPageReceivablesCents: billingReceivablesOwnerChargeCents,

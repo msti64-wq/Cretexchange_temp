@@ -35,6 +35,20 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("/client/src/lib/i18n.ts")) return "i18n";
+          if (
+            id.includes("/node_modules/react/")
+            || id.includes("/node_modules/react-dom/")
+            || id.includes("/node_modules/scheduler/")
+            || id.includes("/node_modules/wouter/")
+            || id.includes("/node_modules/@tanstack/react-query/")
+          ) return "react-vendor";
+        },
+      },
+    },
   },
   server: {
     fs: {

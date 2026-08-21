@@ -39,13 +39,12 @@ export async function resolveStoredDriverOperationalReadiness(userId: string): P
 }
 
 export async function requireDriverRole(req: any, res: any) {
-  const userId = req.user?.id;
-  if (!userId) {
+  if (!req.user?.id) {
     res.status(401).json({ message: "Unauthorized", code: "UNAUTHENTICATED" });
     return null;
   }
+  const user = req.user.role ? req.user : await storage.getUser(req.user.id);
 
-  const user = await storage.getUser(userId);
   if (!user || user.role !== "driver") {
     res.status(403).json({ message: "Driver access required", code: "DRIVER_ROLE_REQUIRED" });
     return null;

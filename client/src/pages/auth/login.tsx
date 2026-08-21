@@ -32,17 +32,24 @@ export default function Login() {
       });
       return response.json();
     },
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       if (typeof data.token === "string" && data.token) localStorage.setItem('authToken', data.token);
       else localStorage.removeItem('authToken');
+
+      // /api/login already returns the authenticated user. Seed the shared
+      // query before routing, then mark it stale without waiting. The role
+      // dashboard can paint immediately while its richer role profile refreshes
+      // in the background.
+      queryClient.setQueryData(["/api/auth/user"], data.user);
+      void queryClient.invalidateQueries({
+        queryKey: ["/api/auth/user"],
+        refetchType: "none",
+      });
       
       toast({
         title: t("auth.login.successTitle"),
         description: t("auth.login.successDescription"),
       });
-      
-      // Invalidate auth query to refetch user data
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       
       // Navigate to home page
       setLocation('/');

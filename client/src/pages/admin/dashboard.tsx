@@ -220,6 +220,7 @@ export default function AdminDashboard() {
     refetch: refetchUsers,
   } = useQuery<any>({
     queryKey: ["/api/admin/users"],
+    enabled: !isLoading,
     retry: false,
   });
 
@@ -230,6 +231,7 @@ export default function AdminDashboard() {
     refetch: refetchLocations,
   } = useQuery<any[]>({
     queryKey: ["/api/admin/locations"],
+    enabled: !isLoading,
     retry: false,
   });
 
@@ -244,6 +246,7 @@ export default function AdminDashboard() {
       const response = await apiRequest("/api/reports/owner?dateRange=all", { method: "GET" });
       return response.json();
     },
+    enabled: !isLoading,
     retry: false,
   });
 
@@ -254,6 +257,7 @@ export default function AdminDashboard() {
     refetch: refetchAutoApprovalStats,
   } = useQuery<any>({
     queryKey: ["/api/admin/auto-approval/stats"],
+    enabled: !isLoading,
     retry: false,
   });
 
@@ -268,6 +272,7 @@ export default function AdminDashboard() {
       const response = await apiRequest("/api/reports/owner?dateRange=today", { method: "GET" });
       return response.json();
     },
+    enabled: !isLoading,
     retry: false,
   });
 
@@ -282,6 +287,7 @@ export default function AdminDashboard() {
       const response = await apiRequest("/api/reports/owner?dateRange=weekly", { method: "GET" });
       return response.json();
     },
+    enabled: !isLoading,
     retry: false,
   });
 
@@ -296,11 +302,13 @@ export default function AdminDashboard() {
       const response = await apiRequest("/api/reports/owner?dateRange=monthly", { method: "GET" });
       return response.json();
     },
+    enabled: !isLoading,
     retry: false,
   });
 
   const { data: messages, isLoading: messagesLoading } = useQuery<any>({
     queryKey: ['/api/admin/messages'],
+    enabled: !isLoading,
     retry: false,
   });
 
@@ -320,6 +328,7 @@ export default function AdminDashboard() {
 
   const { data: pendingDrawings } = useQuery<any[]>({
     queryKey: ['/api/admin/lottery/drawings/pending'],
+    enabled: !isLoading,
     refetchInterval: 60000,
   });
 

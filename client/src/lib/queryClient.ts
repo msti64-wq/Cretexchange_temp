@@ -223,11 +223,3 @@ export const queryClient = new QueryClient({
     },
   },
 });
-
-// Clear React Query cache once on load
-if (typeof window !== 'undefined') {
-  queryClient.clear();
-  queryClient.invalidateQueries(); 
-  queryClient.removeQueries();
-  console.log('🔄 Query cache cleared once');
-}

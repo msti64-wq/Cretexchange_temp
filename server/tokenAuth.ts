@@ -82,7 +82,7 @@ export async function setupAuth(app: Express) {
 
       // Registration is not a substitute for a successful authenticated login.
       // The source-event key makes later logins a no-op for this first-login fact.
-      await storage.recordDriverFirstLogin(user.id);
+      if (user.role === "driver") await storage.recordDriverFirstLogin(user.id);
 
       const token = foundationEnabled
         ? undefined

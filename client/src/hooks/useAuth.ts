@@ -11,7 +11,7 @@ interface User {
   role: "driver" | "owner" | "admin" | "super_admin";
 }
 
-export function useAuth() {
+export function useAuth({ enabled = true }: { enabled?: boolean } = {}) {
   const [, setLocation] = useLocation();
   
   const { data: user, isLoading, error } = useQuery<User | null>({
@@ -31,6 +31,7 @@ export function useAuth() {
       
       return response.json();
     },
+    enabled,
     retry: false,
   });
 

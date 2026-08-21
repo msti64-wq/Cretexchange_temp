@@ -10,6 +10,7 @@ import { OwnerWorkspace } from "@/components/OwnerWorkspace";
 import { OwnerIntelligenceRouteLoading } from "@/components/owner/OwnerIntelligenceLoading";
 import { LanguageDocumentMetadata } from "@/components/LanguageDocumentMetadata";
 import { useLanguage } from "@/lib/i18n";
+import { isImmediatePublicRoute } from "@/lib/authRoutePolicy";
 const NotFound = lazy(() => import("@/pages/not-found"));
 const Landing = lazy(() => import("@/pages/landing"));
 const Login = lazy(() => import("@/pages/auth/login"));
@@ -83,34 +84,20 @@ const DriverRegister = (props: RouteComponentProps) => <Register preselectedRole
 const OwnerRegister = (props: RouteComponentProps) => <Register preselectedRole="owner" />;
 
 function Router() {
-  const { user, isLoading, isAuthenticated } = useAuth();
   const [currentPath] = useLocation();
+  const immediatePublicRoute = isImmediatePublicRoute(currentPath);
+  const { user, isLoading, isAuthenticated } = useAuth({ enabled: !immediatePublicRoute });
 
-  // Show loading spinner only during initial load
+  // Public account-entry routes do not need an authenticated bootstrap.
+  if (immediatePublicRoute) return <PublicRoutes />;
+
   if (isLoading) {
     if (currentPath.startsWith("/intelligence")) return <OwnerIntelligenceRouteLoading />;
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
+    return <AuthenticationRouteLoading />;
   }
 
   if (!isAuthenticated || !user) {
-    return (
-      <Suspense fallback={<RouteFallback />}>
-        <Switch>
-          <Route path="/" component={Landing} />
-          <Route path="/login" component={Login} />
-          <Route path="/register" component={GeneralRegister} />
-          <Route path="/register/driver" component={DriverRegister} />
-          <Route path="/register/owner" component={OwnerRegister} />
-          <Route path="/reset-password" component={ResetPassword} />
-          <Route path="/privacy-policy" component={PrivacyPolicy} />
-          <Route component={NotFound} />
-        </Switch>
-      </Suspense>
-    );
+    return <PublicRoutes />;
   }
 
   // If user is authenticated but doesn't have a role, show old registration
@@ -223,6 +210,47 @@ function Router() {
   }
 
   return <Route component={NotFound} />;
+}
+
+function PublicRoutes() {
+  return (
+    <Suspense fallback={<RouteFallback />}>
+      <Switch>
+        <Route path="/" component={Landing} />
+        <Route path="/login" component={Login} />
+        <Route path="/register" component={GeneralRegister} />
+        <Route path="/register/driver" component={DriverRegister} />
+        <Route path="/register/owner" component={OwnerRegister} />
+        <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/privacy-policy" component={PrivacyPolicy} />
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
+  );
+}
+
+function AuthenticationRouteLoading() {
+  const { t } = useLanguage();
+
+  return (
+    <main className="min-h-screen bg-background px-4 py-8" aria-busy="true">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div className="rounded-2xl border border-border/70 bg-card/95 p-5 shadow-sm" role="status" aria-live="polite">
+          <div className="flex items-center gap-3">
+            <div className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent motion-reduce:animate-none" aria-hidden="true" />
+            <div>
+              <p className="font-medium text-foreground">{t("auth.loading.title")}</p>
+              <p className="text-sm text-muted-foreground">{t("auth.loading.description")}</p>
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
+          {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-2xl bg-muted motion-reduce:animate-none" />)}
+        </div>
+        <div className="h-64 animate-pulse rounded-2xl bg-muted motion-reduce:animate-none" aria-hidden="true" />
+      </div>
+    </main>
+  );
 }
 
 function LegacyLotteryDashboardRedirect() {
