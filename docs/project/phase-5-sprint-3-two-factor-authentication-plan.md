@@ -27,6 +27,10 @@ Founder decisions are recorded. Implement exact-match default-off server session
 
 Founder Production acceptance passed on August 12, 2026, against exact Production SHA `e9b991cebe0544c9b6c29584b352775f952d4b8d`. Super Admin, Owner, and Driver dashboards and their established workflows passed while the session foundation remained disabled. The Security & Sessions entry is discoverable from Profile and correctly presents its unavailable state before activation. Existing JWT authentication remains functional. Migration `0042` is additive and present with all four foundation tables empty; this acceptance does not authorize a session hash pepper, token-version cutover, server-session activation, TOTP implementation, enrollment, or enforcement.
 
+### Pre-cutover Production acceptance checkpoint — August 21, 2026
+
+The Founder separately accepted the login/dashboard performance correction at commit `5b8ced00a8409bb2fe3a1d00251ae0d3a9aa50cc` and Railway deployment `cc5388cf-54ca-43ce-8f51-1e79f6343c8a`, then accepted the Owner **Today — All Facilities** correction at final Production SHA `58275ee99fe463598e1c3e6074c8b5efb6e0c9c5` and Railway deployment `9661a1aa-988a-4aaf-808c-b5a3562915e8`. Those defects are closed. The checkpoint does not authorize session cutover or TOTP: the session foundation remains disabled, legacy JWT authentication remains canonical, all four foundation tables remain empty, and no TOTP enrollment or enforcement has begun.
+
 #### Level 4 security closeout scope
 
 - NFC-normalize the complete Unicode password consistently for code-point policy measurement and the versioned/domain-separated SHA-256-before-bcrypt format `cxpw$v1$nfc-sha256-bcrypt$`; preserve case, whitespace, and compatibility characters.
@@ -118,7 +122,7 @@ Founder chooses whether to require 2FA for Owner/Driver, retain opt-in, or begin
 
 ## Remaining Founder decisions
 
-1. Approve the exact Work Package 0 SHA, migration checksum, controlled runner update if needed, recovery checkpoint, Railway hash-pepper ceremony, legacy-token invalidation transaction, release/cutover window, and rollback sequence.
+1. Separately authorize the session-cutover ceremony, including Railway hash-pepper configuration, the approved legacy-token invalidation transaction, release/cutover window, bounded smoke tests, and rollback sequence.
 2. Confirm both custodians acknowledge their roles and receive secure out-of-band instructions/material before privileged enforcement.
 3. Assign the authorized Admin-recovery approver role and approve evidence standards, escalation thresholds, and periodic test cadence.
 4. Before Work Package 1, complete the pinned `otpauth` license, maintenance, vulnerability, transitive-dependency, and package-lock review and approve the key-rotation ceremony.
