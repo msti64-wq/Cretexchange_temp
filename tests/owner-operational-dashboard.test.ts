@@ -179,6 +179,8 @@ test("operational summary contract contains no financial, contact, precise GPS, 
   assert.match(source, /privacySafeDriverName/);
   assert.match(source, /OWNER_OPERATIONAL_PREVIEW_LIMIT = 5/);
   assert.match(source, new RegExp(`OWNER_OPERATIONAL_PENDING_AGE_HOURS = ${OWNER_OPERATIONAL_PENDING_AGE_HOURS}`));
+  assert.match(source, /max\(created_at\) filter \(where created_at >= \$\{start\} and created_at < \$\{end\}\) as latest_activity_at/);
+  assert.match(source, /status = \$\{WASHOUT_CANONICAL_PENDING_STATUS\}[\s\S]*created_at >= \$\{start\}[\s\S]*created_at < \$\{end\}[\s\S]*as awaiting_review/);
 });
 
 test("route and client enforce Owner RBAC, Facility selection, permanent all-Facility review navigation, refresh, retry, deep links, and separate Facility Intelligence", async () => {
@@ -207,10 +209,19 @@ test("route and client enforce Owner RBAC, Facility selection, permanent all-Fac
   assert.match(page, /owner\.operational\.pendingAtFacility/);
   assert.match(page, /owner\.operational\.allPendingReviews/);
   assert.match(page, /owner-operational-all-pending-count/);
+  assert.match(page, /pendingAtOtherFacilities/);
+  assert.match(page, /owner-operational-other-facilities-pending/);
+  assert.match(page, /owner\.operational\.latestActivityToday/);
   assert.doesNotMatch(page, /disabled=\{attention\.pendingReviews === 0\}/);
   assert.match(page, /min-h-11/);
   assert.match(page, /aria-live="polite"/);
   assert.doesNotMatch(page, /locations\[0\]/);
+});
+
+test("Owner approval and rejection invalidate every selected-Facility operational summary", async () => {
+  const reviewPage = await readFile(new URL("../client/src/pages/owner/dashboard.tsx", import.meta.url), "utf8");
+  const invalidations = reviewPage.match(/invalidateQueries\(\{ queryKey: \['owner-operational-dashboard'\] \}\)/g) || [];
+  assert.equal(invalidations.length, 2);
 });
 
 test("operational-summary route returns 401 anonymously, 403 to a Driver, and 400 for an invalid Facility identifier", { concurrency: false }, async () => {

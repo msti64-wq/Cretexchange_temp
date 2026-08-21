@@ -188,6 +188,7 @@ export default function OwnerOperationalDashboard() {
     const today = data.today!;
     const attention = data.attention!;
     const facility = data.facilityStatus!;
+    const pendingAtOtherFacilities = Math.max(0, attention.allPendingReviews - attention.pendingReviews);
     const attentionTotal = attention.pendingReviews + attention.missingEvidence + attention.returnedFromAdministrativeReview + attention.failedEvidence + attention.unresolvedOperationalNotices + attention.facilityConfigurationIssues.length;
     const latest = data.recentActivity[0] || null;
     content = <main className="mx-auto max-w-6xl space-y-7 px-4 py-6">
@@ -210,6 +211,7 @@ export default function OwnerOperationalDashboard() {
           <MetricCard label={t("owner.operational.failedEvidence")} value={attention.failedEvidence} icon={AlertTriangle} testId="owner-operational-failed-evidence" />
           <MetricCard label={t("owner.operational.unresolvedNotices")} value={attention.unresolvedOperationalNotices} icon={Bell} testId="owner-operational-unresolved-notices" />
         </div>
+        {pendingAtOtherFacilities > 0 ? <Card className="border-primary/30" data-testid="owner-operational-other-facilities-pending"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm font-medium">{t("owner.operational.pendingAtOtherFacilities", { count: pendingAtOtherFacilities })}</p><Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={() => setLocation("/dashboard/reviews")}>{t("owner.operational.viewAllFacilities")}</Button></CardContent></Card> : null}
         {(attention.agedPendingReviews > 0 || attention.facilityConfigurationIssues.length > 0 || attention.termsAcceptanceRequired) && <Card className="border-amber-300/70 bg-amber-50/60 dark:border-amber-900/60 dark:bg-amber-950/20"><CardContent className="space-y-2 p-4"><h3 className="font-semibold">{t("owner.operational.otherActions")}</h3>{attention.agedPendingReviews > 0 && <p className="text-sm">{t("owner.operational.agedPending", { count: attention.agedPendingReviews })}</p>}{attention.facilityConfigurationIssues.map((issue) => <p key={issue} className="text-sm">{t(`owner.operational.issue.${issue}`)}</p>)}</CardContent></Card>}
       </section>
 
@@ -219,7 +221,7 @@ export default function OwnerOperationalDashboard() {
         <MetricCard label={t("owner.operational.verified")} value={today.verified} icon={CheckCircle2} testId="owner-operational-today-verified" />
         <MetricCard label={t("owner.operational.rejected")} value={today.rejected} icon={XCircle} testId="owner-operational-today-rejected" />
         <MetricCard label={t("owner.operational.activeDrivers")} value={today.activeDrivers} icon={UserRound} testId="owner-operational-today-drivers" />
-        <MetricCard label={t("owner.operational.latestActivity")} value={today.latestActivityAt ? new Date(today.latestActivityAt).toLocaleTimeString(language === "es" ? "es-US" : "en-US", { hour: "numeric", minute: "2-digit" }) : "—"} icon={Clock3} testId="owner-operational-latest" />
+        <MetricCard label={t("owner.operational.latestActivityToday")} value={today.latestActivityAt ? new Date(today.latestActivityAt).toLocaleTimeString(language === "es" ? "es-US" : "en-US", { hour: "numeric", minute: "2-digit" }) : "—"} icon={Clock3} testId="owner-operational-latest" />
       </div></section>
 
       <section aria-labelledby="pending-heading" className="space-y-3"><div className="flex items-end justify-between gap-3"><div><h2 id="pending-heading" className="text-xl font-semibold">{t("owner.operational.pendingPreview")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("owner.operational.pendingPreviewDescription")}</p></div>{data.pendingReviews.length > 0 && <Button variant="ghost" onClick={() => setLocation("/dashboard/reviews")}>{t("common.viewAll")}</Button>}</div>{data.pendingReviews.length ? <ul className="space-y-3">{data.pendingReviews.map((activity) => <ActivityRow key={activity.id} activity={activity} onOpen={setLocation} t={t} language={language} />)}</ul> : <Card data-testid="owner-operational-pending-empty"><CardContent className="p-6 text-sm text-muted-foreground">{t("owner.operational.noPending")}</CardContent></Card>}</section>

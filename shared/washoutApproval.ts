@@ -1,5 +1,10 @@
+// Canonical persisted Owner-review lifecycle state. Legacy display helpers below
+// intentionally recognize older aliases, but new server queries must use this
+// single persisted value so summary cards and review queues cannot diverge.
+export const WASHOUT_CANONICAL_PENDING_STATUS = "pending" as const;
+
 export const WASHOUT_PENDING_APPROVAL_STATUSES = new Set([
-  "pending",
+  WASHOUT_CANONICAL_PENDING_STATUS,
   "submitted",
   "pending_owner_approval",
   "pending_photo_approval",

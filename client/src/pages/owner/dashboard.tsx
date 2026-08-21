@@ -362,6 +362,7 @@ export default function OwnerDashboard() {
       });
       setApprovalTarget(null);
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['owner-operational-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/owners/billing/pending-summary'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/drivers/dashboard'] });
@@ -430,6 +431,7 @@ export default function OwnerDashboard() {
       setRejectionReason("");
       setRejectionReasonError(null);
       queryClient.invalidateQueries({ queryKey: ['/api/owners/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['owner-operational-dashboard'] });
       queryClient.invalidateQueries({ predicate: (query) => 
         Boolean(query.queryKey[0]?.toString().startsWith('/api/owners/activities'))
       });

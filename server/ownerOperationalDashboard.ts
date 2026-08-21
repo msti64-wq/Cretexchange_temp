@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { NotificationService } from "./notificationService";
 import type { OwnerLocationAccessState } from "../shared/ownerLocationAccess";
+import { WASHOUT_CANONICAL_PENDING_STATUS } from "../shared/washoutApproval";
 
 export const OWNER_OPERATIONAL_PENDING_AGE_HOURS = 72;
 export const OWNER_OPERATIONAL_PREVIEW_LIMIT = 5;
@@ -158,11 +159,15 @@ async function loadActivitySummary(database: Database, facilityId: string, start
   const result = await database.execute(sql`
     select
       count(*) filter (where created_at >= ${start} and created_at < ${end}) as submitted,
-      count(*) filter (where status = 'pending') as awaiting_review,
+      count(*) filter (
+        where status = ${WASHOUT_CANONICAL_PENDING_STATUS}
+          and created_at >= ${start}
+          and created_at < ${end}
+      ) as awaiting_review,
       count(*) filter (where verified_at >= ${start} and verified_at < ${end}) as verified,
       count(*) filter (where rejected_at >= ${start} and rejected_at < ${end}) as rejected,
       count(distinct driver_id) filter (where created_at >= ${start} and created_at < ${end}) as active_drivers,
-      max(created_at) as latest_activity_at
+      max(created_at) filter (where created_at >= ${start} and created_at < ${end}) as latest_activity_at
     from washout_activities
     where location_id = ${facilityId}
   `);
@@ -172,21 +177,22 @@ async function loadActivitySummary(database: Database, facilityId: string, start
 async function loadAttentionSummary(database: Database, facilityId: string, ownerId: string, agedBefore: Date) {
   const result = await database.execute(sql`
     select
-      count(*) filter (where a.status = 'pending') as pending_reviews,
+      count(*) filter (where a.status = ${WASHOUT_CANONICAL_PENDING_STATUS}) as pending_reviews,
       (
         select count(*)
         from washout_activities owner_activity
         join washout_locations owner_location on owner_location.id = owner_activity.location_id
-        where owner_location.owner_id = ${ownerId} and owner_activity.status = 'pending'
+        where owner_location.owner_id = ${ownerId}
+          and owner_activity.status = ${WASHOUT_CANONICAL_PENDING_STATUS}
       ) as all_pending_reviews,
-      count(*) filter (where a.status = 'pending' and a.created_at < ${agedBefore}) as aged_pending_reviews,
-      count(*) filter (where a.status = 'pending' and not exists (
+      count(*) filter (where a.status = ${WASHOUT_CANONICAL_PENDING_STATUS} and a.created_at < ${agedBefore}) as aged_pending_reviews,
+      count(*) filter (where a.status = ${WASHOUT_CANONICAL_PENDING_STATUS} and not exists (
         select 1 from washout_photos p where p.activity_id = a.id
       )) as missing_evidence,
-      count(*) filter (where a.status = 'pending' and exists (
+      count(*) filter (where a.status = ${WASHOUT_CANONICAL_PENDING_STATUS} and exists (
         select 1 from washout_photos p where p.activity_id = a.id and p.verification_status = 'failed'
       )) as failed_evidence,
-      count(*) filter (where a.status = 'pending' and exists (
+      count(*) filter (where a.status = ${WASHOUT_CANONICAL_PENDING_STATUS} and exists (
         select 1 from washout_activity_admin_reviews r
         where r.activity_id = a.id and r.resolution = 'returned_to_owner_review'
       )) as returned_from_admin_review
@@ -197,7 +203,9 @@ async function loadAttentionSummary(database: Database, facilityId: string, owne
 }
 
 async function loadActivityPreview(database: Database, facilityId: string, pendingOnly: boolean, limit: number) {
-  const statusPredicate = pendingOnly ? sql`and a.status = 'pending'` : sql``;
+  const statusPredicate = pendingOnly
+    ? sql`and a.status = ${WASHOUT_CANONICAL_PENDING_STATUS}`
+    : sql``;
   const result = await database.execute(sql`
     select
       a.id,
@@ -334,6 +342,9 @@ export async function buildOwnerOperationalSummary(input: {
   }
 
   const selectedRow = facilityRows.find((row) => String(row.id) === selectedFacilityId)!;
+  // created_at is the canonical submission-commit timestamp. Every submitted,
+  // awaiting-review, active-Driver, and latest-activity value in the Today
+  // section uses this same explicit UTC half-open window.
   const startOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const endOfToday = new Date(startOfToday.getTime() + 86_400_000);
   const agedBefore = new Date(now.getTime() - OWNER_OPERATIONAL_PENDING_AGE_HOURS * 60 * 60 * 1000);

@@ -65,6 +65,10 @@ test("review navigation and Facility-scope labels are localized in English and S
   assert.equal(translate("owner.operational.pendingAtFacility", "es"), "Pendientes en esta instalación");
   assert.equal(translate("owner.operational.allPendingReviews", "en"), "All pending reviews");
   assert.equal(translate("owner.operational.allPendingReviews", "es"), "Todas las revisiones pendientes");
+  assert.equal(translate("owner.operational.latestActivityToday", "en"), "Latest activity today");
+  assert.equal(translate("owner.operational.latestActivityToday", "es"), "Actividad más reciente de hoy");
+  assert.equal(translate("owner.operational.pendingAtOtherFacilities", "en", { count: 6 }), "6 pending reviews are at other Facilities.");
+  assert.equal(translate("owner.operational.pendingAtOtherFacilities", "es", { count: 6 }), "Hay 6 revisiones pendientes en otras instalaciones.");
 });
 
 test("all-Facility count is separately projected and remains Owner-scoped", async () => {
