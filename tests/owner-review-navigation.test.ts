@@ -65,6 +65,11 @@ test("review navigation and Facility-scope labels are localized in English and S
   assert.equal(translate("owner.operational.pendingAtFacility", "es"), "Pendientes en esta instalación");
   assert.equal(translate("owner.operational.allPendingReviews", "en"), "All pending reviews");
   assert.equal(translate("owner.operational.allPendingReviews", "es"), "Todas las revisiones pendientes");
+  assert.equal(translate("owner.operational.todayAllFacilities", "en"), "Today — All Facilities");
+  assert.equal(translate("owner.operational.todayAllFacilities", "es"), "Hoy — Todas las instalaciones");
+  assert.equal(translate("owner.operational.todayAtFacility", "en", { facility: "Revel Patio Grill" }), "Today at Revel Patio Grill");
+  assert.equal(translate("owner.operational.todayAtFacility", "es", { facility: "Revel Patio Grill" }), "Hoy en Revel Patio Grill");
+  assert.equal(translate("owner.operational.noActivityAllToday", "en"), "No activity has been submitted at any of your Facilities today.");
   assert.equal(translate("owner.operational.latestActivityToday", "en"), "Latest activity today");
   assert.equal(translate("owner.operational.latestActivityToday", "es"), "Actividad más reciente de hoy");
   assert.equal(translate("owner.operational.pendingAtOtherFacilities", "en", { count: 6 }), "6 pending reviews are at other Facilities.");
@@ -77,7 +82,9 @@ test("all-Facility count is separately projected and remains Owner-scoped", asyn
     readFile(new URL("../server/storage.ts", import.meta.url), "utf8"),
   ]);
 
-  assert.match(service, /owner_location\.owner_id = \$\{ownerId\}/);
+  assert.match(service, /owner_location\.owner_id = \$\{scope\.ownerId\}/);
   assert.match(service, /allPendingReviews: numberValue\(attentionSummary\.all_pending_reviews\)/);
+  assert.match(service, /ownerActivityScope\(scope\)/);
+  assert.match(service, /state: selectedFacilityId \? "selected" : "all"/);
   assert.match(storage, /const conditions = \[eq\(washoutLocations\.ownerId, ownerId\)\]/);
 });

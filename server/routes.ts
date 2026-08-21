@@ -4865,10 +4865,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const owner = await storage.getOwner(user.id);
       if (!owner) return res.status(404).json({ message: "Owner not found" });
 
-      const requestedFacilityId = typeof req.query?.facilityId === "string"
+      const hasFacilitySelection = Object.prototype.hasOwnProperty.call(req.query || {}, "facilityId");
+      const requestedFacilityId = hasFacilitySelection && typeof req.query?.facilityId === "string"
         ? req.query.facilityId.trim()
         : null;
-      if (requestedFacilityId && !z.string().uuid().safeParse(requestedFacilityId).success) {
+      if (hasFacilitySelection && (!requestedFacilityId || !z.string().uuid().safeParse(requestedFacilityId).success)) {
         return res.status(400).json({ message: "A valid Recovery Facility selection is required." });
       }
 

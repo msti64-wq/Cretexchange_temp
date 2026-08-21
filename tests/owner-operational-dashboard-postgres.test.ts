@@ -16,7 +16,7 @@ function requireIsolatedDatabase(url: string) {
   }
 }
 
-test("PostgreSQL keeps selected-Facility Today, Owner-wide review, evidence, and decision transitions consistent", {
+test("PostgreSQL keeps Owner-wide and selected-Facility Today, review, evidence, UTC boundaries, and decisions consistent", {
   skip: databaseUrl ? false : "OWNER_OPERATIONAL_DASHBOARD_TEST_DATABASE_URL is not configured",
 }, async () => {
   requireIsolatedDatabase(databaseUrl!);
@@ -49,8 +49,8 @@ test("PostgreSQL keeps selected-Facility Today, Owner-wide review, evidence, and
       );
     `);
     await client.query(`
-      INSERT INTO users VALUES ('driver-user', 'Alex', 'Rivera');
-      INSERT INTO drivers VALUES ('driver-one', 'driver-user');
+      INSERT INTO users VALUES ('driver-user', 'Alex', 'Rivera'), ('driver-user-two', 'Jamie', 'Morgan');
+      INSERT INTO drivers VALUES ('driver-one', 'driver-user'), ('driver-two', 'driver-user-two');
       INSERT INTO washout_locations VALUES
         ('home', 'owner-one', 'Home Yard', true, true, '{}'::jsonb),
         ('revel', 'owner-one', 'Revel Patio Grill', true, true, '{}'::jsonb),
@@ -59,12 +59,17 @@ test("PostgreSQL keeps selected-Facility Today, Owner-wide review, evidence, and
       INSERT INTO location_material_intents VALUES ('revel', null, null, 'asphalt', true);
       INSERT INTO washout_activities VALUES
         ('home-old', 'driver-one', 'home', 'rejected', 'washout', null, null, '2026-08-04T19:44:00Z', null, '2026-08-04T19:44:00Z'),
+        ('home-new', 'driver-one', 'home', 'pending', 'washout', null, null, '2026-08-21T19:57:00Z', null, null),
+        ('home-rejected', 'driver-two', 'home', 'rejected', 'washout', null, null, '2026-08-21T10:00:00Z', null, '2026-08-21T10:05:00Z'),
         ('revel-new', 'driver-one', 'revel', 'pending', 'washout', null, null, '2026-08-21T19:55:01Z', null, null),
+        ('revel-verified-boundary', 'driver-two', 'revel', 'verified', 'washout', null, null, '2026-08-21T00:00:00Z', '2026-08-21T20:00:00Z', null),
         ('revel-old', 'driver-one', 'revel', 'pending', 'rubble_dropoff', 'Reclaimed Concrete', null, '2026-08-11T18:54:17Z', null, null),
         ('revel-failed', 'driver-one', 'revel', 'pending', 'washout', null, null, '2026-08-10T18:00:00Z', null, null),
         ('revel-before-window', 'driver-one', 'revel', 'verified', 'washout', null, null, '2026-08-20T23:59:59.999Z', '2026-08-20T23:59:59.999Z', null),
+        ('revel-next-window', 'driver-one', 'revel', 'verified', 'washout', null, null, '2026-08-22T00:00:00Z', '2026-08-22T00:01:00Z', null),
         ('other-new', 'driver-one', 'other', 'pending', 'washout', null, null, '2026-08-21T19:56:00Z', null, null);
       INSERT INTO washout_photos VALUES
+        ('photo-home-new', 'home-new', 'verified'),
         ('photo-new', 'revel-new', 'verified'),
         ('photo-failed', 'revel-failed', 'failed');
       INSERT INTO washout_activity_admin_reviews VALUES ('returned-old', 'revel-old', 'returned_to_owner_review');
@@ -98,25 +103,41 @@ test("PostgreSQL keeps selected-Facility Today, Owner-wide review, evidence, and
       now: new Date("2026-08-21T20:15:00Z"),
     };
 
+    const all = await buildOwnerOperationalSummary(input);
+    assert.equal(all.selection.state, "all");
+    assert.equal(all.selection.selectedFacilityId, null);
+    assert.deepEqual(all.today, {
+      submitted: 4, awaitingReview: 2, verified: 1, rejected: 1,
+      activeDrivers: 2, latestActivityAt: "2026-08-21T19:57:00.000Z", timezone: "UTC",
+    });
+    assert.equal(all.attention?.pendingReviews, 4);
+    assert.equal(all.attention?.allPendingReviews, 4);
+    assert.deepEqual(all.pendingReviews.map((activity) => activity.id), ["home-new", "revel-new", "revel-old", "revel-failed"]);
+    assert.deepEqual(all.pendingReviews.map((activity) => activity.facilityName), ["Home Yard", "Revel Patio Grill", "Revel Patio Grill", "Revel Patio Grill"]);
+    assert.deepEqual(all.recentActivity.map((activity) => activity.id), ["home-new", "revel-new", "home-rejected", "revel-verified-boundary"]);
+    assert.ok(all.recentActivity.every((activity) => activity.reviewLink.includes(`facilityId=${activity.facilityId}`)));
+    assert.equal(all.facilityStatus, null);
+    assert.deepEqual(all.attention?.facilitiesNeedingAttention.map((facility) => facility.id), ["home", "revel"]);
+
     const home = await buildOwnerOperationalSummary({ ...input, requestedFacilityId: "home" });
     assert.deepEqual(home.today, {
-      submitted: 0, awaitingReview: 0, verified: 0, rejected: 0,
-      activeDrivers: 0, latestActivityAt: null, timezone: "UTC",
+      submitted: 2, awaitingReview: 1, verified: 0, rejected: 1,
+      activeDrivers: 2, latestActivityAt: "2026-08-21T19:57:00.000Z", timezone: "UTC",
     });
-    assert.equal(home.attention?.pendingReviews, 0);
-    assert.equal(home.attention?.allPendingReviews, 3);
-    assert.equal(home.recentActivity[0]?.id, "home-old");
-    assert.deepEqual(home.pendingReviews, []);
+    assert.equal(home.attention?.pendingReviews, 1);
+    assert.equal(home.attention?.allPendingReviews, 4);
+    assert.deepEqual(home.recentActivity.map((activity) => activity.id), ["home-new", "home-rejected"]);
+    assert.deepEqual(home.pendingReviews.map((activity) => activity.id), ["home-new"]);
     assert.ok(home.attention?.facilityConfigurationIssues.includes("operating_hours_missing"));
     assert.ok(home.attention?.facilityConfigurationIssues.includes("terms_acceptance_required"));
 
     const revelPending = await buildOwnerOperationalSummary({ ...input, requestedFacilityId: "revel" });
     assert.deepEqual(revelPending.today, {
-      submitted: 1, awaitingReview: 1, verified: 0, rejected: 0,
-      activeDrivers: 1, latestActivityAt: "2026-08-21T19:55:01.000Z", timezone: "UTC",
+      submitted: 2, awaitingReview: 1, verified: 1, rejected: 0,
+      activeDrivers: 2, latestActivityAt: "2026-08-21T19:55:01.000Z", timezone: "UTC",
     });
     assert.equal(revelPending.attention?.pendingReviews, 3);
-    assert.equal(revelPending.attention?.allPendingReviews, 3);
+    assert.equal(revelPending.attention?.allPendingReviews, 4);
     assert.equal(revelPending.attention?.missingEvidence, 1);
     assert.equal(revelPending.attention?.failedEvidence, 1);
     assert.equal(revelPending.attention?.returnedFromAdministrativeReview, 1);
@@ -126,20 +147,21 @@ test("PostgreSQL keeps selected-Facility Today, Owner-wide review, evidence, and
 
     await client.query("UPDATE washout_activities SET status='verified', verified_at='2026-08-21T20:20:00Z' WHERE id='revel-new'");
     const afterApproval = await buildOwnerOperationalSummary({ ...input, requestedFacilityId: "revel" });
-    assert.equal(afterApproval.today?.submitted, 1);
+    assert.equal(afterApproval.today?.submitted, 2);
     assert.equal(afterApproval.today?.awaitingReview, 0);
-    assert.equal(afterApproval.today?.verified, 1);
+    assert.equal(afterApproval.today?.verified, 2);
     assert.equal(afterApproval.attention?.pendingReviews, 2);
-    assert.equal(afterApproval.attention?.allPendingReviews, 2);
+    assert.equal(afterApproval.attention?.allPendingReviews, 3);
     assert.deepEqual(afterApproval.pendingReviews.map((activity) => activity.id), ["revel-old", "revel-failed"]);
 
-    await client.query("UPDATE washout_activities SET status='rejected', rejected_at='2026-08-21T20:25:00Z' WHERE id='revel-old'");
-    const afterRejection = await buildOwnerOperationalSummary({ ...input, requestedFacilityId: "revel" });
-    assert.equal(afterRejection.today?.submitted, 1);
+    await client.query("UPDATE washout_activities SET status='rejected', rejected_at='2026-08-21T20:25:00Z' WHERE id='home-new'");
+    const afterRejection = await buildOwnerOperationalSummary(input);
+    assert.equal(afterRejection.today?.submitted, 4);
     assert.equal(afterRejection.today?.awaitingReview, 0);
-    assert.equal(afterRejection.today?.rejected, 1);
-    assert.equal(afterRejection.attention?.pendingReviews, 1);
-    assert.equal(afterRejection.attention?.allPendingReviews, 1);
+    assert.equal(afterRejection.today?.verified, 2);
+    assert.equal(afterRejection.today?.rejected, 2);
+    assert.equal(afterRejection.attention?.pendingReviews, 2);
+    assert.equal(afterRejection.attention?.allPendingReviews, 2);
   } finally {
     await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
     await client.end();

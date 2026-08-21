@@ -24,13 +24,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/lib/i18n";
 import { localizeCenterNotification } from "@/lib/notificationLocalization";
-import {
-  ownerFacilitySelectionStorageKey,
-  parseOwnerFacilityUrlSelection,
-} from "@/lib/ownerFacilityIntelligenceSelection";
+import { parseOwnerFacilityUrlSelection } from "@/lib/ownerFacilityIntelligenceSelection";
 
 type Facility = { id: string; name: string; isActive: boolean; isVisible: boolean };
 type OperationalActivity = {
@@ -47,18 +43,19 @@ type OperationalActivity = {
   reviewLink: string;
 };
 type OperationalSummary = {
-  selection: { state: "selected" | "required" | "empty"; selectedFacilityId: string | null; selectedFacilityName: string | null; source: "request" | "single" | null; facilities: Facility[] };
+  selection: { state: "all" | "selected" | "empty"; selectedFacilityId: string | null; selectedFacilityName: string | null; source: "request" | null; facilities: Facility[] };
   today: null | { submitted: number; awaitingReview: number; verified: number; rejected: number; activeDrivers: number; latestActivityAt: string | null; timezone: "UTC" };
-  attention: null | { pendingReviews: number; allPendingReviews: number; agedPendingReviews: number; missingEvidence: number; returnedFromAdministrativeReview: number; failedEvidence: number; unresolvedOperationalNotices: number; facilityConfigurationIssues: string[]; termsAcceptanceRequired: boolean; readinessActionRequired: boolean };
+  attention: null | { pendingReviews: number; allPendingReviews: number; agedPendingReviews: number; missingEvidence: number; returnedFromAdministrativeReview: number; failedEvidence: number; unresolvedOperationalNotices: number; facilityConfigurationIssues: string[]; facilitiesNeedingAttention: Array<{ id: string; name: string; issues: string[]; dashboardLink: string; manageLink: "/locations" }>; termsAcceptanceRequired: boolean; readinessActionRequired: boolean };
   pendingReviews: OperationalActivity[];
   recentActivity: OperationalActivity[];
   facilityStatus: null | { id: string; name: string; ownerApproved: boolean; active: boolean; visible: boolean; profileComplete: boolean; operatingHoursConfigured: boolean; acceptedMaterials: string[]; operational: boolean; issues: string[]; intelligenceLink: string; manageLink: string };
   notifications: { unreadCount: number; recent: Array<{ id: string; title: string; message: string; templateKey: string | null; category: string; priority: string; isRead: boolean; deepLink: string | null; metadata: Record<string, string>; createdAt: string | null }>; centerLink: "/notifications" };
   generatedAt: string;
-  dataState: "facility_selection_required" | "no_facilities" | "ready";
+  dataState: "no_facilities" | "ready";
 };
 
 const OPERATIONAL_DASHBOARD_TIMEOUT_MS = 15_000;
+const ALL_FACILITIES_VALUE = "all-facilities";
 
 function requestOperationalSummary(url: string, parentSignal?: AbortSignal) {
   const controller = new AbortController();
@@ -115,19 +112,18 @@ function LoadingShell({ t }: { t: (key: string) => string }) {
 }
 
 export default function OwnerOperationalDashboard() {
-  const { user } = useAuth();
   const { t, language } = useLanguage();
   const queryClient = useQueryClient();
   const [currentPath, setLocation] = useLocation();
   const [urlSelection, setUrlSelection] = useState(() => parseOwnerFacilityUrlSelection(
     `${currentPath}${typeof window !== "undefined" ? window.location.search : ""}`,
   ));
-  const facilityId = urlSelection.present ? urlSelection.facilityId : null;
-  const endpoint = facilityId
+  const facilityId = urlSelection.present ? (urlSelection.facilityId || "") : null;
+  const endpoint = facilityId !== null
     ? `/api/owners/dashboard/operational-summary?facilityId=${encodeURIComponent(facilityId)}`
     : "/api/owners/dashboard/operational-summary";
   const summary = useQuery<OperationalSummary>({
-    queryKey: ["owner-operational-dashboard", facilityId || "unselected"],
+    queryKey: ["owner-operational-dashboard", facilityId === null ? "all" : facilityId || "invalid"],
     queryFn: ({ signal }) => requestOperationalSummary(endpoint, signal),
     staleTime: 30_000,
     refetchInterval: 30_000,
@@ -137,26 +133,6 @@ export default function OwnerOperationalDashboard() {
     retry: 1,
   });
   const data = summary.data;
-  const storageKey = user?.id ? ownerFacilitySelectionStorageKey(user.id) : null;
-
-  useEffect(() => {
-    if (!data || !storageKey || typeof window === "undefined") return;
-    if (data.selection.state === "selected" && data.selection.selectedFacilityId) {
-      window.localStorage.setItem(storageKey, data.selection.selectedFacilityId);
-      if (!urlSelection.present) {
-        setUrlSelection({ present: true, facilityId: data.selection.selectedFacilityId });
-        setLocation(`/dashboard?facilityId=${encodeURIComponent(data.selection.selectedFacilityId)}`, { replace: true });
-      }
-      return;
-    }
-    if (data.selection.state === "required" && !urlSelection.present) {
-      const stored = window.localStorage.getItem(storageKey);
-      if (stored && data.selection.facilities.some((facility) => facility.id === stored)) {
-        setUrlSelection({ present: true, facilityId: stored });
-        setLocation(`/dashboard?facilityId=${encodeURIComponent(stored)}`, { replace: true });
-      }
-    }
-  }, [data, setLocation, storageKey, urlSelection.present]);
 
   useEffect(() => {
     if (!data) return;
@@ -164,15 +140,19 @@ export default function OwnerOperationalDashboard() {
   }, [data, queryClient]);
 
   const selectFacility = (nextFacilityId: string) => {
+    if (nextFacilityId === ALL_FACILITIES_VALUE) {
+      setUrlSelection({ present: false, facilityId: null });
+      setLocation("/dashboard");
+      return;
+    }
     if (!data?.selection.facilities.some((facility) => facility.id === nextFacilityId)) return;
-    if (storageKey && typeof window !== "undefined") window.localStorage.setItem(storageKey, nextFacilityId);
     setUrlSelection({ present: true, facilityId: nextFacilityId });
     setLocation(`/dashboard?facilityId=${encodeURIComponent(nextFacilityId)}`);
   };
 
-  const facilitySelector = <Select value={data?.selection.selectedFacilityId || ""} onValueChange={selectFacility}>
+  const facilitySelector = <Select value={data?.selection.selectedFacilityId || ALL_FACILITIES_VALUE} onValueChange={selectFacility}>
     <SelectTrigger className="min-h-11 w-full sm:w-80" aria-label={t("owner.operational.facilitySelectorAria")} data-testid="owner-operational-facility-selector"><SelectValue placeholder={t("owner.operational.selectFacility")} /></SelectTrigger>
-    <SelectContent>{data?.selection.facilities.map((facility) => <SelectItem key={facility.id} value={facility.id}>{facility.name}</SelectItem>)}</SelectContent>
+    <SelectContent><SelectItem value={ALL_FACILITIES_VALUE}>{t("owner.operational.allFacilities")}</SelectItem>{data?.selection.facilities.map((facility) => <SelectItem key={facility.id} value={facility.id}>{facility.name}</SelectItem>)}</SelectContent>
   </Select>;
 
   let content: React.ReactNode;
@@ -182,21 +162,21 @@ export default function OwnerOperationalDashboard() {
     content = <main className="mx-auto max-w-6xl px-4 py-6"><Card data-testid="owner-operational-error"><CardContent className="space-y-4 p-6"><div role="alert"><h2 className="text-lg font-semibold">{t("owner.operational.errorTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("owner.operational.errorDescription")}</p></div><Button type="button" variant="outline" className="min-h-11" onClick={() => void summary.refetch()} aria-label={t("owner.operational.retryAria")}><RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />{t("common.retry")}</Button></CardContent></Card></main>;
   } else if (data.selection.state === "empty") {
     content = <main className="mx-auto max-w-6xl space-y-6 px-4 py-6"><header><h2 className="text-3xl font-semibold">{t("owner.operational.title")}</h2><p className="mt-2 text-muted-foreground">{t("owner.operational.subtitle")}</p></header><Card data-testid="owner-operational-no-facilities"><CardContent className="space-y-4 p-6"><Building2 className="h-8 w-8 text-primary" aria-hidden="true" /><div><h2 className="text-lg font-semibold">{t("owner.operational.noFacilitiesTitle")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("owner.operational.noFacilitiesDescription")}</p></div><Button className="min-h-11" onClick={() => setLocation("/locations")}>{t("owner.operational.completeSetup")}</Button></CardContent></Card></main>;
-  } else if (data.selection.state === "required") {
-    content = <main className="mx-auto max-w-6xl space-y-6 px-4 py-6"><header><h2 className="text-3xl font-semibold">{t("owner.operational.title")}</h2><p className="mt-2 text-muted-foreground">{t("owner.operational.subtitle")}</p></header><Card className="border-2 border-primary/40" data-testid="owner-operational-selection-required"><CardHeader><CardTitle>{t("owner.operational.selectionRequiredTitle")}</CardTitle><CardDescription>{t("owner.operational.selectionRequiredDescription")}</CardDescription></CardHeader><CardContent className="space-y-3">{facilitySelector}<p className="text-sm font-medium text-primary">{t("owner.operational.noFalseZeroGuidance")}</p></CardContent></Card></main>;
   } else {
     const today = data.today!;
     const attention = data.attention!;
-    const facility = data.facilityStatus!;
+    const facility = data.facilityStatus;
+    const allFacilities = data.selection.state === "all";
     const pendingAtOtherFacilities = Math.max(0, attention.allPendingReviews - attention.pendingReviews);
-    const attentionTotal = attention.pendingReviews + attention.missingEvidence + attention.returnedFromAdministrativeReview + attention.failedEvidence + attention.unresolvedOperationalNotices + attention.facilityConfigurationIssues.length;
+    const configurationSignalCount = allFacilities ? attention.facilitiesNeedingAttention.length : attention.facilityConfigurationIssues.length;
+    const attentionTotal = attention.pendingReviews + attention.missingEvidence + attention.returnedFromAdministrativeReview + attention.failedEvidence + attention.unresolvedOperationalNotices + configurationSignalCount;
     const latest = data.recentActivity[0] || null;
     content = <main className="mx-auto max-w-6xl space-y-7 px-4 py-6">
-      <span className="sr-only" role="status" aria-live="polite">{summary.isFetching ? t("owner.operational.refreshing") : t("owner.operational.loaded", { facility: facility.name })}</span>
+      <span className="sr-only" role="status" aria-live="polite">{summary.isFetching ? t("owner.operational.refreshing") : t("owner.operational.loaded", { facility: facility?.name || t("owner.operational.allFacilities") })}</span>
       <header className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{t("owner.operational.eyebrow")}</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">{t("owner.operational.title")}</h2><p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t("owner.operational.subtitle")}</p></div><Button type="button" className="min-h-11 shrink-0" onClick={() => setLocation("/dashboard/reviews")} aria-label={t("owner.reviews.openAria")} data-testid="button-washout-reviews"><ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />{t("owner.reviews.nav")}</Button></div>
         <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-end sm:justify-between" data-testid="owner-operational-current-context">
-          <div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("owner.operational.currentlyViewing")}</p><p className="mt-1 text-lg font-semibold">{facility.name}</p></div>
+          <div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("owner.operational.currentlyViewing")}</p><p className="mt-1 text-lg font-semibold">{facility?.name || t("owner.operational.allFacilities")}</p>{facility && <Button type="button" variant="link" className="h-auto min-h-0 p-0 pt-1" onClick={() => selectFacility(ALL_FACILITIES_VALUE)} data-testid="owner-operational-return-all">{t("owner.operational.returnToAllFacilities")}</Button>}</div>
           <div><p className="mb-1 text-xs font-medium text-muted-foreground">{t("owner.operational.changeFacility")}</p>{facilitySelector}</div>
         </div>
       </header>
@@ -204,18 +184,19 @@ export default function OwnerOperationalDashboard() {
       <section aria-labelledby="attention-heading" className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 id="attention-heading" className="text-xl font-semibold">{t("owner.operational.requiresAttention")}</h2><p className="mt-1 text-sm text-muted-foreground">{attentionTotal > 0 ? t("owner.operational.attentionDescription", { count: attentionTotal }) : t("owner.operational.noAttention")}</p></div><Button type="button" className="min-h-11" variant="outline" onClick={() => setLocation("/dashboard/reviews")} aria-label={t("owner.reviews.openAria")}><ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />{t("owner.reviews.nav")}</Button></div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-          <MetricCard label={t("owner.operational.pendingAtFacility")} value={attention.pendingReviews} icon={Clock3} testId="owner-operational-pending-count" />
+          {!allFacilities && <MetricCard label={t("owner.operational.pendingAtFacility")} value={attention.pendingReviews} icon={Clock3} testId="owner-operational-pending-count" />}
           <MetricCard label={t("owner.operational.allPendingReviews")} value={attention.allPendingReviews} icon={ShieldCheck} testId="owner-operational-all-pending-count" />
           <MetricCard label={t("owner.operational.missingEvidence")} value={attention.missingEvidence} icon={FileImage} testId="owner-operational-missing-evidence" />
           <MetricCard label={t("owner.operational.returnedReviews")} value={attention.returnedFromAdministrativeReview} icon={RefreshCw} testId="owner-operational-returned-reviews" />
           <MetricCard label={t("owner.operational.failedEvidence")} value={attention.failedEvidence} icon={AlertTriangle} testId="owner-operational-failed-evidence" />
           <MetricCard label={t("owner.operational.unresolvedNotices")} value={attention.unresolvedOperationalNotices} icon={Bell} testId="owner-operational-unresolved-notices" />
         </div>
-        {pendingAtOtherFacilities > 0 ? <Card className="border-primary/30" data-testid="owner-operational-other-facilities-pending"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm font-medium">{t("owner.operational.pendingAtOtherFacilities", { count: pendingAtOtherFacilities })}</p><Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={() => setLocation("/dashboard/reviews")}>{t("owner.operational.viewAllFacilities")}</Button></CardContent></Card> : null}
-        {(attention.agedPendingReviews > 0 || attention.facilityConfigurationIssues.length > 0 || attention.termsAcceptanceRequired) && <Card className="border-amber-300/70 bg-amber-50/60 dark:border-amber-900/60 dark:bg-amber-950/20"><CardContent className="space-y-2 p-4"><h3 className="font-semibold">{t("owner.operational.otherActions")}</h3>{attention.agedPendingReviews > 0 && <p className="text-sm">{t("owner.operational.agedPending", { count: attention.agedPendingReviews })}</p>}{attention.facilityConfigurationIssues.map((issue) => <p key={issue} className="text-sm">{t(`owner.operational.issue.${issue}`)}</p>)}</CardContent></Card>}
+        {!allFacilities && pendingAtOtherFacilities > 0 ? <Card className="border-primary/30" data-testid="owner-operational-other-facilities-pending"><CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm font-medium">{t("owner.operational.pendingAtOtherFacilities", { count: pendingAtOtherFacilities })}</p><Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={() => setLocation("/dashboard/reviews")}>{t("owner.operational.viewAllFacilities")}</Button></CardContent></Card> : null}
+        {(attention.agedPendingReviews > 0 || (!allFacilities && (attention.facilityConfigurationIssues.length > 0 || attention.termsAcceptanceRequired))) && <Card className="border-amber-300/70 bg-amber-50/60 dark:border-amber-900/60 dark:bg-amber-950/20"><CardContent className="space-y-2 p-4"><h3 className="font-semibold">{t("owner.operational.otherActions")}</h3>{attention.agedPendingReviews > 0 && <p className="text-sm">{t("owner.operational.agedPending", { count: attention.agedPendingReviews })}</p>}{!allFacilities && attention.facilityConfigurationIssues.map((issue) => <p key={issue} className="text-sm">{t(`owner.operational.issue.${issue}`)}</p>)}</CardContent></Card>}
+        {allFacilities && attention.facilitiesNeedingAttention.length > 0 && <Card className="border-amber-300/70 bg-amber-50/60 dark:border-amber-900/60 dark:bg-amber-950/20" data-testid="owner-operational-facilities-needing-attention"><CardHeader><CardTitle>{t("owner.operational.facilitiesNeedingAttention")}</CardTitle><CardDescription>{t("owner.operational.facilitiesNeedingAttentionDescription")}</CardDescription></CardHeader><CardContent><ul className="space-y-3">{attention.facilitiesNeedingAttention.map((item) => <li key={item.id} className="flex flex-col gap-2 rounded-lg border bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><p className="font-semibold">{item.name}</p><p className="text-sm text-muted-foreground">{item.issues.map((issue) => t(`owner.operational.issue.${issue}`)).join(" ")}</p></div><Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={() => { setUrlSelection({ present: true, facilityId: item.id }); setLocation(item.dashboardLink); }} aria-label={t("owner.operational.viewFacilityAria", { facility: item.name })}>{t("owner.operational.viewFacility")}</Button></li>)}</ul><Button type="button" variant="link" className="mt-3 h-auto min-h-0 p-0" onClick={() => setLocation("/locations")}>{t("owner.operational.manageFacilities")}</Button></CardContent></Card>}
       </section>
 
-      <section aria-labelledby="today-heading" className="space-y-3"><div><h2 id="today-heading" className="text-xl font-semibold">{t("owner.operational.today")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("owner.operational.todayTimezone")}</p></div><div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+      <section aria-labelledby="today-heading" className="space-y-3"><div><h2 id="today-heading" className="text-xl font-semibold">{allFacilities ? t("owner.operational.todayAllFacilities") : t("owner.operational.todayAtFacility", { facility: facility!.name })}</h2><p className="mt-1 text-sm text-muted-foreground">{t("owner.operational.todayTimezone")}</p></div><div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
         <MetricCard label={t("owner.operational.submitted")} value={today.submitted} icon={Activity} testId="owner-operational-today-submitted" />
         <MetricCard label={t("owner.operational.awaitingReview")} value={today.awaitingReview} icon={Clock3} testId="owner-operational-today-pending" />
         <MetricCard label={t("owner.operational.verified")} value={today.verified} icon={CheckCircle2} testId="owner-operational-today-verified" />
@@ -224,12 +205,12 @@ export default function OwnerOperationalDashboard() {
         <MetricCard label={t("owner.operational.latestActivityToday")} value={today.latestActivityAt ? new Date(today.latestActivityAt).toLocaleTimeString(language === "es" ? "es-US" : "en-US", { hour: "numeric", minute: "2-digit" }) : "—"} icon={Clock3} testId="owner-operational-latest" />
       </div></section>
 
-      <section aria-labelledby="pending-heading" className="space-y-3"><div className="flex items-end justify-between gap-3"><div><h2 id="pending-heading" className="text-xl font-semibold">{t("owner.operational.pendingPreview")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("owner.operational.pendingPreviewDescription")}</p></div>{data.pendingReviews.length > 0 && <Button variant="ghost" onClick={() => setLocation("/dashboard/reviews")}>{t("common.viewAll")}</Button>}</div>{data.pendingReviews.length ? <ul className="space-y-3">{data.pendingReviews.map((activity) => <ActivityRow key={activity.id} activity={activity} onOpen={setLocation} t={t} language={language} />)}</ul> : <Card data-testid="owner-operational-pending-empty"><CardContent className="p-6 text-sm text-muted-foreground">{t("owner.operational.noPending")}</CardContent></Card>}</section>
+      <section aria-labelledby="pending-heading" className="space-y-3"><div className="flex items-end justify-between gap-3"><div><h2 id="pending-heading" className="text-xl font-semibold">{t("owner.operational.pendingPreview")}</h2><p className="mt-1 text-sm text-muted-foreground">{t(allFacilities ? "owner.operational.pendingPreviewAllDescription" : "owner.operational.pendingPreviewDescription")}</p></div>{data.pendingReviews.length > 0 && <Button variant="ghost" onClick={() => setLocation("/dashboard/reviews")}>{t("common.viewAll")}</Button>}</div>{data.pendingReviews.length ? <ul className="space-y-3">{data.pendingReviews.map((activity) => <ActivityRow key={activity.id} activity={activity} onOpen={setLocation} t={t} language={language} />)}</ul> : <Card data-testid="owner-operational-pending-empty"><CardContent className="p-6 text-sm text-muted-foreground">{t(allFacilities ? "owner.operational.noPendingAll" : "owner.operational.noPending")}</CardContent></Card>}</section>
 
-      <section aria-labelledby="recent-heading" className="space-y-3"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 id="recent-heading" className="text-xl font-semibold">{t("owner.operational.recentActivity")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("owner.operational.recentDescription")}</p></div><Button variant="outline" className="min-h-11" disabled={!latest} onClick={() => latest && setLocation(latest.reviewLink)}>{t("owner.operational.viewLatest")}</Button></div>{data.recentActivity.length ? <ul className="space-y-3">{data.recentActivity.map((activity) => <ActivityRow key={activity.id} activity={activity} onOpen={setLocation} t={t} language={language} recent />)}</ul> : <Card><CardContent className="p-6 text-sm text-muted-foreground">{t("owner.operational.noRecent")}</CardContent></Card>}</section>
+      <section aria-labelledby="recent-heading" className="space-y-3"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 id="recent-heading" className="text-xl font-semibold">{t("owner.operational.recentActivity")}</h2><p className="mt-1 text-sm text-muted-foreground">{t(allFacilities ? "owner.operational.recentAllDescription" : "owner.operational.recentDescription")}</p></div><Button variant="outline" className="min-h-11" disabled={!latest} onClick={() => latest && setLocation(latest.reviewLink)}>{t("owner.operational.viewLatest")}</Button></div>{data.recentActivity.length ? <ul className="space-y-3">{data.recentActivity.map((activity) => <ActivityRow key={activity.id} activity={activity} onOpen={setLocation} t={t} language={language} recent />)}</ul> : <Card><CardContent className="p-6 text-sm text-muted-foreground">{t(allFacilities ? "owner.operational.noActivityAllToday" : "owner.operational.noActivityFacilityToday")}</CardContent></Card>}</section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section aria-labelledby="facility-heading"><Card className="h-full"><CardHeader><CardTitle id="facility-heading" className="flex items-center gap-2"><Building2 className="h-5 w-5 text-primary" aria-hidden="true" />{t("owner.operational.facilityStatus")}</CardTitle><CardDescription>{facility.name}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-3 text-sm"><p><ShieldCheck className="mr-2 inline h-4 w-4" aria-hidden="true" />{t("owner.operational.approved")}: <strong>{facility.ownerApproved ? t("common.yes") : t("common.no")}</strong></p><p><Activity className="mr-2 inline h-4 w-4" aria-hidden="true" />{t("common.active")}: <strong>{facility.active ? t("common.yes") : t("common.no")}</strong></p><p><Eye className="mr-2 inline h-4 w-4" aria-hidden="true" />{t("owner.operational.visible")}: <strong>{facility.visible ? t("common.yes") : t("common.no")}</strong></p><p><MapPin className="mr-2 inline h-4 w-4" aria-hidden="true" />{t("owner.operational.operational")}: <strong>{facility.operational ? t("common.ready") : t("owner.operational.actionRequired")}</strong></p></div><div><h3 className="text-sm font-semibold">{t("owner.operational.acceptedMaterials")}</h3><p className="mt-1 text-sm text-muted-foreground">{facility.acceptedMaterials.length ? facility.acceptedMaterials.join(", ") : t("owner.operational.noMaterials")}</p></div><div className="flex flex-wrap gap-2"><Button className="min-h-11" variant="outline" onClick={() => setLocation(facility.manageLink)}>{t("owner.operational.manageFacility")}</Button><Button className="min-h-11" onClick={() => setLocation(facility.intelligenceLink)}>{t("owner.operational.viewIntelligence")}</Button></div></CardContent></Card></section>
+        {facility ? <section aria-labelledby="facility-heading"><Card className="h-full"><CardHeader><CardTitle id="facility-heading" className="flex items-center gap-2"><Building2 className="h-5 w-5 text-primary" aria-hidden="true" />{t("owner.operational.facilityStatus")}</CardTitle><CardDescription>{facility.name}</CardDescription></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-3 text-sm"><p><ShieldCheck className="mr-2 inline h-4 w-4" aria-hidden="true" />{t("owner.operational.approved")}: <strong>{facility.ownerApproved ? t("common.yes") : t("common.no")}</strong></p><p><Activity className="mr-2 inline h-4 w-4" aria-hidden="true" />{t("common.active")}: <strong>{facility.active ? t("common.yes") : t("common.no")}</strong></p><p><Eye className="mr-2 inline h-4 w-4" aria-hidden="true" />{t("owner.operational.visible")}: <strong>{facility.visible ? t("common.yes") : t("common.no")}</strong></p><p><MapPin className="mr-2 inline h-4 w-4" aria-hidden="true" />{t("owner.operational.operational")}: <strong>{facility.operational ? t("common.ready") : t("owner.operational.actionRequired")}</strong></p></div><div><h3 className="text-sm font-semibold">{t("owner.operational.acceptedMaterials")}</h3><p className="mt-1 text-sm text-muted-foreground">{facility.acceptedMaterials.length ? facility.acceptedMaterials.join(", ") : t("owner.operational.noMaterials")}</p></div><div className="flex flex-wrap gap-2"><Button className="min-h-11" variant="outline" onClick={() => setLocation(facility.manageLink)}>{t("owner.operational.manageFacility")}</Button><Button className="min-h-11" onClick={() => setLocation(facility.intelligenceLink)}>{t("owner.operational.viewIntelligence")}</Button></div></CardContent></Card></section> : <section aria-labelledby="facilities-heading"><Card className="h-full"><CardHeader><CardTitle id="facilities-heading" className="flex items-center gap-2"><Building2 className="h-5 w-5 text-primary" aria-hidden="true" />{t("owner.operational.allFacilities")}</CardTitle><CardDescription>{t("owner.operational.allFacilitiesDescription", { count: data.selection.facilities.length })}</CardDescription></CardHeader><CardContent><Button type="button" className="min-h-11" variant="outline" onClick={() => setLocation("/locations")}>{t("owner.operational.manageFacilities")}</Button></CardContent></Card></section>}
         <section aria-labelledby="notifications-heading"><Card className="h-full"><CardHeader><CardTitle id="notifications-heading" className="flex items-center gap-2"><Bell className="h-5 w-5 text-primary" aria-hidden="true" />{t("owner.operational.notifications")}</CardTitle><CardDescription>{t("owner.operational.unreadNotifications", { count: data.notifications.unreadCount })}</CardDescription></CardHeader><CardContent className="space-y-3">{data.notifications.recent.length ? <ul className="space-y-2">{data.notifications.recent.map((notification) => { const copy = localizeCenterNotification({ ...notification, type: notification.templateKey || "notification" }, language, t); return <li key={notification.id} className="rounded-lg border p-3"><p className="text-sm font-semibold">{copy.title}</p><p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{copy.message}</p>{notification.deepLink && <Button variant="link" className="mt-1 h-auto min-h-0 p-0" onClick={() => setLocation(notification.deepLink!)}>{t("notification.center.open")}</Button>}</li>; })}</ul> : <p className="text-sm text-muted-foreground">{t("owner.operational.noNotifications")}</p>}<Button className="min-h-11 w-full" variant="outline" onClick={() => setLocation(data.notifications.centerLink)}>{t("owner.operational.openNotifications")}</Button></CardContent></Card></section>
       </div>
     </main>;

@@ -5,6 +5,7 @@ import { WASHOUT_CANONICAL_PENDING_STATUS } from "../shared/washoutApproval";
 
 export const OWNER_OPERATIONAL_PENDING_AGE_HOURS = 72;
 export const OWNER_OPERATIONAL_PREVIEW_LIMIT = 5;
+export const OWNER_OPERATIONAL_ATTENTION_FACILITY_LIMIT = 10;
 
 type Database = {
   execute: (query: any) => any;
@@ -75,10 +76,10 @@ export type OwnerOperationalActivity = {
 
 export type OwnerOperationalSummary = {
   selection: {
-    state: "selected" | "required" | "empty";
+    state: "all" | "selected" | "empty";
     selectedFacilityId: string | null;
     selectedFacilityName: string | null;
-    source: "request" | "single" | null;
+    source: "request" | null;
     facilities: OwnerOperationalFacility[];
   };
   today: null | {
@@ -99,6 +100,13 @@ export type OwnerOperationalSummary = {
     failedEvidence: number;
     unresolvedOperationalNotices: number;
     facilityConfigurationIssues: string[];
+    facilitiesNeedingAttention: Array<{
+      id: string;
+      name: string;
+      issues: string[];
+      dashboardLink: string;
+      manageLink: "/locations";
+    }>;
     termsAcceptanceRequired: boolean;
     readinessActionRequired: boolean;
   };
@@ -135,7 +143,7 @@ export type OwnerOperationalSummary = {
     centerLink: "/notifications";
   };
   generatedAt: string;
-  dataState: "facility_selection_required" | "no_facilities" | "ready";
+  dataState: "no_facilities" | "ready";
 };
 
 export class OwnerOperationalDashboardError extends Error {
@@ -147,44 +155,73 @@ export class OwnerOperationalDashboardError extends Error {
 
 async function listFacilities(database: Database, ownerId: string) {
   const result = await database.execute(sql`
-    select id, name, is_active, is_visible, operating_hours
-    from washout_locations
-    where owner_id = ${ownerId}
-    order by lower(name), id
+    select
+      l.id,
+      l.name,
+      l.is_active,
+      l.is_visible,
+      l.operating_hours,
+      count(i.location_id) filter (where i.active = true) as accepted_material_count
+    from washout_locations l
+    left join location_material_intents i on i.location_id = l.id
+    where l.owner_id = ${ownerId}
+    group by l.id, l.name, l.is_active, l.is_visible, l.operating_hours
+    order by lower(l.name), l.id
   `);
   return rowsOf<Record<string, unknown>>(result);
 }
 
-async function loadActivitySummary(database: Database, facilityId: string, start: Date, end: Date) {
+type OwnerOperationalScope = {
+  ownerId: string;
+  facilityId: string | null;
+};
+
+function ownerActivityScope(scope: OwnerOperationalScope) {
+  return sql`l.owner_id = ${scope.ownerId}${scope.facilityId ? sql` and l.id = ${scope.facilityId}` : sql``}`;
+}
+
+async function loadActivitySummary(database: Database, scope: OwnerOperationalScope, start: Date, end: Date) {
   const result = await database.execute(sql`
     select
-      count(*) filter (where created_at >= ${start} and created_at < ${end}) as submitted,
+      count(*) filter (where a.created_at >= ${start} and a.created_at < ${end}) as submitted,
       count(*) filter (
-        where status = ${WASHOUT_CANONICAL_PENDING_STATUS}
-          and created_at >= ${start}
-          and created_at < ${end}
+        where a.status = ${WASHOUT_CANONICAL_PENDING_STATUS}
+          and a.created_at >= ${start}
+          and a.created_at < ${end}
       ) as awaiting_review,
-      count(*) filter (where verified_at >= ${start} and verified_at < ${end}) as verified,
-      count(*) filter (where rejected_at >= ${start} and rejected_at < ${end}) as rejected,
-      count(distinct driver_id) filter (where created_at >= ${start} and created_at < ${end}) as active_drivers,
-      max(created_at) filter (where created_at >= ${start} and created_at < ${end}) as latest_activity_at
-    from washout_activities
-    where location_id = ${facilityId}
+      count(*) filter (
+        where a.status = 'verified'
+          and a.created_at >= ${start}
+          and a.created_at < ${end}
+      ) as verified,
+      count(*) filter (
+        where a.status = 'rejected'
+          and a.created_at >= ${start}
+          and a.created_at < ${end}
+      ) as rejected,
+      count(distinct a.driver_id) filter (where a.created_at >= ${start} and a.created_at < ${end}) as active_drivers,
+      max(a.created_at) filter (where a.created_at >= ${start} and a.created_at < ${end}) as latest_activity_at
+    from washout_activities a
+    join washout_locations l on l.id = a.location_id
+    where ${ownerActivityScope(scope)}
   `);
   return rowsOf<Record<string, unknown>>(result)[0] || {};
 }
 
-async function loadAttentionSummary(database: Database, facilityId: string, ownerId: string, agedBefore: Date) {
-  const result = await database.execute(sql`
-    select
-      count(*) filter (where a.status = ${WASHOUT_CANONICAL_PENDING_STATUS}) as pending_reviews,
-      (
+async function loadAttentionSummary(database: Database, scope: OwnerOperationalScope, agedBefore: Date) {
+  const allPendingReviews = scope.facilityId
+    ? sql`(
         select count(*)
         from washout_activities owner_activity
         join washout_locations owner_location on owner_location.id = owner_activity.location_id
-        where owner_location.owner_id = ${ownerId}
+        where owner_location.owner_id = ${scope.ownerId}
           and owner_activity.status = ${WASHOUT_CANONICAL_PENDING_STATUS}
-      ) as all_pending_reviews,
+      )`
+    : sql`count(*) filter (where a.status = ${WASHOUT_CANONICAL_PENDING_STATUS})`;
+  const result = await database.execute(sql`
+    select
+      count(*) filter (where a.status = ${WASHOUT_CANONICAL_PENDING_STATUS}) as pending_reviews,
+      ${allPendingReviews} as all_pending_reviews,
       count(*) filter (where a.status = ${WASHOUT_CANONICAL_PENDING_STATUS} and a.created_at < ${agedBefore}) as aged_pending_reviews,
       count(*) filter (where a.status = ${WASHOUT_CANONICAL_PENDING_STATUS} and not exists (
         select 1 from washout_photos p where p.activity_id = a.id
@@ -197,14 +234,24 @@ async function loadAttentionSummary(database: Database, facilityId: string, owne
         where r.activity_id = a.id and r.resolution = 'returned_to_owner_review'
       )) as returned_from_admin_review
     from washout_activities a
-    where a.location_id = ${facilityId}
+    join washout_locations l on l.id = a.location_id
+    where ${ownerActivityScope(scope)}
   `);
   return rowsOf<Record<string, unknown>>(result)[0] || {};
 }
 
-async function loadActivityPreview(database: Database, facilityId: string, pendingOnly: boolean, limit: number) {
+async function loadActivityPreview(
+  database: Database,
+  scope: OwnerOperationalScope,
+  pendingOnly: boolean,
+  limit: number,
+  window?: { start: Date; end: Date },
+) {
   const statusPredicate = pendingOnly
     ? sql`and a.status = ${WASHOUT_CANONICAL_PENDING_STATUS}`
+    : sql``;
+  const windowPredicate = window
+    ? sql`and a.created_at >= ${window.start} and a.created_at < ${window.end}`
     : sql``;
   const result = await database.execute(sql`
     select
@@ -228,7 +275,7 @@ async function loadActivityPreview(database: Database, facilityId: string, pendi
     left join materials m on m.slug = a.material_slug
     left join washout_photos p on p.activity_id = a.id
     left join washout_activity_admin_reviews r on r.activity_id = a.id
-    where a.location_id = ${facilityId} ${statusPredicate}
+    where ${ownerActivityScope(scope)} ${statusPredicate} ${windowPredicate}
     group by a.id, a.location_id, l.name, a.status, a.service_type, a.material_custom_label, m.display_name, a.created_at, u.first_name, u.last_name
     order by a.created_at desc, a.id desc
     limit ${limit}
@@ -252,18 +299,38 @@ async function loadActivityPreview(database: Database, facilityId: string, pendi
   });
 }
 
-async function loadAcceptedMaterials(database: Database, facilityId: string) {
+async function loadAcceptedMaterials(database: Database, scope: OwnerOperationalScope) {
   const result = await database.execute(sql`
     select coalesce(nullif(trim(i.custom_label), ''), nullif(trim(i.material_custom_label), ''), m.display_name) as label
     from location_material_intents i
+    join washout_locations l on l.id = i.location_id
     left join materials m on m.slug = i.material_slug
-    where i.location_id = ${facilityId} and i.active = true
+    where ${ownerActivityScope(scope)} and i.active = true
     order by lower(coalesce(nullif(trim(i.custom_label), ''), nullif(trim(i.material_custom_label), ''), m.display_name))
     limit 100
   `);
   return rowsOf<Record<string, unknown>>(result)
     .map((row) => typeof row.label === "string" ? row.label.trim() : "")
     .filter(Boolean);
+}
+
+function facilityIssues(
+  row: Record<string, unknown>,
+  input: Pick<Parameters<typeof buildOwnerOperationalSummary>[0], "ownerApproved" | "accessState" | "termsAcceptanceRequired">,
+) {
+  const issues: string[] = [];
+  const operatingHours = row.operating_hours;
+  const operatingHoursConfigured = Boolean(
+    operatingHours && typeof operatingHours === "object" && Object.keys(operatingHours as object).length > 0,
+  );
+  if (!input.ownerApproved) issues.push("owner_approval_required");
+  if (!input.accessState.profileCompleted) issues.push("owner_profile_incomplete");
+  if (row.is_active !== true) issues.push("facility_inactive");
+  if (row.is_visible !== true) issues.push("facility_hidden");
+  if (numberValue(row.accepted_material_count) === 0) issues.push("accepted_materials_missing");
+  if (!operatingHoursConfigured) issues.push("operating_hours_missing");
+  if (input.termsAcceptanceRequired) issues.push("terms_acceptance_required");
+  return { issues, operatingHoursConfigured };
 }
 
 export async function buildOwnerOperationalSummary(input: {
@@ -287,16 +354,11 @@ export async function buildOwnerOperationalSummary(input: {
   }));
 
   let selectedFacilityId: string | null = null;
-  let selectionSource: "request" | "single" | null = null;
   if (input.requestedFacilityId) {
     if (!facilities.some((facility) => facility.id === input.requestedFacilityId)) {
       throw new OwnerOperationalDashboardError(403, "This Recovery Facility is not available to the authenticated Owner.");
     }
     selectedFacilityId = input.requestedFacilityId;
-    selectionSource = "request";
-  } else if (facilities.length === 1) {
-    selectedFacilityId = facilities[0].id;
-    selectionSource = "single";
   }
 
   const [unreadCount, notificationPage] = await Promise.all([
@@ -320,11 +382,10 @@ export async function buildOwnerOperationalSummary(input: {
     centerLink: "/notifications" as const,
   };
 
-  if (!selectedFacilityId) {
-    const empty = facilities.length === 0;
+  if (facilities.length === 0) {
     return {
       selection: {
-        state: empty ? "empty" : "required",
+        state: "empty",
         selectedFacilityId: null,
         selectedFacilityName: null,
         source: null,
@@ -337,59 +398,67 @@ export async function buildOwnerOperationalSummary(input: {
       facilityStatus: null,
       notifications,
       generatedAt: now.toISOString(),
-      dataState: empty ? "no_facilities" : "facility_selection_required",
+      dataState: "no_facilities",
     };
   }
 
-  const selectedRow = facilityRows.find((row) => String(row.id) === selectedFacilityId)!;
-  // created_at is the canonical submission-commit timestamp. Every submitted,
-  // awaiting-review, active-Driver, and latest-activity value in the Today
-  // section uses this same explicit UTC half-open window.
+  const selectedRow = selectedFacilityId
+    ? facilityRows.find((row) => String(row.id) === selectedFacilityId)!
+    : null;
+  const scope: OwnerOperationalScope = { ownerId: input.ownerId, facilityId: selectedFacilityId };
+  // created_at is the canonical submission-commit timestamp. Every Today
+  // metric and Recent Activity entry uses this same explicit UTC half-open
+  // window, regardless of whether the scope is one Facility or all authorized
+  // Facilities.
   const startOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const endOfToday = new Date(startOfToday.getTime() + 86_400_000);
   const agedBefore = new Date(now.getTime() - OWNER_OPERATIONAL_PENDING_AGE_HOURS * 60 * 60 * 1000);
   const [activitySummary, attentionSummary, pendingReviews, recentActivity, acceptedMaterials] = await Promise.all([
-    loadActivitySummary(input.database, selectedFacilityId, startOfToday, endOfToday),
-    loadAttentionSummary(input.database, selectedFacilityId, input.ownerId, agedBefore),
-    loadActivityPreview(input.database, selectedFacilityId, true, OWNER_OPERATIONAL_PREVIEW_LIMIT),
-    loadActivityPreview(input.database, selectedFacilityId, false, OWNER_OPERATIONAL_PREVIEW_LIMIT),
-    loadAcceptedMaterials(input.database, selectedFacilityId),
+    loadActivitySummary(input.database, scope, startOfToday, endOfToday),
+    loadAttentionSummary(input.database, scope, agedBefore),
+    loadActivityPreview(input.database, scope, true, OWNER_OPERATIONAL_PREVIEW_LIMIT),
+    loadActivityPreview(input.database, scope, false, OWNER_OPERATIONAL_PREVIEW_LIMIT, { start: startOfToday, end: endOfToday }),
+    selectedFacilityId ? loadAcceptedMaterials(input.database, scope) : Promise.resolve([]),
   ]);
 
-  const operatingHours = selectedRow.operating_hours;
-  const operatingHoursConfigured = Boolean(
-    operatingHours && typeof operatingHours === "object" && Object.keys(operatingHours as object).length > 0,
-  );
-  const facilityConfigurationIssues: string[] = [];
-  if (!input.ownerApproved) facilityConfigurationIssues.push("owner_approval_required");
-  if (!input.accessState.profileCompleted) facilityConfigurationIssues.push("owner_profile_incomplete");
-  if (selectedRow.is_active !== true) facilityConfigurationIssues.push("facility_inactive");
-  if (selectedRow.is_visible !== true) facilityConfigurationIssues.push("facility_hidden");
-  if (acceptedMaterials.length === 0) facilityConfigurationIssues.push("accepted_materials_missing");
-  if (!operatingHoursConfigured) facilityConfigurationIssues.push("operating_hours_missing");
-  if (input.termsAcceptanceRequired) facilityConfigurationIssues.push("terms_acceptance_required");
+  const selectedConfiguration = selectedRow ? facilityIssues(selectedRow, input) : null;
+  const facilityConfigurationIssues = selectedConfiguration?.issues || [];
+  const facilitiesNeedingAttention = facilityRows
+    .map((row) => ({ row, ...facilityIssues(row, input) }))
+    .filter(({ issues }) => issues.length > 0)
+    .slice(0, OWNER_OPERATIONAL_ATTENTION_FACILITY_LIMIT)
+    .map(({ row, issues }) => {
+      const id = String(row.id);
+      return {
+        id,
+        name: String(row.name),
+        issues,
+        dashboardLink: `/dashboard?facilityId=${encodeURIComponent(id)}`,
+        manageLink: "/locations" as const,
+      };
+    });
 
-  const facilityStatus = {
+  const facilityStatus = selectedRow && selectedFacilityId && selectedConfiguration ? {
     id: selectedFacilityId,
     name: String(selectedRow.name),
     ownerApproved: input.ownerApproved,
     active: selectedRow.is_active === true,
     visible: selectedRow.is_visible === true,
     profileComplete: input.accessState.profileCompleted,
-    operatingHoursConfigured,
+    operatingHoursConfigured: selectedConfiguration.operatingHoursConfigured,
     acceptedMaterials,
     operational: facilityConfigurationIssues.length === 0,
     issues: facilityConfigurationIssues,
     intelligenceLink: `/intelligence?facilityId=${encodeURIComponent(selectedFacilityId)}`,
     manageLink: "/locations",
-  };
+  } : null;
 
   return {
     selection: {
-      state: "selected",
+      state: selectedFacilityId ? "selected" : "all",
       selectedFacilityId,
-      selectedFacilityName: String(selectedRow.name),
-      source: selectionSource,
+      selectedFacilityName: selectedRow ? String(selectedRow.name) : null,
+      source: selectedFacilityId ? "request" : null,
       facilities,
     },
     today: {
@@ -410,6 +479,7 @@ export async function buildOwnerOperationalSummary(input: {
       failedEvidence: numberValue(attentionSummary.failed_evidence),
       unresolvedOperationalNotices: unreadCount,
       facilityConfigurationIssues,
+      facilitiesNeedingAttention,
       termsAcceptanceRequired: input.termsAcceptanceRequired,
       readinessActionRequired: !input.accessState.canManageLocations,
     },
