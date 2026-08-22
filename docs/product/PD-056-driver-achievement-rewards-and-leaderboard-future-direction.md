@@ -3,7 +3,7 @@
 **Document ID:** PD-056
 **Version:** 0.2
 **Status:** Active — Private Achievements and Authenticated Competition Authorized; Rewards Remain Future Direction
-**Owner:** Product / V8 Laboratories
+**Owner:** Product / V8 Industries LLC
 **Product:** CreteXchange
 **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 **Effective Date:** July 24, 2026; Sprint 4 authorization updated August 1, 2026

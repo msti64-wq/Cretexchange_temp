@@ -3,7 +3,7 @@
 **Document ID:** CTX-ARCH-003  
 **Version:** 1.0  
 **Status:** Approved  
-**Owner:** V8 Laboratories  
+**Owner:** V8 Industries LLC
 **Product:** CreteXchange  
 **Effective Date:** July 2026  
 **Purpose:** Define the complete driver operational architecture, workflows, KPIs, dashboard behavior, location discovery model, check-in lifecycle, rewards model, wallet relationship, and future extensibility for all driver-facing functionality.

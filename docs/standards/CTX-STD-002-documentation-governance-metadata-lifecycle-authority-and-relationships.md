@@ -4,7 +4,7 @@
 - **Version:** 0.1
 - **Status:** Approved
 - **Owner:** Documentation and Operations Governance
-- **Scope:** CreteXchange, future related V8 Laboratories products, and governed repository documentation
+- **Scope:** CreteXchange, future related V8 Industries LLC products, and governed repository documentation
 - **Classification:** Internal
 - **Approval Authority:** Michael Loren Stiger, CreteXchange Project Owner
 - **Approval Date:** July 23, 2026

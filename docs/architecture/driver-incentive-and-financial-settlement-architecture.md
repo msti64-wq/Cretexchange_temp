@@ -6,7 +6,7 @@
 
 **Status:** Approved — wallet-authoritative settlement selected by active PD-045; runtime remediation pending
 
-**Owner:** V8 Laboratories
+**Owner:** V8 Industries LLC
 
 **Product:** CreteXchange
 

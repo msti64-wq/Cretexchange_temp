@@ -3,6 +3,7 @@ import { BrandHeaderLogo } from "@/components/BrandHeaderLogo";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { LegalDocumentViewer, PRIVACY_DOCUMENT_ID } from "@/components/LegalDocumentViewer";
 import { useLanguage } from "@/lib/i18n";
+import { COMPANY_IDENTITY } from "@shared/companyIdentity";
 
 export default function PrivacyPolicy() {
   const { language, t } = useLanguage();
@@ -37,7 +38,7 @@ export default function PrivacyPolicy() {
       <footer className="border-t border-border bg-card mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center text-sm text-muted-foreground">
-            <p>&copy; 2025 V8 Industries LLC. All rights reserved.</p>
+            <p>&copy; 2025 {COMPANY_IDENTITY.publicIdentity}. All rights reserved.</p>
             <div className="mt-2 space-x-4">
               <Link href="/privacy-policy" className="hover:text-primary">
                 {t("legal.privacyPolicy")}

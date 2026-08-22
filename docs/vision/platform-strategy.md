@@ -4,7 +4,7 @@
 
 **Status:** Canonical long-term strategy document
 
-**Owner:** V8 Laboratories
+**Owner:** V8 Industries LLC
 
 **Product:** CreteXchange
 **Effective Date:** July 2026

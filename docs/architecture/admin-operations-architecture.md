@@ -3,7 +3,7 @@
 **Document ID:** CTX-ARCH-004  
 **Version:** 1.0  
 **Status:** Approved  
-**Owner:** V8 Laboratories  
+**Owner:** V8 Industries LLC
 **Product:** CreteXchange  
 **Effective Date:** July 2026  
 **Purpose:** Define the complete admin operational architecture for platform oversight, user management, financial supervision, billing reconciliation, owner/driver support, compliance, reporting, configuration, auditability, and future enterprise administration.

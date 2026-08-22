@@ -3,7 +3,7 @@
 **Document ID:** CTX-ARCH-005  
 **Version:** 1.0  
 **Status:** Approved  
-**Owner:** V8 Laboratories  
+**Owner:** V8 Industries LLC
 **Product:** CreteXchange  
 **Effective Date:** July 2026  
 **Purpose:** Authoritative material architecture for taxonomy, operational behavior, financial direction, settlement models, pricing, capacity, compliance, reporting, and extensibility.

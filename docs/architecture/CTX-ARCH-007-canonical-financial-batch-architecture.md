@@ -2,7 +2,7 @@
 
 **Document ID:** CTX-ARCH-007
 **Status:** Approved architecture direction; non-executing
-**Owner:** V8 Laboratories
+**Owner:** V8 Industries LLC
 **Product:** CreteXchange
 **Effective date:** July 2026
 

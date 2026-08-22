@@ -3,7 +3,7 @@
 **Document ID:** CTX-ARCH-002  
 **Version:** 1.0  
 **Status:** Approved  
-**Owner:** V8 Laboratories  
+**Owner:** V8 Industries LLC
 **Product:** CreteXchange  
 **Effective Date:** July 2026  
 **Purpose:** Define the complete owner operational architecture, business rules, workflows, KPIs, and extensibility model for all owner-facing functionality.

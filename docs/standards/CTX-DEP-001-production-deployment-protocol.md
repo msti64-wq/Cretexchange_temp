@@ -3,7 +3,7 @@
 - **Document ID:** CTX-DEP-001
 - **Version:** 1.0
 - **Status:** Approved
-- **Owner:** V8 Laboratories
+- **Owner:** V8 Industries LLC
 - **Product:** CreteXchange
 - **Effective Date:** July 2026
 

@@ -3,7 +3,7 @@
 - **Document ID:** CTX-OPS-002
 - **Version:** 0.1
 - **Status:** Draft
-- **Owner:** V8 Laboratories
+- **Owner:** V8 Industries LLC
 - **Product:** CreteXchange
 - **Effective Date:** July 2026
 - **Classification:** Internal
@@ -236,7 +236,7 @@ Routine administration does not authorize code deployment, schema migration, syn
 
 ## 22. Governance
 
-- **Owner:** V8 Laboratories
+- **Owner:** V8 Industries LLC
 - **Approval Authority:** Procedure not yet formally defined
 - **Status:** Draft
 - **Last Reviewed:** July 2026

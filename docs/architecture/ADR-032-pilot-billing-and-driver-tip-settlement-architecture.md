@@ -3,7 +3,7 @@
 **Document ID:** ADR-032
 **Version:** 0.1
 **Status:** Draft — CEO Initial-Launch Direction Recorded; Architecture, Compliance, and Implementation Approval Required
-**Owner:** Architecture / Product / V8 Laboratories
+**Owner:** Architecture / Product / V8 Industries LLC
 **Product:** CreteXchange
 **Decision Date:** July 24, 2026
 **Classification:** Internal

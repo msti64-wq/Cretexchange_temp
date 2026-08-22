@@ -3,7 +3,7 @@
 **Document ID:** CTX-ARCH-001  
 **Version:** 1.0  
 **Status:** Approved  
-**Owner:** V8 Laboratories  
+**Owner:** V8 Industries LLC
 **Product:** CreteXchange  
 **Effective Date:** July 2026  
 **Purpose:** authoritative financial architecture and KPI specification

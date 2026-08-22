@@ -3,7 +3,7 @@
 - **Document ID:** CTX-OPS-001
 - **Version:** 1.1
 - **Status:** Approved
-- **Owner:** V8 Laboratories
+- **Owner:** V8 Industries LLC
 - **Product:** CreteXchange
 - **Effective Date:** August 2026
 

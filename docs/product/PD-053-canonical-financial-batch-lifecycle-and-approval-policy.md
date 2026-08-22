@@ -1,7 +1,7 @@
 # PD-053 — Canonical Financial Batch Lifecycle and Approval Policy
 
 **Status:** Active
-**Owner:** V8 Laboratories
+**Owner:** V8 Industries LLC
 **Product:** CreteXchange
 **Decision type:** Assisted-pilot product and operational policy
 

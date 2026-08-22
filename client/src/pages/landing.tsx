@@ -19,6 +19,7 @@ import { PublicHeader } from "@/components/PublicHeader";
 import { CRETEXCHANGE_BRAND } from "@/components/BrandHeaderLogo";
 import { useLanguage } from "@/lib/i18n";
 import { PUBLIC_LANDING_ROUTES } from "@/lib/publicLanding";
+import { COMPANY_IDENTITY } from "@shared/companyIdentity";
 
 const VALUE_CARDS = [
   {
@@ -177,7 +178,7 @@ export default function Landing() {
       </main>
       <footer className="border-t border-slate-800 bg-slate-950 px-4 py-7 text-slate-300 sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <p>{t("public.footer.copyright", { year: new Date().getFullYear() })}</p>
+          <p>{t("public.footer.copyright", { year: new Date().getFullYear(), company: COMPANY_IDENTITY.publicIdentity })}</p>
           <div className="flex flex-wrap items-center gap-3">
             <Link href={PUBLIC_LANDING_ROUTES.privacy} className="rounded-md underline underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
               {t("public.footer.privacy")}

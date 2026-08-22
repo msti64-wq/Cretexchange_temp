@@ -1,7 +1,7 @@
 # CTX-MET-001 — Platform Metric Registry
 
 **Status:** Approved through Phase 3 Sprint 4 Driver Competition and Leaderboards
-**Owner:** V8 Laboratories
+**Owner:** V8 Industries LLC
 **Classification:** Internal operational analytics; no financial, payment, private-storage, contact, GPS, or sensitive metadata is included.
 
 ## Operational dashboard boundary
