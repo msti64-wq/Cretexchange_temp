@@ -5,6 +5,7 @@ export const PUBLIC_LANDING_ROUTES = {
   driverRegistration: "/register/driver",
   facilityRegistration: "/register/owner",
   privacy: "/privacy-policy",
+  terms: "/terms-and-conditions",
   valuePropositionAnchor: "#value-proposition",
   howItWorksAnchor: "#how-it-works",
 } as const;
