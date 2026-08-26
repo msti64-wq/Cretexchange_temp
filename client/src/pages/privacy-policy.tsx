@@ -15,7 +15,7 @@ export default function PrivacyPolicy() {
             <Link href="/" className="flex items-center gap-2">
               <BrandHeaderLogo alt="CreteXchange" size="compact" />
               <span className="text-xl font-bold">
-                Crete<span className="text-orange-500">X</span>change
+                Crete<span className="text-sky-500">X</span>change
               </span>
             </Link>
             <div className="flex items-center gap-3">
@@ -37,8 +37,11 @@ export default function PrivacyPolicy() {
       <footer className="border-t border-border bg-card mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center text-sm text-muted-foreground">
-            <p>&copy; 2025 V8 Industries LLC. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} V8 Industries LLC. All rights reserved.</p>
             <div className="mt-2 space-x-4">
+              <Link href="/terms-and-conditions" className="hover:text-primary">
+                Terms &amp; Conditions
+              </Link>
               <Link href="/privacy-policy" className="hover:text-primary">
                 {t("legal.privacyPolicy")}
               </Link>
