@@ -18,6 +18,7 @@ const Register = lazy(() => import("@/pages/auth/register"));
 const ResetPassword = lazy(() => import("@/pages/auth/reset-password"));
 const OldRegister = lazy(() => import("@/pages/register"));
 const PrivacyPolicy = lazy(() => import("@/pages/privacy-policy"));
+const TermsAndConditions = lazy(() => import("@/pages/terms-and-conditions"));
 const SecuritySessions = lazy(() => import("@/pages/security/sessions"));
 
 // Driver pages
@@ -223,6 +224,8 @@ function PublicRoutes() {
         <Route path="/register/owner" component={OwnerRegister} />
         <Route path="/reset-password" component={ResetPassword} />
         <Route path="/privacy-policy" component={PrivacyPolicy} />
+        <Route path="/terms-and-conditions" component={TermsAndConditions} />
+        <Route path="/t-and-c" component={TermsAndConditions} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>
