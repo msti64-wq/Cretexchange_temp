@@ -8,6 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  downloadUnitEconomicsCsv,
+  fetchUnitEconomicsCsv,
+  fetchUnitEconomicsReport,
+  shouldShowUnitEconomicsFoundationWarning,
+  unitEconomicsAccessErrorMessage,
+  type UnitEconomicsReport,
+} from "@/lib/unitEconomicsClient";
 
 const currentMonth = new Date().toISOString().slice(0, 7);
 const money = (cents: number | null | undefined) => cents == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
@@ -16,8 +24,10 @@ export default function UnitEconomicsPage() {
   const { user } = useAuth(); const queryClient = useQueryClient();
   const [month, setMonth] = useState(currentMonth);
   const [cost, setCost] = useState({ provider: "", category: "hosting", dollars: "", notes: "", sourceUrl: "" });
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const queryKey = ["/api/superadmin/unit-economics", month];
-  const report = useQuery<any>({ queryKey, queryFn: async () => (await fetch(`/api/superadmin/unit-economics?month=${month}`, { credentials: "include" })).json() });
+  const report = useQuery<UnitEconomicsReport>({ queryKey, queryFn: () => fetchUnitEconomicsReport(month) });
   const data = report.data;
   const [draft, setDraft] = useState<any>(null);
   const assumptions = useMemo(() => draft || data?.assumptions || { feePerValidatedLoadCents: 500, paymentProcessingPercent: 2.9, paymentProcessingFixedCents: 30, evidenceStorageProvider: "Unconfirmed", evidenceStorageNotes: "" }, [draft, data]);
@@ -25,12 +35,29 @@ export default function UnitEconomicsPage() {
   const saveAssumptions = useMutation({ mutationFn: () => apiRequest("PUT", "/api/superadmin/unit-economics/assumptions", { month, ...assumptions }), onSuccess: refresh });
   const addCost = useMutation({ mutationFn: () => apiRequest("POST", "/api/superadmin/unit-economics/costs", { month, provider: cost.provider, category: cost.category, amountCents: Math.round(Number(cost.dollars) * 100), notes: cost.notes, sourceUrl: cost.sourceUrl }), onSuccess: () => { setCost({ provider: "", category: "hosting", dollars: "", notes: "", sourceUrl: "" }); refresh(); } });
   const removeCost = useMutation({ mutationFn: (id: string) => apiRequest("DELETE", `/api/superadmin/unit-economics/costs/${id}`), onSuccess: refresh });
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    setDownloadError(null);
+    try {
+      const { blob, filename } = await fetchUnitEconomicsCsv(month);
+      downloadUnitEconomicsCsv(blob, filename);
+    } catch (error) {
+      setDownloadError(unitEconomicsAccessErrorMessage(error) || "Unable to download the unit-economics CSV.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
   if (user?.role !== "super_admin") return <div className="p-8"><h1 className="text-2xl font-semibold">Superadmin access required</h1></div>;
   const metrics = data?.metrics;
+  const reportError = report.isError
+    ? unitEconomicsAccessErrorMessage(report.error) || "Unable to load unit economics."
+    : null;
   return <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8" data-testid="unit-economics-dashboard">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-medium text-primary">Superadmin</p><h1 className="text-3xl font-semibold tracking-tight">Monthly Unit Economics</h1><p className="text-muted-foreground">Validate whether the $5.00 fee per verified load covers platform and provider costs.</p></div><div className="flex gap-2"><Input aria-label="Reporting month" type="month" value={month} onChange={e=>{setMonth(e.target.value);setDraft(null);}}/><Button variant="outline" asChild><a href={`/api/superadmin/unit-economics/export.csv?month=${month}`}><Download className="mr-2 h-4 w-4"/>Download</a></Button></div></div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-medium text-primary">Superadmin</p><h1 className="text-3xl font-semibold tracking-tight">Monthly Unit Economics</h1><p className="text-muted-foreground">Validate whether the $5.00 fee per verified load covers platform and provider costs.</p></div><div className="flex gap-2"><Input aria-label="Reporting month" type="month" value={month} onChange={e=>{setMonth(e.target.value);setDraft(null);}}/><Button variant="outline" onClick={handleDownload} disabled={isDownloading}><Download className="mr-2 h-4 w-4"/>{isDownloading ? "Downloading…" : "Download"}</Button></div></div>
     {report.isLoading && <p>Loading monthly economics…</p>}
-    {data && !data.foundationReady && <Card className="border-amber-500"><CardHeader><CardTitle>Migration 0043 is not applied</CardTitle><CardDescription>The dashboard code is ready, but its empty data foundation must be applied through the controlled migration process before values can be stored. No migration was run by this change.</CardDescription></CardHeader></Card>}
+    {reportError && <Card className="border-destructive" role="alert"><CardHeader><CardTitle>Unable to load unit economics</CardTitle><CardDescription>{reportError}</CardDescription></CardHeader></Card>}
+    {downloadError && <p className="text-sm text-destructive" role="alert">{downloadError}</p>}
+    {shouldShowUnitEconomicsFoundationWarning(data, report.isSuccess) && <Card className="border-amber-500"><CardHeader><CardTitle>Migration 0043 is not applied</CardTitle><CardDescription>The dashboard code is ready, but its empty data foundation must be applied through the controlled migration process before values can be stored. No migration was run by this change.</CardDescription></CardHeader></Card>}
     {metrics && <><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[
       ["Validated loads", String(metrics.validatedLoads)], ["Gross revenue", money(metrics.grossRevenueCents)], ["Total monthly costs", money(metrics.fixedCostsCents + metrics.variableCostsCents)], ["Contribution profit", money(metrics.contributionProfitCents)]
     ].map(([label,value])=><Card key={label}><CardHeader className="pb-2"><CardDescription>{label}</CardDescription><CardTitle className="text-2xl">{value}</CardTitle></CardHeader></Card>)}</div>
