@@ -1,9 +1,14 @@
-import { Home, Map, List, User, Building, Users, DollarSign, Settings, BarChart3, Wallet, CreditCard, Receipt, Bell, FileText, Flag, RefreshCw, Wrench, Clock, Trophy, ClipboardList, Images, Globe2, Medal, ShieldCheck } from "lucide-react";
+import { Home, Map, List, User, Building, Users, Settings, BarChart3, Wallet, Bell, FileText, Wrench, Trophy, ClipboardList, Images, Globe2, Medal, ShieldCheck } from "lucide-react";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/lib/i18n";
+import {
+  getSuperAdminConsolidatedNavigationItems,
+  isMobileNavItemActive,
+  type MobileNavItem,
+} from "@/lib/mobileNavigation";
 
 interface MobileNavProps {
   role?: "driver" | "owner" | "admin" | "super_admin";
@@ -26,8 +31,7 @@ export function MobileNav({ role }: MobileNavProps) {
   });
 
   const unreadCount = (unreadData as any)?.count || 0;
-
-  const getNavItems = (): Array<{ path: string; icon: any; label: string; testIdLabel?: string }> => {
+  const getNavItems = (): MobileNavItem[] => {
     switch (userRole) {
       case "driver":
         return [
@@ -66,26 +70,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/profile", icon: Settings, label: t("adminNav.profile") },
         ];
       case "super_admin":
-        // Super admins see everything
-        return [
-          { path: "/", icon: BarChart3, label: t("adminNav.dashboard") },
-          { path: "/users", icon: Users, label: t("adminNav.users") },
-          { path: "/locations", icon: Building, label: t("adminNav.facilities") },
-          { path: "/reports", icon: BarChart3, label: t("adminNav.reports"), testIdLabel: "activity-reports" },
-          { path: "/network-intelligence", icon: Globe2, label: t("network.nav"), testIdLabel: "network-intelligence" },
-          { path: "/admin/financial-operations", icon: ClipboardList, label: t("adminNav.financialOperations"), testIdLabel: "financial-operations" },
-          { path: "/admin/administration-repository", icon: FileText, label: t("adminNav.operationsLibrary"), testIdLabel: "administration-repository" },
-          { path: "/admin/photo-review", icon: Images, label: t("adminNav.photoReview"), testIdLabel: "photo-review" },
-          { path: "/admin/facility-geofence-controls", icon: ShieldCheck, label: t("adminNav.facilityGeofenceControls"), testIdLabel: "facility-geofence-controls" },
-          { path: "/notifications", icon: Bell, label: t("nav.alerts"), testIdLabel: "alerts" },
-          { path: "/lottery", icon: Trophy, label: t("adminNav.rewardsProgram") },
-          { path: "/reconciliation", icon: RefreshCw, label: t("adminNav.reconcile") },
-          { path: "/subscriptions", icon: Receipt, label: t("adminNav.subscriptions") },
-          { path: "/service-accounts", icon: CreditCard, label: t("adminNav.serviceAccounts") },
-          { path: "/feature-flags", icon: Flag, label: t("adminNav.features") },
-          { path: "/settings", icon: Wrench, label: t("adminNav.settings") },
-          { path: "/profile", icon: Settings, label: t("adminNav.profile") },
-        ];
+        return getSuperAdminConsolidatedNavigationItems(t);
       default:
         return [];
     }
@@ -109,7 +94,7 @@ export function MobileNav({ role }: MobileNavProps) {
           : "min-w-max grid-flow-col auto-cols-[minmax(72px,1fr)]"
       )}>
         {navItems.map((item) => {
-          const isActive = location === item.path || (item.path === "/messages" && location === "/notifications");
+          const isActive = isMobileNavItemActive(location, item.path, userRole, item.hub);
           const Icon = item.icon;
           
           return (
@@ -138,7 +123,7 @@ export function MobileNav({ role }: MobileNavProps) {
                   </span>
                 )}
               </div>
-              <span className="max-w-full truncate leading-none">{item.label}</span>
+              <span className={cn("max-w-full", item.wrapLabel ? "min-h-[2.25em] max-w-[86px] whitespace-normal break-words text-center leading-tight" : "truncate leading-none")}>{item.label}</span>
             </button>
           );
         })}

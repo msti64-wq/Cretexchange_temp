@@ -20,6 +20,8 @@ import { z } from "zod";
 import { formatCurrency } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { resolveAdminUserRoleFilter } from "@/lib/superAdminNavigation";
+import { useSearch } from "wouter";
 
 const createAdminSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -112,7 +114,8 @@ export default function AdminUsers() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterRole, setFilterRole] = useState("all");
+  const search = useSearch();
+  const [filterRole, setFilterRole] = useState(() => resolveAdminUserRoleFilter(search));
   const [filterStatus, setFilterStatus] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activationDialogOpen, setActivationDialogOpen] = useState(false);
@@ -122,6 +125,10 @@ export default function AdminUsers() {
   const [stripeDebugDialogOpen, setStripeDebugDialogOpen] = useState(false);
   const [selectedDriverStripeUser, setSelectedDriverStripeUser] = useState<any>(null);
   const [driverStripeDebugStatus, setDriverStripeDebugStatus] = useState<DriverStripeDebugStatus | null>(null);
+
+  useEffect(() => {
+    setFilterRole(resolveAdminUserRoleFilter(search));
+  }, [search]);
 
   const createAdminForm = useForm<z.infer<typeof createAdminSchema>>({
     resolver: zodResolver(createAdminSchema),
@@ -542,7 +549,7 @@ export default function AdminUsers() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm text-muted-foreground mb-1 block">Role</label>
-                  <Select value={filterRole} onValueChange={setFilterRole}>
+                  <Select value={filterRole} onValueChange={(value) => setFilterRole(value as typeof filterRole)}>
                     <SelectTrigger data-testid="select-filter-role">
                       <SelectValue />
                     </SelectTrigger>

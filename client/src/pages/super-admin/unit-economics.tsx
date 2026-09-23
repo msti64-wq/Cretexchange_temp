@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MobileNav } from "@/components/MobileNav";
 import {
   downloadUnitEconomicsCsv,
   fetchUnitEconomicsCsv,
@@ -52,7 +53,7 @@ export default function UnitEconomicsPage() {
   const reportError = report.isError
     ? unitEconomicsAccessErrorMessage(report.error) || "Unable to load unit economics."
     : null;
-  return <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8" data-testid="unit-economics-dashboard">
+  return <div className="mx-auto min-h-screen max-w-7xl space-y-6 p-4 pb-28 md:p-8 md:pb-28" data-testid="unit-economics-dashboard">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-medium text-primary">Superadmin</p><h1 className="text-3xl font-semibold tracking-tight">Monthly Unit Economics</h1><p className="text-muted-foreground">Validate whether the $5.00 fee per verified load covers platform and provider costs.</p></div><div className="flex gap-2"><Input aria-label="Reporting month" type="month" value={month} onChange={e=>{setMonth(e.target.value);setDraft(null);}}/><Button variant="outline" onClick={handleDownload} disabled={isDownloading}><Download className="mr-2 h-4 w-4"/>{isDownloading ? "Downloading…" : "Download"}</Button></div></div>
     {report.isLoading && <p>Loading monthly economics…</p>}
     {reportError && <Card className="border-destructive" role="alert"><CardHeader><CardTitle>Unable to load unit economics</CardTitle><CardDescription>{reportError}</CardDescription></CardHeader></Card>}
@@ -75,6 +76,7 @@ export default function UnitEconomicsPage() {
       <Button onClick={()=>addCost.mutate()} disabled={!cost.provider || !cost.dollars || addCost.isPending}><Plus className="mr-2 h-4 w-4"/>Add cost</Button>
     </CardContent></Card></div>}
     {data?.foundationReady && <Card><CardHeader><CardTitle>Recorded provider costs</CardTitle></CardHeader><CardContent>{data.costs.length===0?<p className="text-muted-foreground">No provider invoices have been recorded for this month.</p>:<div className="divide-y">{data.costs.map((entry:any)=><div key={entry.id} className="grid gap-2 py-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-center"><div><p className="font-medium">{entry.provider}</p><p className="text-xs text-muted-foreground">{entry.category.replaceAll("_"," ")}</p></div><div className="text-sm text-muted-foreground">{entry.notes || "No notes"}</div><div className="font-semibold">{money(entry.amountCents)}</div><Button size="icon" variant="ghost" aria-label={`Delete ${entry.provider} cost`} onClick={()=>removeCost.mutate(entry.id)}><Trash2 className="h-4 w-4"/></Button></div>)}</div>}</CardContent></Card>}
+    <MobileNav role={user?.role} />
   </div>;
 }
 

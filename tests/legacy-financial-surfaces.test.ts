@@ -114,14 +114,16 @@ test("legacy surfaces retain clear headings, alerts, and accessible canonical li
 });
 
 test("admin navigation preserves Financial Workspace as the primary destination and exposes separate fees and billing readiness", async () => {
-  const [nav, app] = await Promise.all([
-    readFile(new URL("../client/src/components/MobileNav.tsx", import.meta.url), "utf8"),
+  const [navModel, hubs, app] = await Promise.all([
+    readFile(new URL("../client/src/lib/mobileNavigation.ts", import.meta.url), "utf8"),
+    readFile(new URL("../client/src/lib/superAdminNavigation.ts", import.meta.url), "utf8"),
     readFile(new URL("../client/src/App.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(nav, /path: "\/financial-workspace"[\s\S]*financialWorkspace\.nav/);
-  assert.match(nav, /path: "\/payments"[\s\S]*legacyFinancial\.nav\.payments/);
-  assert.match(nav, /path: "\/fees"[\s\S]*financialVisibility\.fees\.title/);
-  assert.match(nav, /path: "\/billing"[\s\S]*financialVisibility\.billing\.title/);
+  assert.match(navModel, /adminNav\.financials/);
+  assert.match(hubs, /path: "\/financial-workspace"/);
+  assert.match(hubs, /path: "\/payments"/);
+  assert.match(hubs, /path: "\/fees"/);
+  assert.match(hubs, /"\/billing"/);
   assert.match(app, /path="\/billing" component=\{AdminBilling\}/);
   assert.match(app, /role === 'admin' \|\| \(user as any\)\.role === 'super_admin'/);
 });

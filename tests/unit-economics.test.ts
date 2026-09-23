@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { calculateUnitEconomicsMonth, unitEconomicsCostInputSchema, unitEconomicsMonthSchema } from "../shared/unitEconomics";
 import { ApiRequestError } from "../client/src/lib/queryClient";
@@ -128,4 +129,11 @@ test("only an authenticated successful foundationReady false response shows the 
 test("403 responses produce a Superadmin authorization error", () => {
   const error = new ApiRequestError("Forbidden", { status: 403 });
   assert.match(unitEconomicsAccessErrorMessage(error) || "", /Superadmin access is required/i);
+});
+
+test("all unit economics API routes use token authentication before Superadmin authorization", () => {
+  const source = readFileSync(new URL("../server/unitEconomicsRoutes.ts", import.meta.url), "utf8");
+  assert.equal((source.match(/isAuthenticated, requireSuperadmin/g) || []).length, 5);
+  assert.doesNotMatch(source, /req\.isAuthenticated/);
+  assert.match(source, /user\?\.role !== "super_admin"/);
 });

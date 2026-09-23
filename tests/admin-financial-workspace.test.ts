@@ -216,7 +216,11 @@ test("workspace detail uses available actor references and truthfully discloses 
 test("routing and mobile navigation restrict the workspace to Platform Operations roles", async () => {
   const app = await readFile(new URL("../client/src/App.tsx", import.meta.url), "utf8");
   const nav = await readFile(new URL("../client/src/components/MobileNav.tsx", import.meta.url), "utf8");
+  const navModel = await readFile(new URL("../client/src/lib/mobileNavigation.ts", import.meta.url), "utf8");
+  const hubs = await readFile(new URL("../client/src/lib/superAdminNavigation.ts", import.meta.url), "utf8");
   assert.match(app, /path="\/financial-workspace"/);
-  assert.match(nav, /financialWorkspace\.nav/);
-  assert.equal((nav.match(/path: "\/financial-workspace"/g) || []).length, 2);
+  assert.match(nav, /case "super_admin":[\s\S]*getSuperAdminConsolidatedNavigationItems/);
+  assert.match(navModel, /adminNav\.financials/);
+  assert.match(hubs, /path: "\/financial-workspace"/);
+  assert.match(hubs, /getSuperAdminHubForPath/);
 });
