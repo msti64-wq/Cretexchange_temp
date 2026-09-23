@@ -9,6 +9,26 @@ interface MobileNavProps {
   role?: "driver" | "owner" | "admin" | "super_admin";
 }
 
+type MobileNavRole = MobileNavProps["role"];
+type MobileNavItem = { path: string; icon: any; label: string; testIdLabel?: string };
+
+export function getUnitEconomicsNavigationItem(
+  role: MobileNavRole,
+  t: (key: string) => string,
+): MobileNavItem | null {
+  if (role !== "super_admin") return null;
+  return {
+    path: "/unit-economics",
+    icon: DollarSign,
+    label: t("adminNav.unitEconomics"),
+    testIdLabel: "unit-economics",
+  };
+}
+
+export function isMobileNavItemActive(location: string, itemPath: string): boolean {
+  return location === itemPath || (itemPath === "/messages" && location === "/notifications");
+}
+
 export function MobileNav({ role }: MobileNavProps) {
   const [location, setLocation] = useLocation();
   const { user } = useAuth();
@@ -26,8 +46,9 @@ export function MobileNav({ role }: MobileNavProps) {
   });
 
   const unreadCount = (unreadData as any)?.count || 0;
+  const unitEconomicsNavigationItem = getUnitEconomicsNavigationItem(userRole, t);
 
-  const getNavItems = (): Array<{ path: string; icon: any; label: string; testIdLabel?: string }> => {
+  const getNavItems = (): MobileNavItem[] => {
     switch (userRole) {
       case "driver":
         return [
@@ -77,6 +98,7 @@ export function MobileNav({ role }: MobileNavProps) {
           { path: "/admin/administration-repository", icon: FileText, label: t("adminNav.operationsLibrary"), testIdLabel: "administration-repository" },
           { path: "/admin/photo-review", icon: Images, label: t("adminNav.photoReview"), testIdLabel: "photo-review" },
           { path: "/admin/facility-geofence-controls", icon: ShieldCheck, label: t("adminNav.facilityGeofenceControls"), testIdLabel: "facility-geofence-controls" },
+          ...(unitEconomicsNavigationItem ? [unitEconomicsNavigationItem] : []),
           { path: "/notifications", icon: Bell, label: t("nav.alerts"), testIdLabel: "alerts" },
           { path: "/lottery", icon: Trophy, label: t("adminNav.rewardsProgram") },
           { path: "/reconciliation", icon: RefreshCw, label: t("adminNav.reconcile") },
@@ -109,7 +131,7 @@ export function MobileNav({ role }: MobileNavProps) {
           : "min-w-max grid-flow-col auto-cols-[minmax(72px,1fr)]"
       )}>
         {navItems.map((item) => {
-          const isActive = location === item.path || (item.path === "/messages" && location === "/notifications");
+          const isActive = isMobileNavItemActive(location, item.path);
           const Icon = item.icon;
           
           return (

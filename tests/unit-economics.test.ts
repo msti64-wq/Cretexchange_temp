@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+import { getUnitEconomicsNavigationItem, isMobileNavItemActive } from "../client/src/components/MobileNav";
+import { translate } from "../client/src/lib/i18n";
 import { calculateUnitEconomicsMonth, unitEconomicsCostInputSchema, unitEconomicsMonthSchema } from "../shared/unitEconomics";
 import { ApiRequestError } from "../client/src/lib/queryClient";
 import {
@@ -128,4 +131,41 @@ test("only an authenticated successful foundationReady false response shows the 
 test("403 responses produce a Superadmin authorization error", () => {
   const error = new ApiRequestError("Forbidden", { status: 403 });
   assert.match(unitEconomicsAccessErrorMessage(error) || "", /Superadmin access is required/i);
+});
+
+test("unit economics bottom navigation is visible only to Superadmins", () => {
+  const t = (key: string) => key === "adminNav.unitEconomics" ? "Economics" : key;
+  const item = getUnitEconomicsNavigationItem("super_admin", t);
+
+  assert.deepEqual(
+    item && { path: item.path, label: item.label, testIdLabel: item.testIdLabel },
+    { path: "/unit-economics", label: "Economics", testIdLabel: "unit-economics" },
+  );
+  for (const role of ["admin", "owner", "driver", undefined] as const) {
+    assert.equal(getUnitEconomicsNavigationItem(role, t), null);
+  }
+
+  const source = readFileSync(new URL("../client/src/components/MobileNav.tsx", import.meta.url), "utf8");
+  const adminBranch = source.slice(source.indexOf('case "admin":'), source.indexOf('case "super_admin":'));
+  const superadminBranch = source.slice(source.indexOf('case "super_admin":'), source.indexOf("default:"));
+  assert.doesNotMatch(adminBranch, /unitEconomicsNavigationItem/);
+  assert.match(superadminBranch, /unitEconomicsNavigationItem/);
+});
+
+test("unit economics navigation reports its exact route as active", () => {
+  assert.equal(isMobileNavItemActive("/unit-economics", "/unit-economics"), true);
+  assert.equal(isMobileNavItemActive("/", "/unit-economics"), false);
+  assert.equal(isMobileNavItemActive("/unit-economics/history", "/unit-economics"), false);
+});
+
+test("unit economics navigation label is localized", () => {
+  assert.equal(translate("adminNav.unitEconomics", "en"), "Economics");
+  assert.equal(translate("adminNav.unitEconomics", "es"), "Economía");
+});
+
+test("all unit economics API routes use token authentication before Superadmin authorization", () => {
+  const source = readFileSync(new URL("../server/unitEconomicsRoutes.ts", import.meta.url), "utf8");
+  assert.equal((source.match(/isAuthenticated, requireSuperadmin/g) || []).length, 5);
+  assert.doesNotMatch(source, /req\.isAuthenticated/);
+  assert.match(source, /user\?\.role !== "super_admin"/);
 });
