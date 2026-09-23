@@ -15,6 +15,7 @@ import {
   fetchUnitEconomicsReport,
   shouldShowUnitEconomicsFoundationWarning,
   unitEconomicsAccessErrorMessage,
+  unitEconomicsReportQueryKey,
   type UnitEconomicsReport,
 } from "@/lib/unitEconomicsClient";
 
@@ -27,8 +28,12 @@ export default function UnitEconomicsPage() {
   const [cost, setCost] = useState({ provider: "", category: "hosting", dollars: "", notes: "", sourceUrl: "" });
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-  const queryKey = ["/api/superadmin/unit-economics", month];
-  const report = useQuery<UnitEconomicsReport>({ queryKey, queryFn: () => fetchUnitEconomicsReport(month) });
+  const queryKey = unitEconomicsReportQueryKey(month);
+  const report = useQuery<UnitEconomicsReport>({
+    queryKey,
+    queryFn: ({ queryKey: [, selectedMonth] }) => fetchUnitEconomicsReport(selectedMonth),
+    staleTime: 0,
+  });
   const data = report.data;
   const [draft, setDraft] = useState<any>(null);
   const assumptions = useMemo(() => draft || data?.assumptions || { feePerValidatedLoadCents: 500, paymentProcessingPercent: 2.9, paymentProcessingFixedCents: 30, evidenceStorageProvider: "Unconfirmed", evidenceStorageNotes: "" }, [draft, data]);
@@ -59,10 +64,10 @@ export default function UnitEconomicsPage() {
     {reportError && <Card className="border-destructive" role="alert"><CardHeader><CardTitle>Unable to load unit economics</CardTitle><CardDescription>{reportError}</CardDescription></CardHeader></Card>}
     {downloadError && <p className="text-sm text-destructive" role="alert">{downloadError}</p>}
     {shouldShowUnitEconomicsFoundationWarning(data, report.isSuccess) && <Card className="border-amber-500"><CardHeader><CardTitle>Migration 0043 is not applied</CardTitle><CardDescription>The dashboard code is ready, but its empty data foundation must be applied through the controlled migration process before values can be stored. No migration was run by this change.</CardDescription></CardHeader></Card>}
-    {metrics && <><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[
-      ["Validated loads", String(metrics.validatedLoads)], ["Gross revenue", money(metrics.grossRevenueCents)], ["Total monthly costs", money(metrics.fixedCostsCents + metrics.variableCostsCents)], ["Contribution profit", money(metrics.contributionProfitCents)]
+    {metrics && <>{data?.profitabilityComplete === false && <Card className="border-amber-500" role="alert"><CardHeader><CardTitle>Profitability is incomplete</CardTitle><CardDescription>{data.missingProviderCount} provider cost{data.missingProviderCount === 1 ? "" : "s"} still need confirmed monthly values. The totals below include only recorded costs and must not yet be treated as a final profitability result.</CardDescription></CardHeader></Card>}<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[
+      ["Validated loads", String(metrics.validatedLoads)], ["Gross revenue", money(metrics.grossRevenueCents)], ["Recorded monthly costs", money(metrics.fixedCostsCents + metrics.variableCostsCents)], ["Contribution (recorded costs)", money(metrics.contributionProfitCents)]
     ].map(([label,value])=><Card key={label}><CardHeader className="pb-2"><CardDescription>{label}</CardDescription><CardTitle className="text-2xl">{value}</CardTitle></CardHeader></Card>)}</div>
-    <Card className={metrics.isFiveDollarFeeProfitable ? "border-emerald-500" : "border-amber-500"}><CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5"/>$5.00 fee assessment</CardTitle><CardDescription>{metrics.isFiveDollarFeeProfitable ? "Profitable for this month using the recorded assumptions." : "Not yet profitable for this month using the recorded assumptions."} Break-even: {metrics.breakEvenLoads ?? "unavailable"} validated loads. Profit per current validated load: {money(metrics.profitPerValidatedLoadCents)}.</CardDescription></CardHeader></Card></>}
+    <Card className={data?.profitabilityComplete && metrics.isFiveDollarFeeProfitable ? "border-emerald-500" : "border-amber-500"}><CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="h-5 w-5"/>$5.00 fee assessment</CardTitle><CardDescription>{data?.profitabilityComplete ? (metrics.isFiveDollarFeeProfitable ? "Profitable for this month using confirmed costs." : "Not profitable for this month using confirmed costs.") : "Preliminary result only; required provider costs remain unconfirmed."} Break-even: {metrics.breakEvenLoads ?? "unavailable"} validated loads. Profit per current validated load: {money(metrics.profitPerValidatedLoadCents)}.</CardDescription></CardHeader></Card></>}
     {data?.foundationReady && <div className="grid gap-6 lg:grid-cols-2"><Card><CardHeader><CardTitle>Revenue and evidence assumptions</CardTitle><CardDescription>Record the actual payment terms and confirm where photographic evidence is stored.</CardDescription></CardHeader><CardContent className="grid gap-4">
       <Field label="Fee per validated load ($)"><Input type="number" step="0.01" value={assumptions.feePerValidatedLoadCents/100} onChange={e=>setDraft({...assumptions,feePerValidatedLoadCents:Math.round(Number(e.target.value)*100)})}/></Field>
       <div className="grid grid-cols-2 gap-3"><Field label="Processing percent"><Input type="number" step="0.01" value={assumptions.paymentProcessingPercent} onChange={e=>setDraft({...assumptions,paymentProcessingPercent:Number(e.target.value)})}/></Field><Field label="Fixed processing fee ($)"><Input type="number" step="0.01" value={assumptions.paymentProcessingFixedCents/100} onChange={e=>setDraft({...assumptions,paymentProcessingFixedCents:Math.round(Number(e.target.value)*100)})}/></Field></div>
@@ -75,7 +80,7 @@ export default function UnitEconomicsPage() {
       <Field label="Notes"><Input value={cost.notes} onChange={e=>setCost({...cost,notes:e.target.value})}/></Field><Field label="Invoice or source URL"><Input value={cost.sourceUrl} onChange={e=>setCost({...cost,sourceUrl:e.target.value})}/></Field>
       <Button onClick={()=>addCost.mutate()} disabled={!cost.provider || !cost.dollars || addCost.isPending}><Plus className="mr-2 h-4 w-4"/>Add cost</Button>
     </CardContent></Card></div>}
-    {data?.foundationReady && <Card><CardHeader><CardTitle>Recorded provider costs</CardTitle></CardHeader><CardContent>{data.costs.length===0?<p className="text-muted-foreground">No provider invoices have been recorded for this month.</p>:<div className="divide-y">{data.costs.map((entry:any)=><div key={entry.id} className="grid gap-2 py-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-center"><div><p className="font-medium">{entry.provider}</p><p className="text-xs text-muted-foreground">{entry.category.replaceAll("_"," ")}</p></div><div className="text-sm text-muted-foreground">{entry.notes || "No notes"}</div><div className="font-semibold">{money(entry.amountCents)}</div><Button size="icon" variant="ghost" aria-label={`Delete ${entry.provider} cost`} onClick={()=>removeCost.mutate(entry.id)}><Trash2 className="h-4 w-4"/></Button></div>)}</div>}</CardContent></Card>}
+    {data?.foundationReady && <Card><CardHeader><CardTitle>Provider cost register</CardTitle><CardDescription>All known platform providers remain visible each month. Add an invoice entry to replace an unconfirmed placeholder for the selected month.</CardDescription></CardHeader><CardContent>{data.costs.length===0?<p className="text-muted-foreground">No providers are configured.</p>:<div className="divide-y">{data.costs.map((entry:any)=><div key={entry.id || entry.provider} className="grid gap-2 py-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-center"><div><p className="font-medium">{entry.provider}</p><p className="text-xs text-muted-foreground">{entry.category.replaceAll("_"," ")}</p></div><div className="text-sm text-muted-foreground"><p>{entry.notes || "No notes"}</p><p className="mt-1 text-xs font-medium uppercase tracking-wide">{entry.status.replaceAll("_"," ")} · {entry.billingCadence.replaceAll("_"," ")} · {entry.costModel}</p></div><div className="font-semibold">{entry.amountCents == null ? "Unconfirmed" : money(entry.amountCents)}</div>{entry.id ? <Button size="icon" variant="ghost" aria-label={`Delete ${entry.provider} cost`} onClick={()=>removeCost.mutate(entry.id)}><Trash2 className="h-4 w-4"/></Button> : <span className="h-10 w-10" aria-hidden="true"/>}</div>)}</div>}</CardContent></Card>}
     <MobileNav role={user?.role} />
   </div>;
 }
