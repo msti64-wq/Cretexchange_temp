@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { SuperAdminHubReturn } from "@/components/SuperAdminHubReturn";
 
 type AdminDarkWorkspaceProps = {
   children: ReactNode;
@@ -18,6 +19,7 @@ export function AdminDarkWorkspace({ children, className }: AdminDarkWorkspacePr
 
   return (
     <div className={cn("dark min-h-screen bg-background text-foreground", className)}>
+      <SuperAdminHubReturn />
       {children}
     </div>
   );

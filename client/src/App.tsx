@@ -69,6 +69,8 @@ const AdminLottery = lazy(() => import("@/pages/admin/lottery"));
 const AdminRewardsOperations = lazy(() => import("@/pages/admin/rewards-operations"));
 const SuperAdminBillingAuditReport = lazy(() => import("@/pages/super-admin/billing-audit-report"));
 const SuperAdminUnitEconomics = lazy(() => import("@/pages/super-admin/unit-economics"));
+const SuperAdminUsersLocationsHub = lazy(() => import("@/pages/super-admin/navigation-hubs").then((module) => ({ default: module.SuperAdminUsersLocationsHub })));
+const SuperAdminFinancialsHub = lazy(() => import("@/pages/super-admin/navigation-hubs").then((module) => ({ default: module.SuperAdminFinancialsHub })));
 const AdminReports = lazy(() => import("@/pages/admin/reports"));
 const NetworkIntelligence = lazy(() => import("@/pages/admin/network-intelligence"));
 const FinancialOperations = lazy(() => import("@/pages/admin/financial-operations"));
@@ -199,6 +201,8 @@ function Router() {
             <Route path="/lottery-dashboard" component={LegacyLotteryDashboardRedirect} />
             <Route path="/billing-audit-report" component={SuperAdminBillingAuditReport} />
             <Route path="/unit-economics" component={SuperAdminUnitEconomics} />
+            <Route path="/admin/users-locations" component={SuperAdminUsersLocationsHub} />
+            <Route path="/admin/financials" component={SuperAdminFinancialsHub} />
             <Route path="/reports" component={AdminReports} />
             <Route path="/network-intelligence" component={NetworkIntelligence} />
             <Route path="/settings" component={AdminSettings} />

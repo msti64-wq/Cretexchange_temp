@@ -63,16 +63,18 @@ test("isolated frontend handling builds explicit enable and disable requests wit
 });
 
 test("Admin and Super Admin navigation exposes the responsive Facility pilot interface", async () => {
-  const [app, nav, dashboard, page] = await Promise.all([
+  const [app, nav, hubs, dashboard, page] = await Promise.all([
     readFile(new URL("../client/src/App.tsx", import.meta.url), "utf8"),
     readFile(new URL("../client/src/components/MobileNav.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../client/src/lib/superAdminNavigation.ts", import.meta.url), "utf8"),
     readFile(new URL("../client/src/pages/admin/dashboard.tsx", import.meta.url), "utf8"),
     readFile(new URL("../client/src/pages/admin/facility-geofence-controls.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(app, /AdminFacilityGeofenceControls/);
   assert.match(app, /path="\/admin\/facility-geofence-controls"/);
-  assert.equal(nav.split('path: "/admin/facility-geofence-controls"').length - 1, 2, "Admin and Super Admin navigation entries");
+  assert.equal(nav.split('path: "/admin/facility-geofence-controls"').length - 1, 1, "ordinary Admin direct navigation entry");
   assert.match(nav, /testIdLabel: "facility-geofence-controls"/);
+  assert.match(hubs, /path: "\/admin\/facility-geofence-controls"/);
   assert.match(dashboard, /button-facility-geofence-controls-hero/);
   assert.match(dashboard, /button-facility-geofence-controls/);
   assert.match(page, /p-4 md:p-6/);
