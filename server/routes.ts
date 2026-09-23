@@ -101,6 +101,7 @@ import {
   isFacilityScopedGeofenceFeatureFlag,
 } from "../shared/featureFlags";
 import { registerFacilityGeofenceRoutes } from "./facilityGeofenceRoutes";
+import { registerUnitEconomicsRoutes } from "./unitEconomicsRoutes";
 import { registerFacilityFeatureControlRoutes } from "./facilityFeatureControlRoutes";
 import { FacilityGeofenceService, type FacilityGeofenceResult } from "./facilityGeofenceService";
 import { DrizzleFacilityGeofenceRepository } from "./facilityGeofenceRepository";
@@ -2413,6 +2414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
   registerFacilityGeofenceRoutes(app);
+  registerUnitEconomicsRoutes(app);
   registerFacilityFeatureControlRoutes(app);
 
   // Auth routes

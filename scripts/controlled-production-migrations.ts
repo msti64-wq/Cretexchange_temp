@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import pg from "pg";
 
-type Migration = { id: "0013" | "0036" | "0037" | "0038" | "0039" | "0041" | "0042"; file: string; sha256: string; expectedObjects: number };
+type Migration = { id: "0013" | "0036" | "0037" | "0038" | "0039" | "0041" | "0042" | "0043"; file: string; sha256: string; expectedObjects: number };
 type MigrationState = "pending" | "applied";
 const CLIENT_CLOSE_TIMEOUT_MS = 5_000;
 
@@ -19,6 +19,7 @@ export const productionMigrations: readonly Migration[] = [
   { id: "0039", file: "migrations/0039_extend_notifications_for_communication_center.sql", sha256: "90d7ffe79169b3735f8af4cfa77805aac34def6f9afddf48d878abfbec9b4c79", expectedObjects: 23 },
   { id: "0041", file: "migrations/0041_add_facility_scoped_geofence_feature_controls.sql", sha256: "01223adea3af146550bab3d925f12f367d14bbf832307c8a2a97de89fceca751", expectedObjects: 22 },
   { id: "0042", file: "migrations/0042_add_revocable_authentication_session_foundation.sql", sha256: "21188aa927540d4f21b5d5ed16fe9f41819544867162def14d52e59e6b1a3b0e", expectedObjects: 43 },
+  { id: "0043", file: "migrations/0043_add_unit_economics_foundation.sql", sha256: "10cbbe7e5543cb345af0371bb42d18000cb41452d782bbadc01817966522d462", expectedObjects: 16 },
 ] as const;
 
 function fail(message: string): never { throw new Error(message); }
@@ -28,7 +29,7 @@ function sha(value: string | undefined): string | null { return value && /^[a-f0
 export function selectMigrations(from: string | undefined, to: string | undefined): readonly Migration[] {
   const first = productionMigrations.findIndex((migration) => migration.id === from);
   const last = productionMigrations.findIndex((migration) => migration.id === to);
-  if (first < 0 || last < first) fail("Only the explicit ordered 0013, 0036 through 0039, 0041, and 0042 production allowlist is permitted.");
+  if (first < 0 || last < first) fail("Only the explicit ordered 0013, 0036 through 0039, and 0041 through 0043 production allowlist is permitted.");
   return productionMigrations.slice(first, last + 1);
 }
 
@@ -173,6 +174,12 @@ export async function assert0042Pending(client: pg.Client): Promise<void> {
 }
 
 async function migrationObjectCount(client: pg.Client, migration: Migration): Promise<number> {
+  if (migration.id === "0043") {
+    const tables = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name = ANY($2::text[])", ["public", "{unit_economics_monthly_assumptions,unit_economics_monthly_costs}"]);
+    const indexes = await count(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])", ["public", "{unit_economics_costs_month_idx,unit_economics_costs_provider_month_idx,unit_economics_assumptions_updated_idx,unit_economics_costs_category_month_idx}"]);
+    const constraints = await count(client, "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid = ANY(ARRAY[to_regclass($1),to_regclass($2)]) AND contype IN ('p','f','c')", ["public.unit_economics_monthly_assumptions", "public.unit_economics_monthly_costs"]);
+    return tables + indexes + constraints;
+  }
   if (migration.id === "0013") {
     const tables = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name = ANY($2::text[])", ["public", "{terms_versions,terms_acceptances}"]);
     const indexes = await count(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname=$1 AND indexname = ANY($2::text[])", ["public", "{uniq_terms_versions_storage_key_version,idx_terms_versions_type_language_current,uniq_terms_acceptance_user_doc_version,idx_terms_acceptances_user}"]);
@@ -298,6 +305,10 @@ async function main() {
         await assert0042Prerequisites(client);
         await assert0042Pending(client);
       }
+      if (migration.id === "0043") {
+        const prerequisite = await count(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema=$1 AND table_name = ANY($2::text[])", ["public", "{users,washout_activities}"]);
+        if (prerequisite !== 2) fail("0043 prerequisites users and washout_activities are required.");
+      }
       const before = await state(client, migration);
       if (before === "applied") { console.log(`ALREADY_APPLIED ${migration.id}`); continue; }
       const legacyBefore = migration.id === "0013" ? await legacyTermsCounts(client) : null;
@@ -305,6 +316,12 @@ async function main() {
       await executeMigrationTransaction(client, sql, async () => {
         if (migration.id === "0041") await verify0041Catalog(client);
         else if (migration.id === "0042") await verify0042Catalog(client);
+        else if (migration.id === "0043") {
+          if (await migrationObjectCount(client, migration) !== 16) fail("0043 catalog verification failed.");
+          const seeded = await count(client, "SELECT (SELECT count(*) FROM unit_economics_monthly_assumptions) + (SELECT count(*) FROM unit_economics_monthly_costs) AS value", []);
+          if (seeded !== 0) fail("0043 must not backfill financial assumptions or provider costs.");
+          console.log("NO_INFERRED_BACKFILL 0043 assumptions=0 costs=0");
+        }
         else if (await state(client, migration) !== "applied") fail(`Catalog verification failed for ${migration.id}.`);
         if (legacyBefore) {
           const legacyAfter = await legacyTermsCounts(client);

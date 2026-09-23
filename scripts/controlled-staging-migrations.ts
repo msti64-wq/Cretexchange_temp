@@ -15,6 +15,7 @@ const releaseMigrations: Migration[] = [
   { id: "0037", file: "migrations/0037_add_washout_photo_review_audit.sql", sha256: "5714306b60592c536dc9d1e5dbe71e20392faedde97fd06d2d4b180fb58c7e5b", verify: verify0037 },
   { id: "0038", file: "migrations/0038_add_platform_analytics_events.sql", sha256: "684a072dac88a16515118bfd7eb3e9208570b375f4dff3a3c632c6426fbee667", verify: verify0038 },
   { id: "0039", file: "migrations/0039_extend_notifications_for_communication_center.sql", sha256: "90d7ffe79169b3735f8af4cfa77805aac34def6f9afddf48d878abfbec9b4c79", verify: verify0039 },
+  { id: "0043", file: "migrations/0043_add_unit_economics_foundation.sql", sha256: "10cbbe7e5543cb345af0371bb42d18000cb41452d782bbadc01817966522d462", verify: verify0043 },
 ];
 
 function fail(message: string): never { throw new Error(message); }
@@ -22,7 +23,7 @@ function arg(name: string): string | undefined { const index = process.argv.inde
 function selectedMigrations(from: string | undefined, to: string | undefined): Migration[] {
   const first = releaseMigrations.findIndex((migration) => migration.id === from);
   const last = releaseMigrations.findIndex((migration) => migration.id === to);
-  if (first < 0 || last < first) fail("Only the ordered 0031 through 0039 release allowlist is permitted.");
+  if (first < 0 || last < first) fail("Only the explicit ordered staging migration allowlist is permitted.");
   return releaseMigrations.slice(first, last + 1);
 }
 async function assertChecksums(migrations: Migration[]) {
@@ -87,6 +88,12 @@ async function verify0039(client: pg.Client) {
   await requireCount(client, "SELECT count(*)::int AS value FROM information_schema.columns WHERE table_schema='public' AND table_name='notifications' AND column_name IN ('recipient_role','category','template_key','template_version','read_at','archived_at','deep_link','source_entity_type','source_entity_id','idempotency_key','priority','delivery_state','schema_version','updated_at')", 14, "0039 columns");
   await requireCount(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname='public' AND indexname IN ('notifications_idempotency_key_unique','notifications_user_archived_created_idx','notifications_user_read_archived_idx','notifications_user_category_created_idx')", 4, "0039 indexes");
   await requireCount(client, "SELECT count(*)::int AS value FROM pg_constraint WHERE conrelid='notifications'::regclass AND conname IN ('notifications_recipient_role_valid','notifications_category_valid','notifications_priority_valid','notifications_delivery_state_valid','notifications_schema_version_positive')", 5, "0039 constraints");
+}
+async function verify0043(client: pg.Client) {
+  await requireCount(client, "SELECT count(*)::int AS value FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('unit_economics_monthly_assumptions','unit_economics_monthly_costs')", 2, "0043 tables");
+  await requireCount(client, "SELECT count(*)::int AS value FROM pg_indexes WHERE schemaname='public' AND indexname IN ('unit_economics_costs_month_idx','unit_economics_costs_provider_month_idx','unit_economics_assumptions_updated_idx','unit_economics_costs_category_month_idx')", 4, "0043 indexes");
+  await requireCount(client, "SELECT count(*)::int AS value FROM unit_economics_monthly_assumptions", 0, "0043 assumptions remain empty");
+  await requireCount(client, "SELECT count(*)::int AS value FROM unit_economics_monthly_costs", 0, "0043 costs remain empty");
 }
 
 async function main() {
