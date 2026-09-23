@@ -31,7 +31,7 @@ export default function UnitEconomicsPage() {
   const queryKey = unitEconomicsReportQueryKey(month);
   const report = useQuery<UnitEconomicsReport>({
     queryKey,
-    queryFn: ({ queryKey: [, selectedMonth] }) => fetchUnitEconomicsReport(selectedMonth),
+    queryFn: () => fetchUnitEconomicsReport(month),
     staleTime: 0,
   });
   const data = report.data;
