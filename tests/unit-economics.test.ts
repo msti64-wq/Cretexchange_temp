@@ -112,15 +112,17 @@ test("401 responses produce an authentication error rather than a migration warn
           return true;
         },
       );
-      assert.equal(shouldShowUnitEconomicsFoundationWarning(undefined), false);
+      assert.equal(shouldShowUnitEconomicsFoundationWarning(undefined, false), false);
     },
   );
 });
 
 test("only an authenticated successful foundationReady false response shows the migration warning", () => {
-  assert.equal(shouldShowUnitEconomicsFoundationWarning({ foundationReady: false, month: "2026-09", costs: [] }), true);
-  assert.equal(shouldShowUnitEconomicsFoundationWarning({ foundationReady: true, month: "2026-09", costs: [] }), false);
-  assert.equal(shouldShowUnitEconomicsFoundationWarning(undefined), false);
+  const missingFoundation = { foundationReady: false, month: "2026-09", costs: [] };
+  assert.equal(shouldShowUnitEconomicsFoundationWarning(missingFoundation, true), true);
+  assert.equal(shouldShowUnitEconomicsFoundationWarning(missingFoundation, false), false);
+  assert.equal(shouldShowUnitEconomicsFoundationWarning({ foundationReady: true, month: "2026-09", costs: [] }, true), false);
+  assert.equal(shouldShowUnitEconomicsFoundationWarning(undefined, true), false);
 });
 
 test("403 responses produce a Superadmin authorization error", () => {

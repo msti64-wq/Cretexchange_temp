@@ -57,7 +57,7 @@ export default function UnitEconomicsPage() {
     {report.isLoading && <p>Loading monthly economics…</p>}
     {reportError && <Card className="border-destructive" role="alert"><CardHeader><CardTitle>Unable to load unit economics</CardTitle><CardDescription>{reportError}</CardDescription></CardHeader></Card>}
     {downloadError && <p className="text-sm text-destructive" role="alert">{downloadError}</p>}
-    {shouldShowUnitEconomicsFoundationWarning(data) && <Card className="border-amber-500"><CardHeader><CardTitle>Migration 0043 is not applied</CardTitle><CardDescription>The dashboard code is ready, but its empty data foundation must be applied through the controlled migration process before values can be stored. No migration was run by this change.</CardDescription></CardHeader></Card>}
+    {shouldShowUnitEconomicsFoundationWarning(data, report.isSuccess) && <Card className="border-amber-500"><CardHeader><CardTitle>Migration 0043 is not applied</CardTitle><CardDescription>The dashboard code is ready, but its empty data foundation must be applied through the controlled migration process before values can be stored. No migration was run by this change.</CardDescription></CardHeader></Card>}
     {metrics && <><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[
       ["Validated loads", String(metrics.validatedLoads)], ["Gross revenue", money(metrics.grossRevenueCents)], ["Total monthly costs", money(metrics.fixedCostsCents + metrics.variableCostsCents)], ["Contribution profit", money(metrics.contributionProfitCents)]
     ].map(([label,value])=><Card key={label}><CardHeader className="pb-2"><CardDescription>{label}</CardDescription><CardTitle className="text-2xl">{value}</CardTitle></CardHeader></Card>)}</div>

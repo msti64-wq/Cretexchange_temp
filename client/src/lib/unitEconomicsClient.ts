@@ -88,6 +88,9 @@ export function unitEconomicsAccessErrorMessage(error: unknown): string | null {
   return null;
 }
 
-export function shouldShowUnitEconomicsFoundationWarning(report: UnitEconomicsReport | undefined): boolean {
-  return report?.foundationReady === false;
+export function shouldShowUnitEconomicsFoundationWarning(
+  report: UnitEconomicsReport | undefined,
+  requestSucceeded: boolean,
+): boolean {
+  return requestSucceeded && report?.foundationReady === false;
 }
