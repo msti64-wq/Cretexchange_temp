@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { calculateUnitEconomicsMonth, unitEconomicsCostInputSchema, unitEconomicsMonthSchema } from "../shared/unitEconomics";
+import { calculateUnitEconomicsMonth, unitEconomicsCostInputSchema, unitEconomicsMonthSchema, unitEconomicsProviderBaseline } from "../shared/unitEconomics";
 import { ApiRequestError } from "../client/src/lib/queryClient";
 import {
   downloadUnitEconomicsCsv,
@@ -9,6 +9,7 @@ import {
   fetchUnitEconomicsReport,
   shouldShowUnitEconomicsFoundationWarning,
   unitEconomicsAccessErrorMessage,
+  unitEconomicsReportQueryKey,
 } from "../client/src/lib/unitEconomicsClient";
 
 async function withAuthenticatedFetch<T>(
@@ -137,3 +138,18 @@ test("all unit economics API routes use token authentication before Superadmin a
   assert.doesNotMatch(source, /req\.isAuthenticated/);
   assert.match(source, /user\?\.role !== "super_admin"/);
 });
+
+
+test("provider baseline keeps all known platform vendors visible without treating unknown costs as zero", () => {
+  assert.equal(unitEconomicsProviderBaseline.length, 11);
+  assert.ok(unitEconomicsProviderBaseline.some((entry) => entry.provider === "Railway Object Storage" && entry.category === "evidence_storage"));
+  assert.ok(unitEconomicsProviderBaseline.some((entry) => entry.provider === "Cloudflare DNS and proxy" && entry.status === "free"));
+  assert.ok(unitEconomicsProviderBaseline.some((entry) => entry.provider === "Squarespace domains" && entry.billingCadence === "annual"));
+  assert.ok(unitEconomicsProviderBaseline.some((entry) => entry.provider === "Stripe payment processing" && entry.includedInCalculation));
+});
+
+test("report query keys are isolated by selected reporting month", () => {
+  assert.notDeepEqual(unitEconomicsReportQueryKey("2026-08"), unitEconomicsReportQueryKey("2026-09"));
+  assert.deepEqual(unitEconomicsReportQueryKey("2026-08"), ["/api/superadmin/unit-economics", "2026-08"]);
+});
+
