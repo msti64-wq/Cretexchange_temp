@@ -625,6 +625,18 @@ export default function AdminDashboard() {
                 <Button
                   variant="outline"
                   className={`${ADMIN_DASHBOARD_ACTION_BUTTON_CLASS_NAME} min-h-20 gap-1 rounded-2xl border-border/70 bg-background/80 p-4 shadow-sm hover:bg-muted/60`}
+                  onClick={() => window.location.href = '/unit-economics'}
+                  data-testid="button-unit-economics-hero"
+                >
+                  <DollarSign className="h-5 w-5 text-emerald-500" />
+                  <span className={`${ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME} text-sm font-semibold leading-snug`}>Unit Economics</span>
+                  <span className={`${ADMIN_DASHBOARD_ACTION_TEXT_CLASS_NAME} text-xs leading-relaxed text-muted-foreground`}>Validate profitability per load</span>
+                </Button>
+              )}
+              {user?.role === 'super_admin' && (
+                <Button
+                  variant="outline"
+                  className={`${ADMIN_DASHBOARD_ACTION_BUTTON_CLASS_NAME} min-h-20 gap-1 rounded-2xl border-border/70 bg-background/80 p-4 shadow-sm hover:bg-muted/60`}
                   onClick={() => window.location.href = '/feature-flags'}
                   data-testid="button-feature-flags-hero"
                 >

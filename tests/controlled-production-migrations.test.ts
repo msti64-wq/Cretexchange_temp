@@ -116,9 +116,24 @@ test("controlled production runner accepts only the checksum-approved 0042 artif
 });
 
 test("unknown, out-of-order, and catalog-only 0040 selections remain denied", () => {
-  assert.throws(() => selectMigrations("0043", "0043"), /explicit ordered/);
+  assert.throws(() => selectMigrations("0044", "0044"), /explicit ordered/);
   assert.throws(() => selectMigrations("0042", "0041"), /explicit ordered/);
   assert.throws(() => selectMigrations("0040", "0040"), /explicit ordered/);
+});
+
+test("controlled production runner accepts only the checksum-approved empty 0043 foundation", async () => {
+  const selected = selectMigrations("0043", "0043");
+  assert.equal(selected.length, 1);
+  assert.deepEqual(selected[0], {
+    id: "0043",
+    file: "migrations/0043_add_unit_economics_foundation.sql",
+    sha256: "10cbbe7e5543cb345af0371bb42d18000cb41452d782bbadc01817966522d462",
+    expectedObjects: 16,
+  });
+  const contents = await readFile(new URL("../migrations/0043_add_unit_economics_foundation.sql", import.meta.url));
+  assert.equal(assertMigrationChecksum(selected[0], contents), selected[0].sha256);
+  assert.doesNotMatch(contents.toString("utf8"), /INSERT\s+INTO/i);
+  assert.throws(() => assertMigrationChecksum(selected[0], Buffer.from(`${contents.toString("utf8")}\n-- tampered`)), /Checksum mismatch for 0043/);
 });
 
 test("0040 prerequisites are catalog-only and every missing prerequisite fails closed", async () => {
