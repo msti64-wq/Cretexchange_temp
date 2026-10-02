@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "./db";
 import type { UnitEconomicsAssumptionInput, UnitEconomicsCostInput, UnitEconomicsScenarioOverrides } from "../shared/unitEconomics";
-import { buildUnitEconomicsProviderRegister, calculateUnitEconomicsModeledMonthlyCosts, calculateUnitEconomicsScenarioMonthlyCost, calculateUnitEconomicsMonth } from "../shared/unitEconomics";
+import { buildUnitEconomicsProviderRegister, calculateUnitEconomicsModeledMonthlyCosts, calculateUnitEconomicsScenarioMonthlyCost, calculateUnitEconomicsMonth, unitEconomicsMonthlyCostsComplete, unitEconomicsProvidersRequiringConfirmation } from "../shared/unitEconomics";
 
 type Row = Record<string, unknown>;
 function rows(result: unknown): Row[] { return ((result as { rows?: Row[] })?.rows || []) as Row[]; }
@@ -15,6 +15,33 @@ export async function getUnitEconomics(month: string, scenarioOverrides: UnitEco
     SELECT fee_per_validated_load_cents, payment_processing_percent, payment_processing_fixed_cents,
            evidence_storage_provider, evidence_storage_notes
       FROM unit_economics_monthly_assumptions WHERE month=${monthDate(month)}::date`))[0] || {};
+  const fee = n(assumptions.fee_per_validated_load_cents) || 500;
+  const percent = assumptions.payment_processing_percent == null ? 2.9 : n(assumptions.payment_processing_percent);
+  const fixed = assumptions.payment_processing_fixed_cents == null ? 30 : n(assumptions.payment_processing_fixed_cents);
+  const stripeOverrides = scenarioOverrides["Stripe payment processing"] || {};
+  const stripeUsage = stripeOverrides.usageInputs || {};
+  const effectiveScenarioOverrides: UnitEconomicsScenarioOverrides = {
+    ...scenarioOverrides,
+    "Stripe payment processing": {
+      ...stripeOverrides,
+      usageInputs: {
+        ...stripeUsage,
+        averageChargeCents: {
+          low: stripeUsage.averageChargeCents?.low ?? fee,
+          expected: stripeUsage.averageChargeCents?.expected ?? fee,
+          high: stripeUsage.averageChargeCents?.high ?? fee,
+        },
+      },
+      unitRatesCentsPerUnit: {
+        ...stripeOverrides.unitRatesCentsPerUnit,
+        transactions: stripeOverrides.unitRatesCentsPerUnit?.transactions ?? fixed,
+      },
+      percentageRates: {
+        ...stripeOverrides.percentageRates,
+        transactions: stripeOverrides.percentageRates?.transactions ?? percent,
+      },
+    },
+  };
   const recordedCosts = rows(await db.execute(sql`
     SELECT id, provider, category, amount_cents AS "amountCents", notes, source_url AS "sourceUrl"
       FROM unit_economics_monthly_costs WHERE month=${monthDate(month)}::date ORDER BY provider, category`));
@@ -25,23 +52,19 @@ export async function getUnitEconomics(month: string, scenarioOverrides: UnitEco
     amountCents: n(row.amountCents),
     notes: String(row.notes || ""),
     sourceUrl: String(row.sourceUrl || ""),
-  })), scenarioOverrides);
+  })), effectiveScenarioOverrides);
   const loadRow = rows(await db.execute(sql`
     SELECT count(*)::int AS count FROM washout_activities
      WHERE status='verified' AND coalesce(verified_at, check_in_time) >= ${monthDate(month)}::date
        AND coalesce(verified_at, check_in_time) < (${monthDate(month)}::date + interval '1 month')`))[0];
-  const fee = n(assumptions.fee_per_validated_load_cents) || 500;
-  const percent = assumptions.payment_processing_percent == null ? 2.9 : n(assumptions.payment_processing_percent);
-  const fixed = assumptions.payment_processing_fixed_cents == null ? 30 : n(assumptions.payment_processing_fixed_cents);
   const fixedCostsCents = calculateUnitEconomicsModeledMonthlyCosts(costs);
-  const missingFromCalculation = costs.filter((entry) => !entry.includedInCalculation || entry.expectedMonthlyCostCents == null);
+  const providersRequiringConfirmation = unitEconomicsProvidersRequiringConfirmation(costs);
   const stripeProcessing = costs.find((entry) => entry.provider === "Stripe payment processing");
-  const stripeConnect = costs.find((entry) => entry.provider === "Stripe Connect and payouts");
   return {
     foundationReady: true, month, costs,
-    profitabilityComplete: missingFromCalculation.length === 0,
-    missingProviderCount: missingFromCalculation.length,
-    missingProviders: missingFromCalculation.map((entry) => entry.provider),
+    profitabilityComplete: unitEconomicsMonthlyCostsComplete(costs),
+    missingProviderCount: providersRequiringConfirmation.length,
+    missingProviders: providersRequiringConfirmation,
     scenarioMonthlyCostsCents: {
       low: calculateUnitEconomicsScenarioMonthlyCost(costs, "low"),
       expected: calculateUnitEconomicsScenarioMonthlyCost(costs, "expected"),
@@ -54,7 +77,7 @@ export async function getUnitEconomics(month: string, scenarioOverrides: UnitEco
       paymentProcessingPercent: percent, paymentProcessingFixedCents: fixed, fixedCostsCents,
       averageStripeChargeCents: fee,
       recordedStripeProcessingCents: stripeProcessing?.isRecorded ? stripeProcessing.amountCents : null,
-      recordedOtherVariableCostsCents: stripeConnect?.isRecorded ? stripeConnect.amountCents ?? 0 : 0 }),
+    }),
   };
 }
 

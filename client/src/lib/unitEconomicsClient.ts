@@ -1,5 +1,5 @@
 import { ApiRequestError, apiRequest } from "./queryClient";
-import type { UnitEconomicsScenarioOverrides } from "../../../shared/unitEconomics";
+import type { UnitEconomicsCostComponent, UnitEconomicsScenarioOverrides } from "../../../shared/unitEconomics";
 
 export type UnitEconomicsProviderEntry = {
   id: string | null;
@@ -23,6 +23,10 @@ export type UnitEconomicsProviderEntry = {
   launchUsageAssumptions: string;
   formula: string;
   researchDate: string;
+  baseMonthlyCents: number;
+  minimumMonthlyCents: number;
+  usageComponents: UnitEconomicsCostComponent[];
+  defaultUsageInputs: Record<string, Record<"low" | "expected" | "high", number>>;
   isRecorded: boolean;
   includedInCalculation: boolean;
   separatelyCalculated?: boolean;
