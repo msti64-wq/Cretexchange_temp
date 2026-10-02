@@ -669,7 +669,7 @@ export function buildUnitEconomicsCsv(report: {
     ["Providers requiring confirmation or not included", report.missingProviderCount],
     ["Break-even loads at fee assumption", report.metrics.breakEvenLoads],
     ["Break-even formula", `ceil(expected monthly operating costs / (customer fee ${report.metrics.feePerValidatedLoadCents} cents - Stripe processing ${report.metrics.breakEvenProcessingPerLoadCents} cents per validated load)); Stripe processing excluded from fixed costs and deducted per transaction`],
-    ["Revenue treatment", "Recorded month verified-load count × approved $5.00 planning fee; projection is separate"],
+    ["Revenue treatment", "Recorded month verified-load count × existing documented $5.00 verified-drop assumption; projection is separate"],
     [],
     [
       "Provider", "Category", "Current plan / use evidence", "Production plan/agreement",

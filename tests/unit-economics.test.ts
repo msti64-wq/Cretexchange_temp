@@ -380,6 +380,7 @@ test("CSV exports scenario totals and the complete plan, formula, assumption, ev
   assert.match(csv, /Calculated subcomponent charges \(low\/expected\/high\)/);
   assert.ok(csv.includes('amountCents"":4500'));
   assert.match(csv, /Break-even formula/);
+  assert.match(csv, /existing documented \$5\.00 verified-drop assumption/);
   assert.match(csv, /"Stripe Connect and payouts"/);
   assert.match(csv, /https:\/\/stripe\.com\/connect\/pricing/);
   assert.match(csv, /2026-10-02/);
