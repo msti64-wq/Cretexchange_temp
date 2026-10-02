@@ -150,6 +150,13 @@ test("all unit economics API routes use token authentication before Superadmin a
   assert.match(source, /user\?\.role !== "super_admin"/);
 });
 
+test("incomplete profitability copy explains unconfirmed quote proxies without claiming a lower bound", () => {
+  const source = readFileSync(new URL("../client/src/pages/super-admin/unit-economics.tsx", import.meta.url), "utf8");
+  assert.match(source, /planning assumptions and quote proxies for unconfirmed vendors/);
+  assert.match(source, /may overstate or understate actual costs/);
+  assert.doesNotMatch(source, /lower bound/);
+});
+
 
 test("provider register covers configured vendors and separates priced scenarios from unconfirmed vendors", () => {
   assert.equal(unitEconomicsProviderBaseline.length, 13);
