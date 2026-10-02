@@ -18,6 +18,7 @@ export type UnitEconomicsReport = {
     costModel: "fixed" | "variable";
     isRecorded: boolean;
     includedInCalculation: boolean;
+    separatelyCalculated?: boolean;
   }>;
   assumptions?: {
     feePerValidatedLoadCents: number;

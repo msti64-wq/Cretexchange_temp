@@ -1,34 +1,12 @@
 import { sql } from "drizzle-orm";
 import { db } from "./db";
-import type { UnitEconomicsAssumptionInput, UnitEconomicsCostInput, UnitEconomicsCostStatus } from "../shared/unitEconomics";
-import { calculateUnitEconomicsMonth, unitEconomicsProviderBaseline } from "../shared/unitEconomics";
+import type { UnitEconomicsAssumptionInput, UnitEconomicsCostInput } from "../shared/unitEconomics";
+import { buildUnitEconomicsProviderRegister, calculateUnitEconomicsModeledMonthlyCosts, calculateUnitEconomicsMonth } from "../shared/unitEconomics";
 
 type Row = Record<string, unknown>;
 function rows(result: unknown): Row[] { return ((result as { rows?: Row[] })?.rows || []) as Row[]; }
 function monthDate(month: string) { return `${month}-01`; }
 function n(value: unknown) { return Number(value || 0); }
-function providerKey(value: unknown) { return String(value || "").trim().toLowerCase(); }
-function recordedStatus(row: Row, fallback?: UnitEconomicsCostStatus): UnitEconomicsCostStatus {
-  const notes = String(row.notes || "").toLowerCase();
-  if (n(row.amountCents) === 0 && (notes.includes("free") || fallback === "free")) return "free";
-  if (notes.includes("estimate") || notes.includes("estimated") || notes.includes("pending invoice")) return "estimated";
-  return "confirmed";
-}
-
-function buildProviderRegister(recordedCosts: Row[]) {
-  const recordedByProvider = new Map(recordedCosts.map((row) => [providerKey(row.provider), row]));
-  const baselineKeys = new Set(unitEconomicsProviderBaseline.map((entry) => providerKey(entry.provider)));
-  const baseline = unitEconomicsProviderBaseline.map((entry) => {
-    const recorded = recordedByProvider.get(providerKey(entry.provider));
-    if (!recorded) return { id: null, ...entry, amountCents: null, isRecorded: false };
-    return { ...entry, ...recorded, amountCents: n(recorded.amountCents), status: recordedStatus(recorded, entry.status), isRecorded: true, includedInCalculation: true };
-  });
-  const custom = recordedCosts.filter((row) => !baselineKeys.has(providerKey(row.provider))).map((row) => ({
-    ...row, amountCents: n(row.amountCents), status: recordedStatus(row), billingCadence: "monthly" as const,
-    costModel: "fixed" as const, isRecorded: true, includedInCalculation: true,
-  }));
-  return [...baseline, ...custom];
-}
 
 export async function getUnitEconomics(month: string) {
   const capability = rows(await db.execute(sql`SELECT to_regclass('public.unit_economics_monthly_costs') IS NOT NULL AS ready`))[0];
@@ -40,7 +18,14 @@ export async function getUnitEconomics(month: string) {
   const recordedCosts = rows(await db.execute(sql`
     SELECT id, provider, category, amount_cents AS "amountCents", notes, source_url AS "sourceUrl"
       FROM unit_economics_monthly_costs WHERE month=${monthDate(month)}::date ORDER BY provider, category`));
-  const costs = buildProviderRegister(recordedCosts);
+  const costs = buildUnitEconomicsProviderRegister(recordedCosts.map((row) => ({
+    id: String(row.id),
+    provider: String(row.provider),
+    category: row.category as UnitEconomicsCostInput["category"],
+    amountCents: n(row.amountCents),
+    notes: String(row.notes || ""),
+    sourceUrl: String(row.sourceUrl || ""),
+  })));
   const loadRow = rows(await db.execute(sql`
     SELECT count(*)::int AS count FROM washout_activities
      WHERE status='verified' AND coalesce(verified_at, check_in_time) >= ${monthDate(month)}::date
@@ -48,7 +33,7 @@ export async function getUnitEconomics(month: string) {
   const fee = n(assumptions.fee_per_validated_load_cents) || 500;
   const percent = assumptions.payment_processing_percent == null ? 2.9 : n(assumptions.payment_processing_percent);
   const fixed = assumptions.payment_processing_fixed_cents == null ? 30 : n(assumptions.payment_processing_fixed_cents);
-  const fixedCostsCents = recordedCosts.reduce((sum, row) => sum + n(row.amountCents), 0);
+  const fixedCostsCents = calculateUnitEconomicsModeledMonthlyCosts(costs);
   const missingFromCalculation = costs.filter((entry) => !entry.includedInCalculation);
   return {
     foundationReady: true, month, costs,
