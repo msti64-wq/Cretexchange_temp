@@ -70,6 +70,7 @@ test("validates month and provider cost inputs", () => {
   assert.equal(unitEconomicsMonthSchema.safeParse("09-2026").success, false);
   assert.equal(unitEconomicsCostInputSchema.safeParse({ month: "2026-09", provider: "Squarespace", category: "domain_dns", amountCents: 2000 }).success, true);
   assert.equal(unitEconomicsCostInputSchema.safeParse({ month: "2026-09", provider: "Squarespace", category: "domain_dns", amountCents: -1 }).success, false);
+  assert.equal(unitEconomicsCostInputSchema.safeParse({ month: "2026-09", provider: "Squarespace", category: "domain_dns", amountCents: 2000, sourceUrl: "javascript:alert(1)" }).success, false);
 });
 
 test("dashboard request includes the existing bearer authentication and returns successful data", async () => {
@@ -180,6 +181,7 @@ test("provider register covers configured vendors and separates priced scenarios
   const dns = unitEconomicsProviderBaseline.find((entry) => entry.provider === "Cloudflare DNS and proxy");
   assert.equal(dns?.expectedMonthlyCostCents, 20_000);
   assert.match(dns?.launchUsageAssumptions || "", /Pro annual \$20; expected Business annual \$200/);
+  assert.match(dns?.notes || "", /selected plan and billing cadence are not/);
   const domains = unitEconomicsProviderBaseline.find((entry) => entry.provider === "Squarespace domains");
   assert.equal(domains?.status, "unconfirmed");
   assert.equal(domains?.billingCadence, "annual");
@@ -228,8 +230,23 @@ test("provider register covers configured vendors and separates priced scenarios
   assert.equal(costs.find((entry) => entry.provider === "Stripe payment processing")?.includedInCalculation, true);
   assert.equal(costs.find((entry) => entry.provider === "Stripe payment processing")?.amountCents, 4_500);
   assert.equal(costs.find((entry) => entry.provider === "Vercel")?.includedInCalculation, true);
-  assert.equal(costs.find((entry) => entry.provider === "Vercel")?.highMonthlyCostCents, 19_178);
+  assert.deepEqual([
+    costs.find((entry) => entry.provider === "Vercel")?.lowMonthlyCostCents,
+    costs.find((entry) => entry.provider === "Vercel")?.expectedMonthlyCostCents,
+    costs.find((entry) => entry.provider === "Vercel")?.highMonthlyCostCents,
+  ], [0, 2_000, 12_749]);
+  assert.equal(costs.find((entry) => entry.provider === "Vercel")?.usageCreditCents, 2_000);
+  assert.match(costs.find((entry) => entry.provider === "Vercel")?.includedUsage || "", /Flat Rate CDN/);
   assert.equal(costs.find((entry) => entry.provider === "Squarespace email")?.expectedMonthlyCostCents, 1_500);
+  assert.deepEqual([
+    costs.find((entry) => entry.provider === "Platform notifications")?.lowMonthlyCostCents,
+    costs.find((entry) => entry.provider === "Platform notifications")?.expectedMonthlyCostCents,
+    costs.find((entry) => entry.provider === "Platform notifications")?.highMonthlyCostCents,
+  ], [0, 2_000, 2_900]);
+  const firstNotificationOverageBucket = buildUnitEconomicsProviderRegister([], {
+    "Platform notifications": { usageInputs: { emailsThousands: { expected: 50.001 } } },
+  }).find((entry) => entry.provider === "Platform notifications");
+  assert.equal(firstNotificationOverageBucket?.expectedMonthlyCostCents, 2_090);
   assert.equal(unitEconomicsMonthlyCostsComplete(costs), false);
   assert.deepEqual(unitEconomicsProvidersRequiringConfirmation(costs), [
     "Vercel", "Squarespace email", "Squarespace domains", "Cloudflare Workers",
@@ -379,7 +396,7 @@ test("CSV exports scenario totals and the complete plan, formula, assumption, ev
   };
   const csv = buildUnitEconomicsCsv(report);
   assert.match(csv, /Expected modeled monthly provider costs \(scenario\)/);
-  assert.match(csv, /Current plan \/ use evidence","Production plan\/agreement","Fixed commitment","Base monthly charge"/);
+  assert.match(csv, /Current plan \/ use evidence","Production plan\/agreement","Fixed commitment","Base monthly charge","Minimum monthly floor","Usage credit"/);
   assert.match(csv, /"Railway Object Storage"/);
   assert.match(csv, /Railway Storage Bucket, Standard tier/);
   assert.match(csv, /stored GB-month × \$0\.015/);
@@ -391,6 +408,11 @@ test("CSV exports scenario totals and the complete plan, formula, assumption, ev
   assert.match(csv, /"Stripe Connect and payouts"/);
   assert.match(csv, /https:\/\/stripe\.com\/connect\/pricing/);
   assert.match(csv, /2026-10-02/);
+  const injectionSafeCsv = buildUnitEconomicsCsv({
+    ...report,
+    costs: [{ ...costs[0], notes: "=WEBSERVICE(\"https://example.invalid\")" }, ...costs.slice(1)],
+  });
+  assert.match(injectionSafeCsv, /"'=WEBSERVICE\(""https:\/\/example\.invalid""\)"/);
 });
 
 test("report query keys are isolated by selected reporting month", () => {

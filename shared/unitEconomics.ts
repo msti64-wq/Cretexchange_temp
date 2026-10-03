@@ -7,7 +7,11 @@ export const unitEconomicsCostInputSchema = z.object({
   category: z.enum(["hosting", "database", "email", "domain_dns", "evidence_storage", "payments", "other"]),
   amountCents: z.number().int().min(0).max(100_000_000),
   notes: z.string().trim().max(500).optional().default(""),
-  sourceUrl: z.string().trim().url().max(500).or(z.literal("")).optional().default(""),
+  sourceUrl: z.string().trim().max(500).refine((value) => {
+    if (value === "") return true;
+    try { return ["http:", "https:"].includes(new URL(value).protocol); }
+    catch { return false; }
+  }, "Source URL must use HTTP or HTTPS").optional().default(""),
 });
 export const unitEconomicsAssumptionInputSchema = z.object({
   month: unitEconomicsMonthSchema,
@@ -50,6 +54,8 @@ export type UnitEconomicsCostComponent = {
   quantityInput?: string;
   isDerived?: boolean;
   roundPercentagePerUnit?: boolean;
+  isCommitment?: boolean;
+  roundBillableUnitsUp?: boolean;
 };
 
 export type UnitEconomicsProviderBaseline = {
@@ -77,6 +83,7 @@ export type UnitEconomicsProviderBaseline = {
   separatelyCalculated?: boolean;
   baseMonthlyCents: number;
   minimumMonthlyCents: number;
+  usageCreditCents?: number;
   usageComponents: UnitEconomicsCostComponent[];
   defaultUsageInputs: Record<string, Record<UnitEconomicsScenario, number>>;
 };
@@ -129,12 +136,12 @@ const unitEconomicsProviderDefinitions: Omit<UnitEconomicsProviderBaseline, "bas
     status: "estimated", evidenceStatus: "not_configured", billingCadence: "monthly", costModel: "variable",
     currentPlan: "No Vercel deployment project or runtime configuration found in the repository; actual use unconfirmed",
     productionPlan: "Pro, one deploying developer seat if Vercel is an active production service; Enterprise quote for contractual SLA/support needs",
-    fixedCommitment: "$20/month per Pro developer seat; Pro has 10M CDN requests and 1 TB transfer listed as included",
-    includedUsage: "$20/seat/month; 10M CDN requests and 1 TB fast data transfer/month; validate included usage allocation and invoice credit with account.",
-    meteredRates: "CDN requests starting $2/million; fast transfer starting $0.15/GB; Fluid CPU $0.128/hour, provisioned memory $0.0106/GB-hour, function invocations $0.60/million.",
-    launchUsageAssumptions: "Conditional plan adoption range 0/1/1 Pro seats. High case adds 1,000 Fluid CPU-hours, 300 GB-hours memory, 1M invocations, 5M CDN requests over the included 10M, and 200 GB transfer over the included 1 TB.",
-    formula: "Pro seats×$20 + CDN requests above 10M×$2/M + transfer above 1TB×$0.15/GB + Fluid CPU hours×$0.128 + provisioned memory GB-hours×$0.0106 + invocations×$0.60/M.",
-    notes: "Repository config documents Railway hosting and contains no Vercel project/deployment config. Conditional Pro-seat cost is included only in expected/high scenarios to show the production plan if Vercel is adopted; actual usage is unconfirmed.",
+    fixedCommitment: "$20/month Pro plan with one developer seat; additional developer seats are $20/month",
+    includedUsage: "$20 monthly usage credit; Flat Rate CDN; 4 Fluid active CPU hours, 360 GB-hours provisioned memory, and 1M function invocations shown as included on the public plan comparison.",
+    meteredRates: "Fluid CPU starts at $0.128/hour, provisioned memory at $0.0106/GB-hour, and function invocations at $0.60/million after their stated allowances; Enterprise is quote-based.",
+    launchUsageAssumptions: "Conditional adoption range 0/1/1 Pro plans. High case models 1,000 Fluid CPU-hours, 300 GB-hours memory, and 1M invocations; the included allowances and $20 usage credit are applied before overage.",
+    formula: "If adopted: $20 Pro commitment + max(0, post-allowance compute charges − $20 usage credit). Flat Rate CDN is not assigned a separate overage in this model.",
+    notes: "Repository config documents Railway hosting and contains no Vercel project/deployment config. Conditional Pro cost is included only in expected/high scenarios to show the production plan if Vercel is adopted; actual use remains unconfirmed.",
     sourceUrl: "https://vercel.com/pricing", researchDate: UNIT_ECONOMICS_RESEARCH_DATE, includedInCalculation: true,
   },
   {
@@ -249,15 +256,15 @@ const unitEconomicsProviderDefinitions: Omit<UnitEconomicsProviderBaseline, "bas
     fixedCommitment: "Resend Pro public list tier $20/month for 50,000 emails; no annual discount",
     includedUsage: "50,000 emails/month; paid plans do not have Free plan's 100-email/day cap",
     meteredRates: "$0.90 per additional 1,000 emails for the $20 Pro tier (higher volume plan tiers also published)",
-    launchUsageAssumptions: "1,000/25,000/60,000 emails/month, illustrative Resend Pro production scenario; actual provider/contract unknown.",
-    formula: "If Resend Pro is selected: $20 + max(0, emails−50,000)×$0.90/1,000. This conditional plan is included in expected/high scenarios as a planning assumption, not an active vendor charge.",
+    launchUsageAssumptions: "Disabled/25,000/60,000 emails per month for low/expected/high; expected/high illustrate conditional Resend Pro adoption. Actual provider/contract is unknown.",
+    formula: "0 while no provider is selected; if Resend Pro is selected: $20 + max(0, emails−50,000)×$0.90/1,000. This is a conditional planning assumption, not an active vendor charge.",
     notes: "Do not describe Resend as an existing CreteXchange vendor. Repo inspection found no outbound email integration. The conditional production-plan scenario is based on public list pricing, not an active vendor charge.",
     sourceUrl: "https://resend.com/pricing", researchDate: UNIT_ECONOMICS_RESEARCH_DATE, includedInCalculation: true,
   },
 ];
 
 type ProviderUsageModel = Pick<UnitEconomicsProviderBaseline, "minimumMonthlyCents" | "usageComponents" | "defaultUsageInputs"> &
-  Partial<Pick<UnitEconomicsProviderBaseline, "baseMonthlyCents">>;
+  Partial<Pick<UnitEconomicsProviderBaseline, "baseMonthlyCents" | "usageCreditCents">>;
 const providerUsageModels: Record<string, ProviderUsageModel> = {
   "Railway application hosting": {
     minimumMonthlyCents: 2_000,
@@ -290,18 +297,15 @@ const providerUsageModels: Record<string, ProviderUsageModel> = {
   },
   Vercel: {
     minimumMonthlyCents: 0,
+    usageCreditCents: 2_000,
     usageComponents: [
-      { id: "proSeats", label: "Conditional Pro developer seats", unit: "seat/month", unitRateCents: 2_000 },
-      { id: "cdnOverageMillions", label: "CDN request overage", unit: "million requests above included", unitRateCents: 200 },
-      { id: "transferOverageGb", label: "Fast data transfer overage", unit: "GB above included", unitRateCents: 15 },
-      { id: "fluidCpuHours", label: "Fluid active CPU", unit: "hour", unitRateCents: 12.8 },
-      { id: "provisionedMemoryGbHours", label: "Provisioned memory", unit: "GB-hour", unitRateCents: 1.06 },
-      { id: "functionInvocationMillions", label: "Function invocations", unit: "million", unitRateCents: 60 },
+      { id: "proSeats", label: "Conditional Pro plan", unit: "plan/month", unitRateCents: 2_000, isCommitment: true },
+      { id: "fluidCpuHours", label: "Fluid active CPU", unit: "hour", unitRateCents: 12.8, includedUnits: 4 },
+      { id: "provisionedMemoryGbHours", label: "Provisioned memory", unit: "GB-hour", unitRateCents: 1.06, includedUnits: 360 },
+      { id: "functionInvocationMillions", label: "Function invocations", unit: "million", unitRateCents: 60, includedUnits: 1 },
     ],
     defaultUsageInputs: {
       proSeats: { low: 0, expected: 1, high: 1 },
-      cdnOverageMillions: { low: 0, expected: 0, high: 5 },
-      transferOverageGb: { low: 0, expected: 0, high: 200 },
       fluidCpuHours: { low: 0, expected: 0, high: 1_000 },
       provisionedMemoryGbHours: { low: 0, expected: 0, high: 300 },
       functionInvocationMillions: { low: 0, expected: 0, high: 1 },
@@ -382,25 +386,32 @@ const providerUsageModels: Record<string, ProviderUsageModel> = {
     },
   },
   "Platform notifications": {
-    baseMonthlyCents: 2_000,
     minimumMonthlyCents: 0,
-    usageComponents: [{ id: "emailsThousands", label: "Transactional emails", unit: "thousand emails/month", unitRateCents: 90, includedUnits: 50 }],
-    defaultUsageInputs: { emailsThousands: { low: 1, expected: 25, high: 60 } },
+    usageComponents: [
+      { id: "conditionalProPlan", label: "Conditional Resend Pro plan", unit: "plan/month", unitRateCents: 2_000, isCommitment: true },
+      { id: "emailsThousands", label: "Transactional emails", unit: "thousand-email billing bucket/month", unitRateCents: 90, includedUnits: 50, roundBillableUnitsUp: true },
+    ],
+    defaultUsageInputs: {
+      conditionalProPlan: { low: 0, expected: 1, high: 1 },
+      emailsThousands: { low: 0, expected: 25, high: 60 },
+    },
   },
 };
 
 function calculateProviderMonthlyCost(
-  provider: Pick<UnitEconomicsProviderBaseline, "baseMonthlyCents" | "minimumMonthlyCents" | "usageComponents" | "defaultUsageInputs">,
+  provider: Pick<UnitEconomicsProviderBaseline, "baseMonthlyCents" | "minimumMonthlyCents" | "usageComponents" | "defaultUsageInputs" | "usageCreditCents">,
   scenario: UnitEconomicsScenario,
   usageOverrides: UnitEconomicsUsageValues = {},
   unitRatesCentsPerUnit: Record<string, number> = {},
   percentageRates: Record<string, number> = {},
 ): number {
-  let totalCents = 0;
+  let commitmentCents = 0;
+  let usageCents = 0;
   for (const component of provider.usageComponents) {
     const quantityKey = component.quantityInput ?? component.id;
     const quantity = usageOverrides[quantityKey]?.[scenario] ?? provider.defaultUsageInputs[quantityKey]?.[scenario] ?? 0;
-    const billableUnits = Math.max(0, quantity - (component.includedUnits ?? 0));
+    const rawBillableUnits = Math.max(0, quantity - (component.includedUnits ?? 0));
+    const billableUnits = component.roundBillableUnitsUp ? Math.ceil(rawBillableUnits) : rawBillableUnits;
     const basis = component.percentageBasisInput
       ? usageOverrides[component.percentageBasisInput]?.[scenario] ?? provider.defaultUsageInputs[component.percentageBasisInput]?.[scenario] ?? 0
       : 0;
@@ -408,9 +419,13 @@ function calculateProviderMonthlyCost(
     const percentageCents = component.roundPercentagePerUnit === false
       ? Math.round(billableUnits * basis * percentageRate / 100)
       : billableUnits * Math.round(basis * percentageRate / 100);
-    totalCents += billableUnits * (unitRatesCentsPerUnit[component.id] ?? component.unitRateCents) + percentageCents;
+    const componentCents = billableUnits * (unitRatesCentsPerUnit[component.id] ?? component.unitRateCents) + percentageCents;
+    if (component.isCommitment) commitmentCents += componentCents;
+    else usageCents += componentCents;
   }
-  return Math.max(provider.minimumMonthlyCents, provider.baseMonthlyCents + Math.round(totalCents));
+  const usageCreditCents = commitmentCents > 0 ? provider.usageCreditCents ?? 0 : 0;
+  const totalCents = provider.baseMonthlyCents + commitmentCents + Math.max(0, usageCents - usageCreditCents);
+  return Math.max(provider.minimumMonthlyCents, Math.round(totalCents));
 }
 
 export const unitEconomicsProviderBaseline: UnitEconomicsProviderBaseline[] = unitEconomicsProviderDefinitions.map((entry) => {
@@ -569,7 +584,8 @@ export function calculateUnitEconomicsProviderCostBreakdown(
   return provider.usageComponents.map((component) => {
     const quantityKey = component.quantityInput ?? component.id;
     const quantity = provider.defaultUsageInputs[quantityKey]?.[scenario] ?? 0;
-    const billableUnits = Math.max(0, quantity - (component.includedUnits ?? 0));
+    const rawBillableUnits = Math.max(0, quantity - (component.includedUnits ?? 0));
+    const billableUnits = component.roundBillableUnitsUp ? Math.ceil(rawBillableUnits) : rawBillableUnits;
     const percentageBasis = component.percentageBasisInput
       ? provider.defaultUsageInputs[component.percentageBasisInput]?.[scenario] ?? 0
       : 0;
@@ -653,7 +669,11 @@ export function buildUnitEconomicsCsv(report: {
   metrics: ReturnType<typeof calculateUnitEconomicsMonth>;
   costs: UnitEconomicsProviderCost[];
 }): string {
-  const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const csvCell = (value: unknown) => {
+    const text = String(value ?? "");
+    const spreadsheetSafeText = typeof value === "string" && /^[\t\r\n ]*[=+\-@]/.test(text) ? `'${text}` : text;
+    return `"${spreadsheetSafeText.replace(/"/g, '""')}"`;
+  };
   const lines: unknown[][] = [
     ["CreteXchange Unit Economics", report.month],
     ["Validated loads", report.metrics.validatedLoads],
@@ -673,7 +693,7 @@ export function buildUnitEconomicsCsv(report: {
     [],
     [
       "Provider", "Category", "Current plan / use evidence", "Production plan/agreement",
-      "Fixed commitment", "Base monthly charge", "Minimum monthly floor", "Included usage/credits", "Metered and overage rates",
+      "Fixed commitment", "Base monthly charge", "Minimum monthly floor", "Usage credit", "Included usage/credits", "Metered and overage rates",
       "Low monthly cost", "Expected monthly cost", "High monthly cost", "Launch usage assumptions",
       "Calculation formula", "Structured cost components and rates", "Structured monthly usage inputs (low/expected/high)",
       "Calculated subcomponent charges (low/expected/high)",
@@ -683,12 +703,12 @@ export function buildUnitEconomicsCsv(report: {
     ],
     ...report.costs.map((cost) => [
       cost.provider, cost.category, cost.currentPlan, cost.productionPlan, cost.fixedCommitment,
-      cost.baseMonthlyCents / 100, cost.minimumMonthlyCents / 100, cost.includedUsage, cost.meteredRates,
+      cost.baseMonthlyCents / 100, cost.minimumMonthlyCents / 100, (cost.usageCreditCents ?? 0) / 100, cost.includedUsage, cost.meteredRates,
       cost.lowMonthlyCostCents == null ? "Unknown" : cost.lowMonthlyCostCents / 100,
       cost.expectedMonthlyCostCents == null ? "Unknown" : cost.expectedMonthlyCostCents / 100,
       cost.highMonthlyCostCents == null ? "Unknown" : cost.highMonthlyCostCents / 100,
       cost.launchUsageAssumptions, cost.formula,
-      JSON.stringify(cost.usageComponents.map(({ id, label, unit, unitRateCents, includedUnits, percentageRate, percentageBasisInput, quantityInput, roundPercentagePerUnit }) => ({ id, label, unit, unitRateCents, includedUnits, percentageRate, percentageBasisInput, quantityInput, roundPercentagePerUnit }))),
+      JSON.stringify(cost.usageComponents.map(({ id, label, unit, unitRateCents, includedUnits, percentageRate, percentageBasisInput, quantityInput, roundPercentagePerUnit, isCommitment, roundBillableUnitsUp }) => ({ id, label, unit, unitRateCents, includedUnits, percentageRate, percentageBasisInput, quantityInput, roundPercentagePerUnit, isCommitment, roundBillableUnitsUp }))),
       JSON.stringify(cost.defaultUsageInputs),
       JSON.stringify(Object.fromEntries((["low", "expected", "high"] as const).map((scenario) => [
         scenario, calculateUnitEconomicsProviderCostBreakdown(cost, scenario),

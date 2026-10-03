@@ -25,6 +25,7 @@ export type UnitEconomicsProviderEntry = {
   researchDate: string;
   baseMonthlyCents: number;
   minimumMonthlyCents: number;
+  usageCreditCents?: number;
   usageComponents: UnitEconomicsCostComponent[];
   defaultUsageInputs: Record<string, Record<"low" | "expected" | "high", number>>;
   isRecorded: boolean;
