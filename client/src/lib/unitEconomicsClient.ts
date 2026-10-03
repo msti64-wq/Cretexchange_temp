@@ -1,24 +1,55 @@
 import { ApiRequestError, apiRequest } from "./queryClient";
+import type { UnitEconomicsCostComponent, UnitEconomicsScenarioOverrides } from "../../../shared/unitEconomics";
 
+export type UnitEconomicsProviderEntry = {
+  id: string | null;
+  provider: string;
+  category: string;
+  amountCents: number | null;
+  lowMonthlyCostCents: number | null;
+  expectedMonthlyCostCents: number | null;
+  highMonthlyCostCents: number | null;
+  notes: string;
+  sourceUrl: string;
+  status: "confirmed" | "estimated" | "usage_based" | "unconfirmed" | "free";
+  evidenceStatus: "confirmed" | "estimated" | "usage_based" | "account_quote_required" | "not_configured";
+  billingCadence: "monthly" | "annual" | "per_transaction" | "per_unit";
+  costModel: "fixed" | "variable";
+  currentPlan: string;
+  productionPlan: string;
+  fixedCommitment: string;
+  includedUsage: string;
+  meteredRates: string;
+  launchUsageAssumptions: string;
+  formula: string;
+  researchDate: string;
+  baseMonthlyCents: number;
+  minimumMonthlyCents: number;
+  usageCreditCents?: number;
+  conditionalPlanInput?: string;
+  usageComponents: UnitEconomicsCostComponent[];
+  defaultUsageInputs: Record<string, Record<"low" | "expected" | "high", number>>;
+  isRecorded: boolean;
+  recordedEntries: Array<{
+    id?: string | null;
+    provider: string;
+    category?: string;
+    amountCents: number;
+    notes?: string | null;
+    sourceUrl?: string | null;
+  }>;
+  includedInCalculation: boolean;
+  separatelyCalculated?: boolean;
+};
 export type UnitEconomicsReport = {
   foundationReady: boolean;
   month: string;
   migrationRequired?: string;
   profitabilityComplete?: boolean;
   missingProviderCount?: number;
-  costs: Array<{
-    id: string | null;
-    provider: string;
-    category: string;
-    amountCents: number | null;
-    notes: string;
-    sourceUrl: string;
-    status: "confirmed" | "estimated" | "usage_based" | "unconfirmed" | "free";
-    billingCadence: "monthly" | "annual" | "per_transaction" | "per_unit";
-    costModel: "fixed" | "variable";
-    isRecorded: boolean;
-    includedInCalculation: boolean;
-  }>;
+  missingProviders?: string[];
+  scenarioMonthlyCostsCents?: { low: number; expected: number; high: number };
+  costs: UnitEconomicsProviderEntry[];
   assumptions?: {
     feePerValidatedLoadCents: number;
     paymentProcessingPercent: number;
@@ -41,14 +72,19 @@ export type UnitEconomicsReport = {
 type DownloadAnchor = { href: string; download: string; click: () => void; remove: () => void; };
 type BrowserDownloadEnvironment = { createObjectUrl: (blob: Blob) => string; revokeObjectUrl: (url: string) => void; createAnchor: () => DownloadAnchor; appendAnchor: (anchor: DownloadAnchor) => void; };
 
-export const unitEconomicsReportQueryKey = (month: string) => ["/api/superadmin/unit-economics", month] as const;
+export const unitEconomicsReportQueryKey = (month: string, scenarioOverrides: UnitEconomicsScenarioOverrides = {}) =>
+  ["/api/superadmin/unit-economics", month, JSON.stringify(scenarioOverrides)] as const;
 
-export async function fetchUnitEconomicsReport(month: string): Promise<UnitEconomicsReport> {
-  const response = await apiRequest("GET", `/api/superadmin/unit-economics?month=${encodeURIComponent(month)}`);
+function reportQuery(month: string, scenarioOverrides: UnitEconomicsScenarioOverrides = {}) {
+  const query = new URLSearchParams({ month, scenarioOverrides: JSON.stringify(scenarioOverrides) });
+  return query.toString();
+}
+export async function fetchUnitEconomicsReport(month: string, scenarioOverrides: UnitEconomicsScenarioOverrides = {}): Promise<UnitEconomicsReport> {
+  const response = await apiRequest("GET", `/api/superadmin/unit-economics?${reportQuery(month, scenarioOverrides)}`);
   return response.json() as Promise<UnitEconomicsReport>;
 }
-export async function fetchUnitEconomicsCsv(month: string): Promise<{ blob: Blob; filename: string }> {
-  const response = await apiRequest("GET", `/api/superadmin/unit-economics/export.csv?month=${encodeURIComponent(month)}`);
+export async function fetchUnitEconomicsCsv(month: string, scenarioOverrides: UnitEconomicsScenarioOverrides = {}): Promise<{ blob: Blob; filename: string }> {
+  const response = await apiRequest("GET", `/api/superadmin/unit-economics/export.csv?${reportQuery(month, scenarioOverrides)}`);
   return { blob: await response.blob(), filename: `cretexchange-unit-economics-${month}.csv` };
 }
 export function downloadUnitEconomicsCsv(blob: Blob, filename: string, environment: BrowserDownloadEnvironment = {

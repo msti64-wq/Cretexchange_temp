@@ -1,64 +1,83 @@
 import { sql } from "drizzle-orm";
 import { db } from "./db";
-import type { UnitEconomicsAssumptionInput, UnitEconomicsCostInput, UnitEconomicsCostStatus } from "../shared/unitEconomics";
-import { calculateUnitEconomicsMonth, unitEconomicsProviderBaseline } from "../shared/unitEconomics";
+import type { UnitEconomicsAssumptionInput, UnitEconomicsCostInput, UnitEconomicsScenarioOverrides } from "../shared/unitEconomics";
+import { buildUnitEconomicsProviderRegister, calculateUnitEconomicsModeledMonthlyCosts, calculateUnitEconomicsScenarioMonthlyCost, calculateUnitEconomicsMonth, unitEconomicsMonthlyCostsComplete, unitEconomicsProvidersRequiringConfirmation } from "../shared/unitEconomics";
 
 type Row = Record<string, unknown>;
 function rows(result: unknown): Row[] { return ((result as { rows?: Row[] })?.rows || []) as Row[]; }
 function monthDate(month: string) { return `${month}-01`; }
 function n(value: unknown) { return Number(value || 0); }
-function providerKey(value: unknown) { return String(value || "").trim().toLowerCase(); }
-function recordedStatus(row: Row, fallback?: UnitEconomicsCostStatus): UnitEconomicsCostStatus {
-  const notes = String(row.notes || "").toLowerCase();
-  if (n(row.amountCents) === 0 && (notes.includes("free") || fallback === "free")) return "free";
-  if (notes.includes("estimate") || notes.includes("estimated") || notes.includes("pending invoice")) return "estimated";
-  return "confirmed";
-}
 
-function buildProviderRegister(recordedCosts: Row[]) {
-  const recordedByProvider = new Map(recordedCosts.map((row) => [providerKey(row.provider), row]));
-  const baselineKeys = new Set(unitEconomicsProviderBaseline.map((entry) => providerKey(entry.provider)));
-  const baseline = unitEconomicsProviderBaseline.map((entry) => {
-    const recorded = recordedByProvider.get(providerKey(entry.provider));
-    if (!recorded) return { id: null, ...entry, amountCents: null, isRecorded: false };
-    return { ...entry, ...recorded, amountCents: n(recorded.amountCents), status: recordedStatus(recorded, entry.status), isRecorded: true, includedInCalculation: true };
-  });
-  const custom = recordedCosts.filter((row) => !baselineKeys.has(providerKey(row.provider))).map((row) => ({
-    ...row, amountCents: n(row.amountCents), status: recordedStatus(row), billingCadence: "monthly" as const,
-    costModel: "fixed" as const, isRecorded: true, includedInCalculation: true,
-  }));
-  return [...baseline, ...custom];
-}
-
-export async function getUnitEconomics(month: string) {
+export async function getUnitEconomics(month: string, scenarioOverrides: UnitEconomicsScenarioOverrides = {}) {
   const capability = rows(await db.execute(sql`SELECT to_regclass('public.unit_economics_monthly_costs') IS NOT NULL AS ready`))[0];
   if (!capability?.ready) return { foundationReady: false, month, migrationRequired: "0043", costs: [] };
   const assumptions = rows(await db.execute(sql`
     SELECT fee_per_validated_load_cents, payment_processing_percent, payment_processing_fixed_cents,
            evidence_storage_provider, evidence_storage_notes
       FROM unit_economics_monthly_assumptions WHERE month=${monthDate(month)}::date`))[0] || {};
+  const fee = n(assumptions.fee_per_validated_load_cents) || 500;
+  const percent = assumptions.payment_processing_percent == null ? 2.9 : n(assumptions.payment_processing_percent);
+  const fixed = assumptions.payment_processing_fixed_cents == null ? 30 : n(assumptions.payment_processing_fixed_cents);
+  const stripeOverrides = scenarioOverrides["Stripe payment processing"] || {};
+  const stripeUsage = stripeOverrides.usageInputs || {};
+  const effectiveScenarioOverrides: UnitEconomicsScenarioOverrides = {
+    ...scenarioOverrides,
+    "Stripe payment processing": {
+      ...stripeOverrides,
+      usageInputs: {
+        ...stripeUsage,
+        averageChargeCents: {
+          low: stripeUsage.averageChargeCents?.low ?? fee,
+          expected: stripeUsage.averageChargeCents?.expected ?? fee,
+          high: stripeUsage.averageChargeCents?.high ?? fee,
+        },
+      },
+      unitRatesCentsPerUnit: {
+        ...stripeOverrides.unitRatesCentsPerUnit,
+        transactions: stripeOverrides.unitRatesCentsPerUnit?.transactions ?? fixed,
+      },
+      percentageRates: {
+        ...stripeOverrides.percentageRates,
+        transactions: stripeOverrides.percentageRates?.transactions ?? percent,
+      },
+    },
+  };
   const recordedCosts = rows(await db.execute(sql`
     SELECT id, provider, category, amount_cents AS "amountCents", notes, source_url AS "sourceUrl"
       FROM unit_economics_monthly_costs WHERE month=${monthDate(month)}::date ORDER BY provider, category`));
-  const costs = buildProviderRegister(recordedCosts);
+  const costs = buildUnitEconomicsProviderRegister(recordedCosts.map((row) => ({
+    id: String(row.id),
+    provider: String(row.provider),
+    category: row.category as UnitEconomicsCostInput["category"],
+    amountCents: n(row.amountCents),
+    notes: String(row.notes || ""),
+    sourceUrl: String(row.sourceUrl || ""),
+  })), effectiveScenarioOverrides);
   const loadRow = rows(await db.execute(sql`
     SELECT count(*)::int AS count FROM washout_activities
      WHERE status='verified' AND coalesce(verified_at, check_in_time) >= ${monthDate(month)}::date
        AND coalesce(verified_at, check_in_time) < (${monthDate(month)}::date + interval '1 month')`))[0];
-  const fee = n(assumptions.fee_per_validated_load_cents) || 500;
-  const percent = assumptions.payment_processing_percent == null ? 2.9 : n(assumptions.payment_processing_percent);
-  const fixed = assumptions.payment_processing_fixed_cents == null ? 30 : n(assumptions.payment_processing_fixed_cents);
-  const fixedCostsCents = recordedCosts.reduce((sum, row) => sum + n(row.amountCents), 0);
-  const missingFromCalculation = costs.filter((entry) => !entry.includedInCalculation);
+  const fixedCostsCents = calculateUnitEconomicsModeledMonthlyCosts(costs);
+  const providersRequiringConfirmation = unitEconomicsProvidersRequiringConfirmation(costs);
+  const stripeProcessing = costs.find((entry) => entry.provider === "Stripe payment processing");
   return {
     foundationReady: true, month, costs,
-    profitabilityComplete: missingFromCalculation.length === 0,
-    missingProviderCount: missingFromCalculation.length,
+    profitabilityComplete: unitEconomicsMonthlyCostsComplete(costs),
+    missingProviderCount: providersRequiringConfirmation.length,
+    missingProviders: providersRequiringConfirmation,
+    scenarioMonthlyCostsCents: {
+      low: calculateUnitEconomicsScenarioMonthlyCost(costs, "low"),
+      expected: calculateUnitEconomicsScenarioMonthlyCost(costs, "expected"),
+      high: calculateUnitEconomicsScenarioMonthlyCost(costs, "high"),
+    },
     assumptions: { feePerValidatedLoadCents: fee, paymentProcessingPercent: percent, paymentProcessingFixedCents: fixed,
       evidenceStorageProvider: String(assumptions.evidence_storage_provider || "Unconfirmed"),
       evidenceStorageNotes: String(assumptions.evidence_storage_notes || "") },
     metrics: calculateUnitEconomicsMonth({ month, validatedLoads: n(loadRow?.count), feePerValidatedLoadCents: fee,
-      paymentProcessingPercent: percent, paymentProcessingFixedCents: fixed, fixedCostsCents }),
+      paymentProcessingPercent: percent, paymentProcessingFixedCents: fixed, fixedCostsCents,
+      averageStripeChargeCents: fee,
+      recordedStripeProcessingCents: stripeProcessing?.isRecorded ? stripeProcessing.amountCents : null,
+    }),
   };
 }
 

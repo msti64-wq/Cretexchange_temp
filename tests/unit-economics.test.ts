@@ -1,7 +1,18 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { calculateUnitEconomicsMonth, unitEconomicsCostInputSchema, unitEconomicsMonthSchema, unitEconomicsProviderBaseline } from "../shared/unitEconomics";
+import {
+  buildUnitEconomicsProviderRegister,
+  buildUnitEconomicsCsv,
+  calculateUnitEconomicsModeledMonthlyCosts,
+  calculateUnitEconomicsScenarioMonthlyCost,
+  calculateUnitEconomicsMonth,
+  unitEconomicsMonthlyCostsComplete,
+  unitEconomicsProvidersRequiringConfirmation,
+  unitEconomicsCostInputSchema,
+  unitEconomicsMonthSchema,
+  unitEconomicsProviderBaseline,
+} from "../shared/unitEconomics";
 import { ApiRequestError } from "../client/src/lib/queryClient";
 import {
   downloadUnitEconomicsCsv,
@@ -59,6 +70,7 @@ test("validates month and provider cost inputs", () => {
   assert.equal(unitEconomicsMonthSchema.safeParse("09-2026").success, false);
   assert.equal(unitEconomicsCostInputSchema.safeParse({ month: "2026-09", provider: "Squarespace", category: "domain_dns", amountCents: 2000 }).success, true);
   assert.equal(unitEconomicsCostInputSchema.safeParse({ month: "2026-09", provider: "Squarespace", category: "domain_dns", amountCents: -1 }).success, false);
+  assert.equal(unitEconomicsCostInputSchema.safeParse({ month: "2026-09", provider: "Squarespace", category: "domain_dns", amountCents: 2000, sourceUrl: "javascript:alert(1)" }).success, false);
 });
 
 test("dashboard request includes the existing bearer authentication and returns successful data", async () => {
@@ -68,7 +80,7 @@ test("dashboard request includes the existing bearer authentication and returns 
     async (request) => {
       assert.deepEqual(await fetchUnitEconomicsReport("2026-09"), payload);
       const captured = request();
-      assert.equal(String(captured.input), "/api/superadmin/unit-economics?month=2026-09");
+      assert.equal(String(captured.input), "/api/superadmin/unit-economics?month=2026-09&scenarioOverrides=%7B%7D");
       assert.equal(new Headers(captured.init?.headers).get("Authorization"), "Bearer existing-superadmin-token");
     },
   );
@@ -80,7 +92,7 @@ test("authenticated CSV download includes bearer authentication and returns a Bl
     async (request) => {
       const result = await fetchUnitEconomicsCsv("2026-09");
       const captured = request();
-      assert.equal(String(captured.input), "/api/superadmin/unit-economics/export.csv?month=2026-09");
+      assert.equal(String(captured.input), "/api/superadmin/unit-economics/export.csv?month=2026-09&scenarioOverrides=%7B%7D");
       assert.equal(new Headers(captured.init?.headers).get("Authorization"), "Bearer existing-superadmin-token");
       assert.equal(result.filename, "cretexchange-unit-economics-2026-09.csv");
       assert.match(await result.blob.text(), /CreteXchange Unit Economics/);
@@ -139,17 +151,372 @@ test("all unit economics API routes use token authentication before Superadmin a
   assert.match(source, /user\?\.role !== "super_admin"/);
 });
 
+test("incomplete profitability copy explains unconfirmed quote proxies without claiming a lower bound", () => {
+  const source = readFileSync(new URL("../client/src/pages/super-admin/unit-economics.tsx", import.meta.url), "utf8");
+  assert.match(source, /planning assumptions and quote proxies for unconfirmed vendors/);
+  assert.match(source, /may overstate or understate actual costs/);
+  assert.doesNotMatch(source, /lower bound/);
+});
 
-test("provider baseline keeps all known platform vendors visible without treating unknown costs as zero", () => {
-  assert.equal(unitEconomicsProviderBaseline.length, 11);
-  assert.ok(unitEconomicsProviderBaseline.some((entry) => entry.provider === "Railway Object Storage" && entry.category === "evidence_storage"));
-  assert.ok(unitEconomicsProviderBaseline.some((entry) => entry.provider === "Cloudflare DNS and proxy" && entry.status === "free"));
-  assert.ok(unitEconomicsProviderBaseline.some((entry) => entry.provider === "Squarespace domains" && entry.billingCadence === "annual"));
-  assert.ok(unitEconomicsProviderBaseline.some((entry) => entry.provider === "Stripe payment processing" && entry.includedInCalculation));
+
+test("provider register covers configured vendors and separates priced scenarios from unconfirmed vendors", () => {
+  assert.equal(unitEconomicsProviderBaseline.length, 13);
+  assert.deepEqual(unitEconomicsProviderBaseline.map(({ provider }) => provider), [
+    "Railway application hosting", "Railway Object Storage", "Neon PostgreSQL", "Vercel",
+    "Squarespace email", "Squarespace domains", "Cloudflare DNS and proxy", "Cloudflare Workers",
+    "Stripe payment processing", "Stripe Connect and payouts", "Google Maps Platform", "Mapbox Geocoding",
+    "Platform notifications",
+  ]);
+  assert.ok(unitEconomicsProviderBaseline.every((entry) => entry.sourceUrl.startsWith("https://") && /^\d{4}-\d{2}-\d{2}$/.test(entry.researchDate)));
+
+  const storage = unitEconomicsProviderBaseline.find((entry) => entry.provider === "Railway Object Storage");
+  assert.equal(storage?.category, "evidence_storage");
+  assert.equal(storage?.billingCadence, "per_unit");
+  assert.deepEqual([storage?.lowMonthlyCostCents, storage?.expectedMonthlyCostCents, storage?.highMonthlyCostCents], [75, 150, 750]);
+  assert.match(storage?.launchUsageAssumptions || "", /50\/100\/500 GB-month/);
+  assert.match(storage?.formula || "", /\$0\.015/);
+  assert.match(storage?.notes || "", /orderly-duffel/);
+  assert.equal(storage?.sourceUrl, "https://docs.railway.com/storage-buckets/billing");
+
+  const dns = unitEconomicsProviderBaseline.find((entry) => entry.provider === "Cloudflare DNS and proxy");
+  assert.equal(dns?.expectedMonthlyCostCents, 20_000);
+  assert.match(dns?.launchUsageAssumptions || "", /Pro annual \$20; expected Business annual \$200/);
+  assert.match(dns?.notes || "", /selected plan and billing cadence are not/);
+  const domains = unitEconomicsProviderBaseline.find((entry) => entry.provider === "Squarespace domains");
+  assert.equal(domains?.status, "unconfirmed");
+  assert.equal(domains?.billingCadence, "annual");
+  assert.deepEqual([domains?.lowMonthlyCostCents, domains?.expectedMonthlyCostCents, domains?.highMonthlyCostCents], [125, 333, 833]);
+  assert.equal(domains?.evidenceStatus, "account_quote_required");
+  assert.match(domains?.formula || "", /annual renewal quote proxy ÷ 12/);
+
+  const stripe = unitEconomicsProviderBaseline.find((entry) => entry.provider === "Stripe payment processing");
+  assert.equal(stripe?.amountCents, 4_500);
+  assert.equal(stripe?.status, "usage_based");
+  assert.equal(stripe?.separatelyCalculated, true);
+  assert.match(stripe?.formula || "", /2\.9% \+ \$0\.30/);
+  assert.ok(stripe?.includedInCalculation);
+  assert.deepEqual([stripe?.lowMonthlyCostCents, stripe?.expectedMonthlyCostCents, stripe?.highMonthlyCostCents], [1_125, 4_500, 22_500]);
+
+  const connect = unitEconomicsProviderBaseline.find((entry) => entry.provider === "Stripe Connect and payouts");
+  assert.deepEqual([connect?.lowMonthlyCostCents, connect?.expectedMonthlyCostCents, connect?.highMonthlyCostCents], [0, 2_500, 15_000]);
+  assert.equal(connect?.evidenceStatus, "account_quote_required");
+  assert.equal(connect?.includedInCalculation, true);
+  assert.match(connect?.formula || "", /confirmed fee inputs are available/);
+  const squarespaceEmail = unitEconomicsProviderBaseline.find((entry) => entry.provider === "Squarespace email");
+  assert.deepEqual([squarespaceEmail?.lowMonthlyCostCents, squarespaceEmail?.expectedMonthlyCostCents, squarespaceEmail?.highMonthlyCostCents], [700, 1_500, 3_000]);
+  assert.equal(squarespaceEmail?.evidenceStatus, "account_quote_required");
+  const mapbox = unitEconomicsProviderBaseline.find((entry) => entry.provider === "Mapbox Geocoding");
+  assert.deepEqual([mapbox?.lowMonthlyCostCents, mapbox?.expectedMonthlyCostCents, mapbox?.highMonthlyCostCents], [5_000, 25_000, 100_000]);
+  assert.equal(mapbox?.usageComponents.find((component) => component.id === "geocodingRequestsThousands")?.unitRateCents, 0);
+
+  const maps = unitEconomicsProviderBaseline.find((entry) => entry.provider === "Google Maps Platform");
+  assert.equal(maps?.amountCents, 0);
+  assert.equal(maps?.status, "estimated");
+  assert.match(maps?.includedUsage || "", /10,000 free billable events/);
+  assert.match(maps?.launchUsageAssumptions || "", /500\/5,000\/25,000 Dynamic Maps events/);
+  assert.equal(maps?.highMonthlyCostCents, 10_500);
+
+  const cloudflareWorkers = unitEconomicsProviderBaseline.find((entry) => entry.provider === "Cloudflare Workers");
+  assert.equal(cloudflareWorkers?.currentPlan, "No Worker deployment or binding found in repository; inactive/not configured");
+  assert.equal(cloudflareWorkers?.highMonthlyCostCents, 840);
+  assert.ok(unitEconomicsProviderBaseline.every((entry) =>
+    entry.lowMonthlyCostCents != null && entry.expectedMonthlyCostCents != null && entry.highMonthlyCostCents != null &&
+    entry.lowMonthlyCostCents <= entry.expectedMonthlyCostCents && entry.expectedMonthlyCostCents <= entry.highMonthlyCostCents));
+
+  const costs = buildUnitEconomicsProviderRegister([]);
+  assert.equal(costs.length, 13);
+  assert.equal(calculateUnitEconomicsModeledMonthlyCosts(costs), 57_912);
+  assert.equal(calculateUnitEconomicsScenarioMonthlyCost(costs), 62_412);
+  assert.equal(costs.find((entry) => entry.provider === "Stripe payment processing")?.includedInCalculation, true);
+  assert.equal(costs.find((entry) => entry.provider === "Stripe payment processing")?.amountCents, 4_500);
+  assert.equal(costs.find((entry) => entry.provider === "Vercel")?.includedInCalculation, true);
+  assert.deepEqual([
+    costs.find((entry) => entry.provider === "Vercel")?.lowMonthlyCostCents,
+    costs.find((entry) => entry.provider === "Vercel")?.expectedMonthlyCostCents,
+    costs.find((entry) => entry.provider === "Vercel")?.highMonthlyCostCents,
+  ], [0, 2_000, 12_749]);
+  assert.equal(costs.find((entry) => entry.provider === "Vercel")?.usageCreditCents, 2_000);
+  assert.match(costs.find((entry) => entry.provider === "Vercel")?.includedUsage || "", /Flat Rate CDN/);
+  assert.equal(costs.find((entry) => entry.provider === "Squarespace email")?.expectedMonthlyCostCents, 1_500);
+  assert.deepEqual([
+    costs.find((entry) => entry.provider === "Platform notifications")?.lowMonthlyCostCents,
+    costs.find((entry) => entry.provider === "Platform notifications")?.expectedMonthlyCostCents,
+    costs.find((entry) => entry.provider === "Platform notifications")?.highMonthlyCostCents,
+  ], [0, 2_000, 2_900]);
+  const firstNotificationOverageBucket = buildUnitEconomicsProviderRegister([], {
+    "Platform notifications": { usageInputs: { emailsThousands: { expected: 50.001 } } },
+  }).find((entry) => entry.provider === "Platform notifications");
+  assert.equal(firstNotificationOverageBucket?.expectedMonthlyCostCents, 2_090);
+  assert.equal(unitEconomicsMonthlyCostsComplete(costs), false);
+  assert.deepEqual(unitEconomicsProvidersRequiringConfirmation(costs), [
+    "Vercel", "Squarespace email", "Squarespace domains", "Cloudflare Workers",
+    "Stripe Connect and payouts", "Mapbox Geocoding", "Platform notifications",
+  ]);
+  const assessment = calculateUnitEconomicsMonth({
+    month: "2026-09",
+    validatedLoads: 0,
+    feePerValidatedLoadCents: 500,
+    paymentProcessingPercent: 2.9,
+    paymentProcessingFixedCents: 30,
+    fixedCostsCents: calculateUnitEconomicsModeledMonthlyCosts(costs),
+  });
+  assert.equal(assessment.processingPerLoadCents, 45);
+  assert.equal(assessment.breakEvenLoads, 128);
+  assert.equal(assessment.contributionProfitCents, -57_912);
+});
+
+test("conditional vendor allowances and rates require the corresponding paid plan", () => {
+  const providerCost = (provider: string, overrides: Parameters<typeof buildUnitEconomicsProviderRegister>[1]) =>
+    buildUnitEconomicsProviderRegister([], overrides).find((entry) => entry.provider === provider)?.expectedMonthlyCostCents;
+
+  assert.equal(providerCost("Vercel", {
+    Vercel: { usageInputs: { proSeats: { expected: 0 }, fluidCpuHours: { expected: 0 } } },
+  }), 0);
+  assert.throws(() => providerCost("Vercel", {
+    Vercel: { usageInputs: { proSeats: { expected: 0 }, fluidCpuHours: { expected: 1 } } },
+  }), /Vercel expected scenario has Fluid active CPU usage while conditional plan input proSeats is disabled/);
+  assert.equal(providerCost("Vercel", {
+    Vercel: { usageInputs: {
+      proSeats: { expected: 1 }, fluidCpuHours: { expected: 4 },
+      provisionedMemoryGbHours: { expected: 360 }, functionInvocationMillions: { expected: 1 },
+    } },
+  }), 2_000);
+  assert.equal(providerCost("Vercel", {
+    Vercel: { usageInputs: {
+      proSeats: { expected: 1 }, fluidCpuHours: { expected: 200 },
+      provisionedMemoryGbHours: { expected: 360 }, functionInvocationMillions: { expected: 1 },
+    } },
+  }), 2_509);
+
+  assert.equal(providerCost("Platform notifications", {
+    "Platform notifications": { usageInputs: { conditionalProPlan: { expected: 0 }, emailsThousands: { expected: 0 } } },
+  }), 0);
+  assert.throws(() => providerCost("Platform notifications", {
+    "Platform notifications": { usageInputs: { conditionalProPlan: { expected: 0 }, emailsThousands: { expected: 1 } } },
+  }), /Platform notifications expected scenario has Transactional emails usage while conditional plan input conditionalProPlan is disabled/);
+  assert.equal(providerCost("Platform notifications", {
+    "Platform notifications": { usageInputs: { conditionalProPlan: { expected: 1 }, emailsThousands: { expected: 50 } } },
+  }), 2_000);
+  assert.equal(providerCost("Platform notifications", {
+    "Platform notifications": { usageInputs: { conditionalProPlan: { expected: 1 }, emailsThousands: { expected: 50.001 } } },
+  }), 2_090);
+  assert.equal(providerCost("Platform notifications", {
+    "Platform notifications": { usageInputs: { conditionalProPlan: { expected: 1 }, emailsThousands: { expected: 51.001 } } },
+  }), 2_180);
+
+  const recorded = buildUnitEconomicsProviderRegister([
+    { id: "recorded-vercel", provider: "Vercel", amountCents: 1_234, notes: "Invoice" },
+  ], {
+    Vercel: { usageInputs: { proSeats: { expected: 0 }, fluidCpuHours: { expected: 200 } } },
+  }).find((entry) => entry.provider === "Vercel");
+  assert.equal(recorded?.isRecorded, true);
+  assert.equal(recorded?.expectedMonthlyCostCents, 1_234);
+});
+
+test("selected-month provider records replace baseline fields and all scenario amounts without double counting", () => {
+  const costs = buildUnitEconomicsProviderRegister([
+    { id: "recorded-railway", provider: "Railway application hosting", amountCents: 2_500, notes: "September invoice", sourceUrl: "https://example.com/invoice" },
+    { id: "recorded-stripe", provider: "Stripe payment processing", amountCents: 7_500, notes: "September processing fees", sourceUrl: "https://example.com/stripe-invoice" },
+  ]);
+  const railway = costs.find((entry) => entry.provider === "Railway application hosting");
+  assert.equal(railway?.amountCents, 2_500);
+  assert.equal(railway?.status, "confirmed");
+  assert.equal(railway?.notes, "September invoice");
+  assert.equal(railway?.sourceUrl, "https://example.com/invoice");
+  assert.equal(railway?.isRecorded, true);
+
+  const stripe = costs.find((entry) => entry.provider === "Stripe payment processing");
+  assert.equal(stripe?.amountCents, 7_500);
+  assert.equal(stripe?.status, "confirmed");
+  assert.equal(stripe?.notes, "September processing fees");
+  assert.equal(stripe?.sourceUrl, "https://example.com/stripe-invoice");
+  assert.equal(stripe?.separatelyCalculated, true);
+  assert.equal(railway?.lowMonthlyCostCents, 2_500);
+  assert.equal(railway?.expectedMonthlyCostCents, 2_500);
+  assert.equal(railway?.highMonthlyCostCents, 2_500);
+  assert.equal(calculateUnitEconomicsModeledMonthlyCosts(costs), 58_412);
+  assert.equal(calculateUnitEconomicsScenarioMonthlyCost(costs), 65_912);
+});
+
+test("duplicate monthly provider rows remain auditable and are never collapsed from totals", () => {
+  const duplicateBaseline = buildUnitEconomicsProviderRegister([
+    { id: "railway-1", provider: " Railway application hosting ", amountCents: 2_500, notes: "Base invoice", sourceUrl: "https://example.com/base" },
+    { id: "railway-2", provider: "RAILWAY APPLICATION HOSTING", amountCents: 750, notes: "Usage adjustment", sourceUrl: "https://example.com/adjustment" },
+  ]);
+  const railway = duplicateBaseline.find((entry) => entry.provider === "Railway application hosting");
+  assert.equal(railway?.id, null);
+  assert.equal(railway?.amountCents, 3_250);
+  assert.deepEqual([
+    railway?.lowMonthlyCostCents, railway?.expectedMonthlyCostCents, railway?.highMonthlyCostCents,
+  ], [3_250, 3_250, 3_250]);
+  assert.deepEqual(railway?.recordedEntries.map((entry) => entry.id), ["railway-1", "railway-2"]);
+  assert.match(railway?.notes || "", /Aggregate of 2 recorded monthly rows/);
+  assert.equal(railway?.sourceUrl, "");
+  assert.equal(calculateUnitEconomicsModeledMonthlyCosts(duplicateBaseline), 59_162);
+  assert.equal(calculateUnitEconomicsScenarioMonthlyCost(duplicateBaseline), 63_662);
+
+  const duplicateCustom = buildUnitEconomicsProviderRegister([
+    { id: "custom-1", provider: "Other Provider", amountCents: 100, notes: "First" },
+    { id: "custom-2", provider: " other provider ", amountCents: 200, notes: "Second" },
+  ]);
+  const customRows = duplicateCustom.filter((entry) => entry.id === "custom-1" || entry.id === "custom-2");
+  assert.equal(customRows.length, 2);
+  assert.deepEqual(customRows.map((entry) => entry.amountCents), [100, 200]);
+  assert.deepEqual(customRows.flatMap((entry) => entry.recordedEntries.map((recorded) => recorded.id)), ["custom-1", "custom-2"]);
+  assert.equal(calculateUnitEconomicsModeledMonthlyCosts(duplicateCustom), 58_212);
+
+  const september = buildUnitEconomicsProviderRegister([
+    { id: "september", provider: "Railway application hosting", amountCents: 1_000 },
+  ]);
+  const october = buildUnitEconomicsProviderRegister([
+    { id: "october", provider: "Railway application hosting", amountCents: 3_000 },
+  ]);
+  assert.equal(september.find((entry) => entry.provider === "Railway application hosting")?.amountCents, 1_000);
+  assert.equal(october.find((entry) => entry.provider === "Railway application hosting")?.amountCents, 3_000);
+
+  const single = buildUnitEconomicsProviderRegister([
+    { id: "single", provider: "Railway application hosting", amountCents: 2_500, notes: "September invoice", sourceUrl: "https://example.com/invoice" },
+  ]).find((entry) => entry.provider === "Railway application hosting");
+  assert.equal(single?.id, "single");
+  assert.equal(single?.amountCents, 2_500);
+  assert.equal(single?.notes, "September invoice");
+  assert.equal(single?.sourceUrl, "https://example.com/invoice");
+  assert.deepEqual(single?.recordedEntries.map((entry) => entry.id), ["single"]);
+
+  const serviceSource = readFileSync(new URL("../server/unitEconomicsService.ts", import.meta.url), "utf8");
+  const pageSource = readFileSync(new URL("../client/src/pages/super-admin/unit-economics.tsx", import.meta.url), "utf8");
+  assert.match(serviceSource, /unit_economics_monthly_costs WHERE month=\$\{monthDate\(month\)\}::date/);
+  assert.match(pageSource, /entry\.recordedEntries\.map/);
+  assert.match(pageSource, /removeCost\.mutate\(recorded\.id!\)/);
+});
+
+test("local scenario assumptions replace estimates but recorded monthly costs remain authoritative", () => {
+  const provider = "Squarespace domains";
+  const scenario = buildUnitEconomicsProviderRegister([], {
+    [provider]: {
+      usageInputs: {
+        domainCount: { low: 2, expected: 2, high: 2 },
+        annualRenewalQuoteCents: { low: 6_000, expected: 8_000, high: 12_000 },
+      },
+      launchUsageAssumptions: "Two domains at $60 annual renewal each.",
+    },
+  }).find((entry) => entry.provider === provider);
+  assert.equal(scenario?.includedInCalculation, true);
+  assert.equal(scenario?.evidenceStatus, "account_quote_required");
+  assert.equal(scenario?.expectedMonthlyCostCents, 1_333);
+  assert.deepEqual([
+    scenario?.lowMonthlyCostCents, scenario?.expectedMonthlyCostCents, scenario?.highMonthlyCostCents,
+  ], [1_000, 1_333, 2_000]);
+  assert.equal(scenario?.launchUsageAssumptions, "Two domains at $60 annual renewal each.");
+
+  const recorded = buildUnitEconomicsProviderRegister([
+    { id: "recorded-domain", provider, amountCents: 1_250, notes: "Actual renewal", sourceUrl: "https://example.com/invoice" },
+  ], { [provider]: { usageInputs: {
+    domainCount: { low: 2, expected: 2, high: 2 },
+    annualRenewalQuoteCents: { low: 6_000, expected: 8_000, high: 12_000 },
+  } } })
+    .find((entry) => entry.provider === provider);
+  assert.equal(recorded?.isRecorded, true);
+  assert.equal(recorded?.amountCents, 1_250);
+  assert.equal(recorded?.lowMonthlyCostCents, 1_250);
+  assert.equal(recorded?.expectedMonthlyCostCents, 1_250);
+  assert.equal(recorded?.highMonthlyCostCents, 1_250);
+  assert.equal(recorded?.notes, "Actual renewal");
+});
+
+test("formula-driven numeric usage edits recalculate low, expected, and high without editing cost outputs", () => {
+  const provider = "Railway Object Storage";
+  const costs = buildUnitEconomicsProviderRegister([], {
+    [provider]: { usageInputs: { storedGbMonths: { low: 100, expected: 250, high: 1_000 } } },
+  });
+
+  test("quote-dependent unit-rate edits recalculate usage-based costs and retain quote-required evidence", () => {
+    const mapbox = buildUnitEconomicsProviderRegister([], {
+      "Mapbox Geocoding": {
+        unitRatesCentsPerUnit: { geocodingRequestsThousands: 500 },
+      },
+    }).find((entry) => entry.provider === "Mapbox Geocoding");
+    assert.deepEqual([
+      mapbox?.lowMonthlyCostCents, mapbox?.expectedMonthlyCostCents, mapbox?.highMonthlyCostCents,
+    ], [5_050, 25_500, 105_000]);
+    assert.equal(mapbox?.usageComponents.find((component) => component.id === "geocodingRequestsThousands")?.unitRateCents, 500);
+    assert.equal(mapbox?.evidenceStatus, "account_quote_required");
+  });
+  const storage = costs.find((entry) => entry.provider === provider);
+  assert.deepEqual([
+    storage?.lowMonthlyCostCents, storage?.expectedMonthlyCostCents, storage?.highMonthlyCostCents,
+  ], [150, 375, 1_500]);
+  assert.equal(calculateUnitEconomicsModeledMonthlyCosts(costs, "expected"), 58_137);
+  assert.throws(() => calculateUnitEconomicsModeledMonthlyCosts(
+    costs.map((entry) => entry.provider === provider ? { ...entry, expectedMonthlyCostCents: null } : entry),
+  ), /Missing expected monthly cost for included provider Railway Object Storage/);
+});
+
+test("Stripe processing is formula-driven by charge amount and a recorded statement replaces the formula", () => {
+  const formula = calculateUnitEconomicsMonth({
+    month: "2026-09", validatedLoads: 100, feePerValidatedLoadCents: 500,
+    paymentProcessingPercent: 2.9, paymentProcessingFixedCents: 30, fixedCostsCents: 0,
+    averageStripeChargeCents: 1_000,
+  });
+  assert.equal(formula.processingPerLoadCents, 59);
+  assert.equal(formula.variableCostsCents, 5_900);
+  const recorded = calculateUnitEconomicsMonth({
+    month: "2026-09", validatedLoads: 100, feePerValidatedLoadCents: 500,
+    paymentProcessingPercent: 2.9, paymentProcessingFixedCents: 30, fixedCostsCents: 0,
+    averageStripeChargeCents: 1_000, recordedStripeProcessingCents: 7_500, recordedOtherVariableCostsCents: 2_000,
+  });
+  assert.equal(recorded.variableCostsCents, 9_500);
+  assert.equal(recorded.contributionProfitCents, 40_500);
+  assert.equal(recorded.breakEvenProcessingPerLoadCents, 75);
+  const breakEvenWithRecordedFees = calculateUnitEconomicsMonth({
+    month: "2026-09", validatedLoads: 100, feePerValidatedLoadCents: 500,
+    paymentProcessingPercent: 2.9, paymentProcessingFixedCents: 30, fixedCostsCents: 50_000,
+    averageStripeChargeCents: 1_000, recordedStripeProcessingCents: 7_500,
+  });
+  assert.equal(breakEvenWithRecordedFees.breakEvenLoads, 118);
+});
+
+test("CSV exports scenario totals and the complete plan, formula, assumption, evidence, and source breakdown", () => {
+  const costs = buildUnitEconomicsProviderRegister([]);
+  const fixedCostsCents = calculateUnitEconomicsModeledMonthlyCosts(costs);
+  const report = {
+    month: "2026-09",
+    profitabilityComplete: false,
+    missingProviderCount: 6,
+    scenarioMonthlyCostsCents: {
+      low: calculateUnitEconomicsScenarioMonthlyCost(costs, "low"),
+      expected: calculateUnitEconomicsScenarioMonthlyCost(costs),
+      high: calculateUnitEconomicsScenarioMonthlyCost(costs, "high"),
+    },
+    metrics: calculateUnitEconomicsMonth({
+      month: "2026-09", validatedLoads: 100, feePerValidatedLoadCents: 500,
+      paymentProcessingPercent: 2.9, paymentProcessingFixedCents: 30, fixedCostsCents,
+    }),
+    costs,
+  };
+  const csv = buildUnitEconomicsCsv(report);
+  assert.match(csv, /Expected modeled monthly provider costs \(scenario\)/);
+  assert.match(csv, /Current plan \/ use evidence","Production plan\/agreement","Fixed commitment","Base monthly charge","Minimum monthly floor","Usage credit"/);
+  assert.match(csv, /"Railway Object Storage"/);
+  assert.match(csv, /Railway Storage Bucket, Standard tier/);
+  assert.match(csv, /stored GB-month × \$0\.015/);
+  assert.match(csv, /Structured monthly usage inputs \(low\/expected\/high\)/);
+  assert.match(csv, /Calculated subcomponent charges \(low\/expected\/high\)/);
+  assert.ok(csv.includes('amountCents"":4500'));
+  assert.match(csv, /Break-even formula/);
+  assert.match(csv, /existing documented \$5\.00 verified-drop assumption/);
+  assert.match(csv, /"Stripe Connect and payouts"/);
+  assert.match(csv, /https:\/\/stripe\.com\/connect\/pricing/);
+  assert.match(csv, /2026-10-02/);
+  const injectionSafeCsv = buildUnitEconomicsCsv({
+    ...report,
+    costs: [{ ...costs[0], notes: "=WEBSERVICE(\"https://example.invalid\")" }, ...costs.slice(1)],
+  });
+  assert.match(injectionSafeCsv, /"'=WEBSERVICE\(""https:\/\/example\.invalid""\)"/);
 });
 
 test("report query keys are isolated by selected reporting month", () => {
   assert.notDeepEqual(unitEconomicsReportQueryKey("2026-08"), unitEconomicsReportQueryKey("2026-09"));
-  assert.deepEqual(unitEconomicsReportQueryKey("2026-08"), ["/api/superadmin/unit-economics", "2026-08"]);
+  assert.notDeepEqual(unitEconomicsReportQueryKey("2026-09", { Vercel: { usageInputs: { proSeats: { expected: 2 } } } }), unitEconomicsReportQueryKey("2026-09"));
+  assert.deepEqual(unitEconomicsReportQueryKey("2026-08"), ["/api/superadmin/unit-economics", "2026-08", "{}"]);
 });
-
