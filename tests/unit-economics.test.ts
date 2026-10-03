@@ -338,6 +338,58 @@ test("selected-month provider records replace baseline fields and all scenario a
   assert.equal(calculateUnitEconomicsScenarioMonthlyCost(costs), 65_912);
 });
 
+test("duplicate monthly provider rows remain auditable and are never collapsed from totals", () => {
+  const duplicateBaseline = buildUnitEconomicsProviderRegister([
+    { id: "railway-1", provider: " Railway application hosting ", amountCents: 2_500, notes: "Base invoice", sourceUrl: "https://example.com/base" },
+    { id: "railway-2", provider: "RAILWAY APPLICATION HOSTING", amountCents: 750, notes: "Usage adjustment", sourceUrl: "https://example.com/adjustment" },
+  ]);
+  const railway = duplicateBaseline.find((entry) => entry.provider === "Railway application hosting");
+  assert.equal(railway?.id, null);
+  assert.equal(railway?.amountCents, 3_250);
+  assert.deepEqual([
+    railway?.lowMonthlyCostCents, railway?.expectedMonthlyCostCents, railway?.highMonthlyCostCents,
+  ], [3_250, 3_250, 3_250]);
+  assert.deepEqual(railway?.recordedEntries.map((entry) => entry.id), ["railway-1", "railway-2"]);
+  assert.match(railway?.notes || "", /Aggregate of 2 recorded monthly rows/);
+  assert.equal(railway?.sourceUrl, "");
+  assert.equal(calculateUnitEconomicsModeledMonthlyCosts(duplicateBaseline), 59_162);
+  assert.equal(calculateUnitEconomicsScenarioMonthlyCost(duplicateBaseline), 63_662);
+
+  const duplicateCustom = buildUnitEconomicsProviderRegister([
+    { id: "custom-1", provider: "Other Provider", amountCents: 100, notes: "First" },
+    { id: "custom-2", provider: " other provider ", amountCents: 200, notes: "Second" },
+  ]);
+  const customRows = duplicateCustom.filter((entry) => entry.id === "custom-1" || entry.id === "custom-2");
+  assert.equal(customRows.length, 2);
+  assert.deepEqual(customRows.map((entry) => entry.amountCents), [100, 200]);
+  assert.deepEqual(customRows.flatMap((entry) => entry.recordedEntries.map((recorded) => recorded.id)), ["custom-1", "custom-2"]);
+  assert.equal(calculateUnitEconomicsModeledMonthlyCosts(duplicateCustom), 58_212);
+
+  const september = buildUnitEconomicsProviderRegister([
+    { id: "september", provider: "Railway application hosting", amountCents: 1_000 },
+  ]);
+  const october = buildUnitEconomicsProviderRegister([
+    { id: "october", provider: "Railway application hosting", amountCents: 3_000 },
+  ]);
+  assert.equal(september.find((entry) => entry.provider === "Railway application hosting")?.amountCents, 1_000);
+  assert.equal(october.find((entry) => entry.provider === "Railway application hosting")?.amountCents, 3_000);
+
+  const single = buildUnitEconomicsProviderRegister([
+    { id: "single", provider: "Railway application hosting", amountCents: 2_500, notes: "September invoice", sourceUrl: "https://example.com/invoice" },
+  ]).find((entry) => entry.provider === "Railway application hosting");
+  assert.equal(single?.id, "single");
+  assert.equal(single?.amountCents, 2_500);
+  assert.equal(single?.notes, "September invoice");
+  assert.equal(single?.sourceUrl, "https://example.com/invoice");
+  assert.deepEqual(single?.recordedEntries.map((entry) => entry.id), ["single"]);
+
+  const serviceSource = readFileSync(new URL("../server/unitEconomicsService.ts", import.meta.url), "utf8");
+  const pageSource = readFileSync(new URL("../client/src/pages/super-admin/unit-economics.tsx", import.meta.url), "utf8");
+  assert.match(serviceSource, /unit_economics_monthly_costs WHERE month=\$\{monthDate\(month\)\}::date/);
+  assert.match(pageSource, /entry\.recordedEntries\.map/);
+  assert.match(pageSource, /removeCost\.mutate\(recorded\.id!\)/);
+});
+
 test("local scenario assumptions replace estimates but recorded monthly costs remain authoritative", () => {
   const provider = "Squarespace domains";
   const scenario = buildUnitEconomicsProviderRegister([], {

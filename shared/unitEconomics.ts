@@ -500,6 +500,7 @@ export type UnitEconomicsRecordedCost = {
 export type UnitEconomicsProviderCost = UnitEconomicsProviderBaseline & {
   id: string | null;
   isRecorded: boolean;
+  recordedEntries: UnitEconomicsRecordedCost[];
 };
 
 function recordedStatus(row: UnitEconomicsRecordedCost): UnitEconomicsCostStatus {
@@ -514,11 +515,15 @@ export function buildUnitEconomicsProviderRegister(
   scenarioOverrides: UnitEconomicsScenarioOverrides = {},
 ): UnitEconomicsProviderCost[] {
   const providerKey = (provider: string) => provider.trim().toLowerCase();
-  const recordedByProvider = new Map(recordedCosts.map((row) => [providerKey(row.provider), row]));
+  const recordedByProvider = new Map<string, UnitEconomicsRecordedCost[]>();
+  for (const row of recordedCosts) {
+    const key = providerKey(row.provider);
+    recordedByProvider.set(key, [...(recordedByProvider.get(key) ?? []), row]);
+  }
   const baselineKeys = new Set(unitEconomicsProviderBaseline.map((entry) => providerKey(entry.provider)));
   const baseline = unitEconomicsProviderBaseline.map((entry) => {
-    const recorded = recordedByProvider.get(providerKey(entry.provider));
-    if (!recorded) {
+    const recordedEntries = recordedByProvider.get(providerKey(entry.provider)) ?? [];
+    if (recordedEntries.length === 0) {
       const override = scenarioOverrides[entry.provider];
       const usageInputs: UnitEconomicsUsageValues = {};
       for (const component of entry.usageComponents) {
@@ -563,23 +568,40 @@ export function buildUnitEconomicsProviderRegister(
           ? `${entry.notes} Scenario ranges are quote proxies, not a confirmed vendor price.`
           : entry.notes,
         isRecorded: false,
+        recordedEntries: [],
       };
     }
+    const recordedAmountCents = recordedEntries.reduce((total, row) => total + row.amountCents, 0);
+    const recordedStatuses = recordedEntries.map(recordedStatus);
+    const aggregateStatus: UnitEconomicsCostStatus = recordedStatuses.every((status) => status === "free")
+      ? "free"
+      : recordedStatuses.some((status) => status === "estimated") ? "estimated" : "confirmed";
+    const isAggregate = recordedEntries.length > 1;
+    const onlyEntry = recordedEntries[0];
     return {
       ...entry,
-      ...recorded,
-      id: recorded.id ?? null,
-      category: recorded.category ?? entry.category,
-      amountCents: recorded.amountCents,
-      lowMonthlyCostCents: recorded.amountCents,
-      expectedMonthlyCostCents: recorded.amountCents,
-      highMonthlyCostCents: recorded.amountCents,
-      status: recordedStatus(recorded),
+      id: isAggregate ? null : onlyEntry.id ?? null,
+      category: isAggregate ? entry.category : onlyEntry.category ?? entry.category,
+      amountCents: recordedAmountCents,
+      lowMonthlyCostCents: recordedAmountCents,
+      expectedMonthlyCostCents: recordedAmountCents,
+      highMonthlyCostCents: recordedAmountCents,
+      status: aggregateStatus,
       evidenceStatus: "confirmed" as const,
-      notes: recorded.notes ?? "",
-      sourceUrl: recorded.sourceUrl ?? "",
+      currentPlan: isAggregate ? `Aggregate of ${recordedEntries.length} recorded monthly rows` : entry.currentPlan,
+      productionPlan: isAggregate ? "Aggregate of retained recorded monthly rows" : entry.productionPlan,
+      fixedCommitment: isAggregate ? "Sum of retained monthly records replaces the modeled provider estimate once" : entry.fixedCommitment,
+      includedUsage: isAggregate ? "Recorded-row aggregate; no modeled allowance is added" : entry.includedUsage,
+      meteredRates: isAggregate ? "Not modeled; complete recorded-row aggregate is authoritative" : entry.meteredRates,
+      launchUsageAssumptions: isAggregate ? "Not modeled; complete recorded-row aggregate is authoritative" : entry.launchUsageAssumptions,
+      formula: isAggregate ? `Sum of ${recordedEntries.length} retained monthly rows (replaces provider scenario once)` : entry.formula,
+      notes: isAggregate
+        ? `Aggregate of ${recordedEntries.length} recorded monthly rows. Individual notes and source evidence are retained below.`
+        : onlyEntry.notes ?? "",
+      sourceUrl: isAggregate ? "" : onlyEntry.sourceUrl ?? "",
       isRecorded: true,
       includedInCalculation: true,
+      recordedEntries,
     };
   });
   const custom = recordedCosts.filter((row) => !baselineKeys.has(providerKey(row.provider))).map((row) => ({
@@ -610,6 +632,7 @@ export function buildUnitEconomicsProviderRegister(
     defaultUsageInputs: {},
     isRecorded: true,
     includedInCalculation: true,
+    recordedEntries: [row],
   }));
   return [...baseline, ...custom];
 }
@@ -751,7 +774,7 @@ export function buildUnitEconomicsCsv(report: {
       "Calculated subcomponent charges (low/expected/high)",
       "Evidence classification", "Status", "Billing cadence", "Cost model",
       "Recorded override", "Included in expected total", "Calculated separately",
-      "Notes", "Official source URL", "Research/effective date",
+      "Recorded row count", "Recorded row evidence", "Notes", "Official source URL", "Research/effective date",
     ],
     ...report.costs.map((cost) => [
       cost.provider, cost.category, cost.currentPlan, cost.productionPlan, cost.fixedCommitment,
@@ -768,6 +791,8 @@ export function buildUnitEconomicsCsv(report: {
       cost.evidenceStatus, cost.status,
       cost.billingCadence, cost.costModel, cost.isRecorded ? "Yes" : "No",
       cost.includedInCalculation ? "Yes" : "No", cost.separatelyCalculated ? "Yes" : "No",
+      cost.recordedEntries.length,
+      JSON.stringify(cost.recordedEntries.map(({ id, provider, category, amountCents, notes, sourceUrl }) => ({ id, provider, category, amountCents, notes, sourceUrl }))),
       cost.notes, cost.sourceUrl, cost.researchDate,
     ]),
   ];

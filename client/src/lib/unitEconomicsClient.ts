@@ -30,6 +30,14 @@ export type UnitEconomicsProviderEntry = {
   usageComponents: UnitEconomicsCostComponent[];
   defaultUsageInputs: Record<string, Record<"low" | "expected" | "high", number>>;
   isRecorded: boolean;
+  recordedEntries: Array<{
+    id?: string | null;
+    provider: string;
+    category?: string;
+    amountCents: number;
+    notes?: string | null;
+    sourceUrl?: string | null;
+  }>;
   includedInCalculation: boolean;
   separatelyCalculated?: boolean;
 };
