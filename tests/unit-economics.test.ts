@@ -265,6 +265,54 @@ test("provider register covers configured vendors and separates priced scenarios
   assert.equal(assessment.contributionProfitCents, -57_912);
 });
 
+test("conditional vendor allowances and rates require the corresponding paid plan", () => {
+  const providerCost = (provider: string, overrides: Parameters<typeof buildUnitEconomicsProviderRegister>[1]) =>
+    buildUnitEconomicsProviderRegister([], overrides).find((entry) => entry.provider === provider)?.expectedMonthlyCostCents;
+
+  assert.equal(providerCost("Vercel", {
+    Vercel: { usageInputs: { proSeats: { expected: 0 }, fluidCpuHours: { expected: 0 } } },
+  }), 0);
+  assert.throws(() => providerCost("Vercel", {
+    Vercel: { usageInputs: { proSeats: { expected: 0 }, fluidCpuHours: { expected: 1 } } },
+  }), /Vercel expected scenario has Fluid active CPU usage while conditional plan input proSeats is disabled/);
+  assert.equal(providerCost("Vercel", {
+    Vercel: { usageInputs: {
+      proSeats: { expected: 1 }, fluidCpuHours: { expected: 4 },
+      provisionedMemoryGbHours: { expected: 360 }, functionInvocationMillions: { expected: 1 },
+    } },
+  }), 2_000);
+  assert.equal(providerCost("Vercel", {
+    Vercel: { usageInputs: {
+      proSeats: { expected: 1 }, fluidCpuHours: { expected: 200 },
+      provisionedMemoryGbHours: { expected: 360 }, functionInvocationMillions: { expected: 1 },
+    } },
+  }), 2_509);
+
+  assert.equal(providerCost("Platform notifications", {
+    "Platform notifications": { usageInputs: { conditionalProPlan: { expected: 0 }, emailsThousands: { expected: 0 } } },
+  }), 0);
+  assert.throws(() => providerCost("Platform notifications", {
+    "Platform notifications": { usageInputs: { conditionalProPlan: { expected: 0 }, emailsThousands: { expected: 1 } } },
+  }), /Platform notifications expected scenario has Transactional emails usage while conditional plan input conditionalProPlan is disabled/);
+  assert.equal(providerCost("Platform notifications", {
+    "Platform notifications": { usageInputs: { conditionalProPlan: { expected: 1 }, emailsThousands: { expected: 50 } } },
+  }), 2_000);
+  assert.equal(providerCost("Platform notifications", {
+    "Platform notifications": { usageInputs: { conditionalProPlan: { expected: 1 }, emailsThousands: { expected: 50.001 } } },
+  }), 2_090);
+  assert.equal(providerCost("Platform notifications", {
+    "Platform notifications": { usageInputs: { conditionalProPlan: { expected: 1 }, emailsThousands: { expected: 51.001 } } },
+  }), 2_180);
+
+  const recorded = buildUnitEconomicsProviderRegister([
+    { id: "recorded-vercel", provider: "Vercel", amountCents: 1_234, notes: "Invoice" },
+  ], {
+    Vercel: { usageInputs: { proSeats: { expected: 0 }, fluidCpuHours: { expected: 200 } } },
+  }).find((entry) => entry.provider === "Vercel");
+  assert.equal(recorded?.isRecorded, true);
+  assert.equal(recorded?.expectedMonthlyCostCents, 1_234);
+});
+
 test("selected-month provider records replace baseline fields and all scenario amounts without double counting", () => {
   const costs = buildUnitEconomicsProviderRegister([
     { id: "recorded-railway", provider: "Railway application hosting", amountCents: 2_500, notes: "September invoice", sourceUrl: "https://example.com/invoice" },

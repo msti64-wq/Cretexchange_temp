@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { addUnitEconomicsCost, deleteUnitEconomicsCost, getUnitEconomics, saveUnitEconomicsAssumptions } from "./unitEconomicsService";
-import { buildUnitEconomicsCsv, unitEconomicsAssumptionInputSchema, unitEconomicsCostInputSchema, unitEconomicsMonthSchema, unitEconomicsScenarioOverridesSchema } from "../shared/unitEconomics";
+import { buildUnitEconomicsCsv, UnitEconomicsModelValidationError, unitEconomicsAssumptionInputSchema, unitEconomicsCostInputSchema, unitEconomicsMonthSchema, unitEconomicsScenarioOverridesSchema } from "../shared/unitEconomics";
 import { isAuthenticated } from "./tokenAuth";
 
 function requireSuperadmin(req: Request, res: Response, next: NextFunction) {
@@ -22,7 +22,7 @@ function reportQuery(req: Request) {
 export function registerUnitEconomicsRoutes(app: Express) {
   app.get("/api/superadmin/unit-economics", isAuthenticated, requireSuperadmin, async (req, res) => {
     try { const { month, scenarioOverrides } = reportQuery(req); res.json(await getUnitEconomics(month, scenarioOverrides)); }
-    catch (error) { if (error instanceof z.ZodError || error instanceof SyntaxError) return res.status(400).json({ message: "Invalid month or scenario assumptions" }); console.error(error); res.status(500).json({ message: "Unable to load unit economics" }); }
+    catch (error) { if (error instanceof z.ZodError || error instanceof SyntaxError) return res.status(400).json({ message: "Invalid month or scenario assumptions" }); if (error instanceof UnitEconomicsModelValidationError) return res.status(400).json({ message: error.message }); console.error(error); res.status(500).json({ message: "Unable to load unit economics" }); }
   });
   app.put("/api/superadmin/unit-economics/assumptions", isAuthenticated, requireSuperadmin, async (req, res) => {
     try { const input=unitEconomicsAssumptionInputSchema.parse(req.body); await saveUnitEconomicsAssumptions(input, (req.user as any).id); res.json(await getUnitEconomics(input.month)); }
@@ -42,6 +42,6 @@ export function registerUnitEconomicsRoutes(app: Express) {
       if (!report.foundationReady) return res.status(409).json(report);
       res.setHeader("Content-Type","text/csv; charset=utf-8"); res.setHeader("Content-Disposition",`attachment; filename="cretexchange-unit-economics-${month}.csv"`);
       res.send(buildUnitEconomicsCsv(report));
-    } catch (error) { if (error instanceof z.ZodError || error instanceof SyntaxError) return res.status(400).json({ message: "Invalid month or scenario assumptions" }); console.error(error); res.status(500).json({ message: "Unable to export report" }); }
+    } catch (error) { if (error instanceof z.ZodError || error instanceof SyntaxError) return res.status(400).json({ message: "Invalid month or scenario assumptions" }); if (error instanceof UnitEconomicsModelValidationError) return res.status(400).json({ message: error.message }); console.error(error); res.status(500).json({ message: "Unable to export report" }); }
   });
 }

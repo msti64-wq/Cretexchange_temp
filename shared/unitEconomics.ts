@@ -84,6 +84,7 @@ export type UnitEconomicsProviderBaseline = {
   baseMonthlyCents: number;
   minimumMonthlyCents: number;
   usageCreditCents?: number;
+  conditionalPlanInput?: string;
   usageComponents: UnitEconomicsCostComponent[];
   defaultUsageInputs: Record<string, Record<UnitEconomicsScenario, number>>;
 };
@@ -140,7 +141,7 @@ const unitEconomicsProviderDefinitions: Omit<UnitEconomicsProviderBaseline, "bas
     includedUsage: "$20 monthly usage credit; Flat Rate CDN; 4 Fluid active CPU hours, 360 GB-hours provisioned memory, and 1M function invocations shown as included on the public plan comparison.",
     meteredRates: "Fluid CPU starts at $0.128/hour, provisioned memory at $0.0106/GB-hour, and function invocations at $0.60/million after their stated allowances; Enterprise is quote-based.",
     launchUsageAssumptions: "Conditional adoption range 0/1/1 Pro plans. High case models 1,000 Fluid CPU-hours, 300 GB-hours memory, and 1M invocations; the included allowances and $20 usage credit are applied before overage.",
-    formula: "If adopted: $20 Pro commitment + max(0, post-allowance compute charges − $20 usage credit). Flat Rate CDN is not assigned a separate overage in this model.",
+    formula: "If adopted: $20 Pro commitment + max(0, post-allowance compute charges − $20 usage credit). If the plan input is disabled, plan-specific usage must be zero. Flat Rate CDN is not assigned a separate overage in this model.",
     notes: "Repository config documents Railway hosting and contains no Vercel project/deployment config. Conditional Pro cost is included only in expected/high scenarios to show the production plan if Vercel is adopted; actual use remains unconfirmed.",
     sourceUrl: "https://vercel.com/pricing", researchDate: UNIT_ECONOMICS_RESEARCH_DATE, includedInCalculation: true,
   },
@@ -257,14 +258,14 @@ const unitEconomicsProviderDefinitions: Omit<UnitEconomicsProviderBaseline, "bas
     includedUsage: "50,000 emails/month; paid plans do not have Free plan's 100-email/day cap",
     meteredRates: "$0.90 per additional 1,000 emails for the $20 Pro tier (higher volume plan tiers also published)",
     launchUsageAssumptions: "Disabled/25,000/60,000 emails per month for low/expected/high; expected/high illustrate conditional Resend Pro adoption. Actual provider/contract is unknown.",
-    formula: "0 while no provider is selected; if Resend Pro is selected: $20 + max(0, emails−50,000)×$0.90/1,000. This is a conditional planning assumption, not an active vendor charge.",
+    formula: "0 while no provider is selected and email usage is zero; if Resend Pro is selected: $20 + max(0, emails−50,000)×$0.90/1,000. Nonzero email usage with the plan disabled is rejected. This is a conditional planning assumption, not an active vendor charge.",
     notes: "Do not describe Resend as an existing CreteXchange vendor. Repo inspection found no outbound email integration. The conditional production-plan scenario is based on public list pricing, not an active vendor charge.",
     sourceUrl: "https://resend.com/pricing", researchDate: UNIT_ECONOMICS_RESEARCH_DATE, includedInCalculation: true,
   },
 ];
 
 type ProviderUsageModel = Pick<UnitEconomicsProviderBaseline, "minimumMonthlyCents" | "usageComponents" | "defaultUsageInputs"> &
-  Partial<Pick<UnitEconomicsProviderBaseline, "baseMonthlyCents" | "usageCreditCents">>;
+  Partial<Pick<UnitEconomicsProviderBaseline, "baseMonthlyCents" | "usageCreditCents" | "conditionalPlanInput">>;
 const providerUsageModels: Record<string, ProviderUsageModel> = {
   "Railway application hosting": {
     minimumMonthlyCents: 2_000,
@@ -298,6 +299,7 @@ const providerUsageModels: Record<string, ProviderUsageModel> = {
   Vercel: {
     minimumMonthlyCents: 0,
     usageCreditCents: 2_000,
+    conditionalPlanInput: "proSeats",
     usageComponents: [
       { id: "proSeats", label: "Conditional Pro plan", unit: "plan/month", unitRateCents: 2_000, isCommitment: true },
       { id: "fluidCpuHours", label: "Fluid active CPU", unit: "hour", unitRateCents: 12.8, includedUnits: 4 },
@@ -387,6 +389,7 @@ const providerUsageModels: Record<string, ProviderUsageModel> = {
   },
   "Platform notifications": {
     minimumMonthlyCents: 0,
+    conditionalPlanInput: "conditionalProPlan",
     usageComponents: [
       { id: "conditionalProPlan", label: "Conditional Resend Pro plan", unit: "plan/month", unitRateCents: 2_000, isCommitment: true },
       { id: "emailsThousands", label: "Transactional emails", unit: "thousand-email billing bucket/month", unitRateCents: 90, includedUnits: 50, roundBillableUnitsUp: true },
@@ -398,19 +401,64 @@ const providerUsageModels: Record<string, ProviderUsageModel> = {
   },
 };
 
+export class UnitEconomicsModelValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnitEconomicsModelValidationError";
+  }
+}
+
+type ProviderCalculationModel = Pick<
+  UnitEconomicsProviderBaseline,
+  "provider" | "baseMonthlyCents" | "minimumMonthlyCents" | "usageComponents" | "defaultUsageInputs" | "usageCreditCents" | "conditionalPlanInput"
+>;
+
+function scenarioQuantity(
+  provider: Pick<UnitEconomicsProviderBaseline, "defaultUsageInputs">,
+  input: string,
+  scenario: UnitEconomicsScenario,
+  usageOverrides: UnitEconomicsUsageValues,
+): number {
+  return usageOverrides[input]?.[scenario] ?? provider.defaultUsageInputs[input]?.[scenario] ?? 0;
+}
+
+function conditionalPlanState(
+  provider: ProviderCalculationModel,
+  scenario: UnitEconomicsScenario,
+  usageOverrides: UnitEconomicsUsageValues,
+) {
+  const planInput = provider.conditionalPlanInput;
+  if (!planInput) return { enabled: true, planInput: null as string | null };
+  const enabled = scenarioQuantity(provider, planInput, scenario, usageOverrides) > 0;
+  if (!enabled) {
+    const incompatibleUsage = provider.usageComponents.find((component) => {
+      if (component.id === planInput || component.isDerived) return false;
+      return scenarioQuantity(provider, component.quantityInput ?? component.id, scenario, usageOverrides) > 0;
+    });
+    if (incompatibleUsage) {
+      throw new UnitEconomicsModelValidationError(
+        `${provider.provider} ${scenario} scenario has ${incompatibleUsage.label} usage while conditional plan input ${planInput} is disabled`,
+      );
+    }
+  }
+  return { enabled, planInput };
+}
+
 function calculateProviderMonthlyCost(
-  provider: Pick<UnitEconomicsProviderBaseline, "baseMonthlyCents" | "minimumMonthlyCents" | "usageComponents" | "defaultUsageInputs" | "usageCreditCents">,
+  provider: ProviderCalculationModel,
   scenario: UnitEconomicsScenario,
   usageOverrides: UnitEconomicsUsageValues = {},
   unitRatesCentsPerUnit: Record<string, number> = {},
   percentageRates: Record<string, number> = {},
 ): number {
+  const plan = conditionalPlanState(provider, scenario, usageOverrides);
   let commitmentCents = 0;
   let usageCents = 0;
   for (const component of provider.usageComponents) {
     const quantityKey = component.quantityInput ?? component.id;
-    const quantity = usageOverrides[quantityKey]?.[scenario] ?? provider.defaultUsageInputs[quantityKey]?.[scenario] ?? 0;
-    const rawBillableUnits = Math.max(0, quantity - (component.includedUnits ?? 0));
+    const quantity = scenarioQuantity(provider, quantityKey, scenario, usageOverrides);
+    const includedUnits = plan.enabled || component.id === plan.planInput ? component.includedUnits ?? 0 : 0;
+    const rawBillableUnits = Math.max(0, quantity - includedUnits);
     const billableUnits = component.roundBillableUnitsUp ? Math.ceil(rawBillableUnits) : rawBillableUnits;
     const basis = component.percentageBasisInput
       ? usageOverrides[component.percentageBasisInput]?.[scenario] ?? provider.defaultUsageInputs[component.percentageBasisInput]?.[scenario] ?? 0
@@ -423,9 +471,11 @@ function calculateProviderMonthlyCost(
     if (component.isCommitment) commitmentCents += componentCents;
     else usageCents += componentCents;
   }
-  const usageCreditCents = commitmentCents > 0 ? provider.usageCreditCents ?? 0 : 0;
-  const totalCents = provider.baseMonthlyCents + commitmentCents + Math.max(0, usageCents - usageCreditCents);
-  return Math.max(provider.minimumMonthlyCents, Math.round(totalCents));
+  const usageCreditCents = plan.enabled && commitmentCents > 0 ? provider.usageCreditCents ?? 0 : 0;
+  const baseMonthlyCents = plan.enabled ? provider.baseMonthlyCents : 0;
+  const minimumMonthlyCents = plan.enabled ? provider.minimumMonthlyCents : 0;
+  const totalCents = baseMonthlyCents + commitmentCents + Math.max(0, usageCents - usageCreditCents);
+  return Math.max(minimumMonthlyCents, Math.round(totalCents));
 }
 
 export const unitEconomicsProviderBaseline: UnitEconomicsProviderBaseline[] = unitEconomicsProviderDefinitions.map((entry) => {
@@ -581,10 +631,12 @@ export function calculateUnitEconomicsProviderCostBreakdown(
   provider: UnitEconomicsProviderCost,
   scenario: UnitEconomicsScenario,
 ) {
+  const plan = conditionalPlanState(provider, scenario, {});
   return provider.usageComponents.map((component) => {
     const quantityKey = component.quantityInput ?? component.id;
     const quantity = provider.defaultUsageInputs[quantityKey]?.[scenario] ?? 0;
-    const rawBillableUnits = Math.max(0, quantity - (component.includedUnits ?? 0));
+    const includedUnits = plan.enabled || component.id === plan.planInput ? component.includedUnits ?? 0 : 0;
+    const rawBillableUnits = Math.max(0, quantity - includedUnits);
     const billableUnits = component.roundBillableUnitsUp ? Math.ceil(rawBillableUnits) : rawBillableUnits;
     const percentageBasis = component.percentageBasisInput
       ? provider.defaultUsageInputs[component.percentageBasisInput]?.[scenario] ?? 0
@@ -597,7 +649,7 @@ export function calculateUnitEconomicsProviderCostBreakdown(
       label: component.label,
       unit: component.unit,
       quantity,
-      includedUnits: component.includedUnits ?? 0,
+      includedUnits,
       billableUnits,
       unitRateCents: component.unitRateCents,
       percentageRate: component.percentageRate ?? 0,
